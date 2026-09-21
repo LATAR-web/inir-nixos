@@ -15,6 +15,42 @@ on NixOS — documented so the next person doesn't have to rediscover all of
 it from scratch. See the [official NixOS wiki page](https://github.com/snowarch/inir/wiki/NIXOS)
 for the upstream-maintained flake docs.
 
+---
+
+## 📑 Contents
+
+- [Requirements](#-requirements)
+- [Quick Start](#-quick-start)
+- [Alternative: niri-flake](#-alternative-the-upstream-niri-flake-approach)
+- [File Map](#-file-map--what-goes-where)
+- [Color Sync](#-color-sync--niri--wallpaper)
+- [Niri Config & Keybinds](#Fe0f-niri-config--keybinds)
+- [The Mascot](#-the-mascot-kira)
+- [Updating](#-updating)
+- [Post-Install Checklist](#-post-install-checklist)
+- [Known Issues](#-known-issues--gotchas)
+
+---
+
+## 🗺️ File Map — what goes where
+
+This repo mirrors real system paths. Nothing here installs itself — every
+file is copied to its target manually (see Quick Start), so you always
+know exactly what changed on your machine.
+
+| In this repo | Goes to | Purpose |
+|---|---|---|
+| `configuration.nix` | `/etc/nixos/configuration.nix` | Main system config |
+| `flake.nix` | `/etc/nixos/flake.nix` | Flake inputs (nixpkgs, niri, inir) |
+| `modules/packages.nix` | `/etc/nixos/modules/packages.nix` | User apps + Python color pipeline |
+| `modules/inir-deps.nix` | `/etc/nixos/modules/inir-deps.nix` | iNiR-specific extra packages |
+| `niri/config.kdl` | `~/.config/niri/config.kdl` | Keybinds, layout, focus-ring |
+| `scripts/niri-sync-colors` | `~/.local/bin/niri-sync-colors` | Syncs wallpaper colors → niri border |
+| `scripts/check-config-updates.sh` | `~/.local/bin/check-config-updates.sh` | Optional update notifier |
+| `scripts/verify-setup.sh` | run in place, no copy needed | Post-install sanity check |
+| `systemd/niri-sync-colors.service` | `~/.config/systemd/user/` | Runs the color sync script |
+| `systemd/check-config-updates.*` | `~/.config/systemd/user/` | Runs the optional update notifier |
+
 </div>
 
 ---
@@ -240,6 +276,34 @@ systemctl --user enable --now check-config-updates.timer
 ```
 
 When it fires, run the two commands in the ["Updating"](#-updating) section above.
+
+---
+
+## ✅ Post-Install Checklist
+
+After following every step above, run this to confirm everything actually
+works — it only reads, never changes anything:
+
+```bash
+bash scripts/verify-setup.sh
+```
+
+Every line should say ✅. A ⚠️ is optional and safe to ignore if you didn't
+set that piece up; a ❌ means go back and re-check that step.
+
+---
+
+## ✅ Post-Install Checklist
+
+After following every step above, run this to confirm everything actually
+works — it only reads, never changes anything:
+
+```bash
+bash scripts/verify-setup.sh
+```
+
+Every line should say ✅. A ⚠️ is optional and safe to ignore if you didn't
+set that piece up; a ❌ means go back and re-check that step.
 
 ---
 
