@@ -3,43 +3,46 @@
 {
   imports = [
     inir.nixosModules.inir
-    ./hardware-configuration.nix   # generado por nixos-generate-config, NO copiar el de otra máquina
+    ./hardware-configuration.nix
+    ./modules/desktop.nix
+    ./modules/audio.nix
+    ./modules/printing.nix
     ./modules/packages.nix
-    ./modules/inir-deps.nix
+    ./modules/runtime.nix
   ];
 
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 
-  networking.hostName = "nixos";  # cambia esto si quieres otro nombre de host
+  networking.hostName = "nixos";
   networking.networkmanager.enable = true;
 
-  time.timeZone = "America/Mexico_City";   # ajusta a tu zona horaria
+  time.timeZone = "America/Mexico_City";
   i18n.defaultLocale = "es_MX.UTF-8";
 
   programs.dconf.enable = true;
+  networking.firewall.allowedTCPPorts = [ 53317 ];
+  networking.firewall.allowedUDPPorts = [ 53317 ];
 
-  users.users."TU_USUARIO" = {
+  systemd.tmpfiles.rules = [
+    "L+ /bin/cat - - - - ${pkgs.coreutils}/bin/cat"
+  ];
+
+  users.users."ltar" = {
     isNormalUser = true;
-    description = "TU_USUARIO";
+    description = "LTAR";
     extraGroups = [ "networkmanager" "wheel" ];
+    packages = with pkgs; [ ];
   };
 
-  # ─────────────────────────────────────────────────────────────
-  # iNiR: venv de Python para el pipeline de colores Material You.
-  # Apunta a una ruta estable fuera de ~/.local/state/quickshell/
-  # (esa carpeta la puede limpiar Quickshell solo, borrando el venv).
   systemd.user.services.inir.environment.INIR_VENV = "%h/.local/share/inir/venv";
 
-  # CRÍTICO: extraPackages por sí solo NO agrega binarios al $PATH que ve
-  # inir.service — ese PATH es una lista corta y fija (solo trae inir,
-  # coreutils, findutils, gnugrep, gnused, systemd). Sin este bloque,
-  # cualquier script interno de iNiR que invoque python3/jq/uv/ddcutil/etc.
-  # falla en silencio (verás "Process failed to start, likely because the
-  # binary could not be found" en `inir logs`), y el theming automático
-  # (colores desde wallpaper, iconos, hot corners, etc.) no funciona.
+  # Puts these binaries on inir.service's PATH — extraPackages alone only
+  # wires up Qt plugin paths / QML imports, it does NOT add executables
+  # to the service's $PATH (that PATH is a short fixed list). Scripts the
+  # shell spawns internally (python3, uv, jq, etc.) need this instead.
   systemd.user.services.inir.path = with pkgs; [
-    python3
+    (python3.withPackages (ps: with ps; [ ps.pip ps.materialyoucolor ps.pillow ps.evdev ps.numpy ]))
     uv
     cliphist
     jq

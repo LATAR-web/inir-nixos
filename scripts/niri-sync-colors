@@ -1,33 +1,26 @@
 #!/usr/bin/env bash
-set -euo pipefail
+COLORS_JSON="$HOME/.local/state/quickshell/user/generated/colors.json"
+META_JSON="$HOME/.local/state/quickshell/user/generated/theme-meta.json"
+NIRI_CONFIG_PY="$HOME/.config/quickshell/inir/scripts/niri-config.py"
+SHELL_CONFIG_FILE="$HOME/.config/illogical-impulse/config.json"
+PYTHON="python3"
 
-PALETTE="$HOME/.local/state/quickshell/user/generated/palette.json"
-CONFIG="$HOME/.config/niri/config.kdl"
+[[ -f "$COLORS_JSON" ]] || exit 0
 
-[[ -f "$PALETTE" ]] || exit 0
+primary=$("$PYTHON" -c "import json; print(json.load(open('$COLORS_JSON'))['primary'])")
+secondary=$("$PYTHON" -c "import json; print(json.load(open('$COLORS_JSON'))['secondary'])")
 
-primary=$(jq -r '.primary' "$PALETTE")
-secondary=$(jq -r '.secondary' "$PALETTE")
+"$PYTHON" "$NIRI_CONFIG_PY" set layout focus-ring.active-color "$primary"
+"$PYTHON" "$NIRI_CONFIG_PY" set layout focus-ring.inactive-color "$secondary"
 
-[[ "$primary" == "null" || -z "$primary" ]] && exit 0
-
-python3 << PYEOF
-import re
-path = "$CONFIG"
-with open(path) as f:
-    content = f.read()
-content = re.sub(
-    r'(focus-ring \{\s*width \d+\s*active-color ")[^"]*(")',
-    r'\g<1>$primary\g<2>',
-    content
-)
-content = re.sub(
-    r'(focus-ring \{\s*width \d+\s*active-color "[^"]*"\s*inactive-color ")[^"]*(")',
-    r'\g<1>$secondary\g<2>',
-    content
-)
-with open(path, "w") as f:
-    f.write(content)
-PYEOF
-
-niri msg action load-config-file 2>/dev/null || true
+if [[ -f "$META_JSON" && -f "$SHELL_CONFIG_FILE" ]]; then
+    wallpaper_path=$("$PYTHON" -c "import json; print(json.load(open('$META_JSON')).get('source_path',''))")
+    if [[ -n "$wallpaper_path" ]]; then
+        lockfile="$SHELL_CONFIG_FILE.lock"
+        (
+            flock -w 5 200 || exit 1
+            jq --arg path "$wallpaper_path" '.background.wallpaperPath = $path' "$SHELL_CONFIG_FILE" > "$SHELL_CONFIG_FILE.tmp" && \
+                mv "$SHELL_CONFIG_FILE.tmp" "$SHELL_CONFIG_FILE"
+        ) 200>"$lockfile"
+    fi
+fi

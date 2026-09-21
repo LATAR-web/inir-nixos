@@ -1,7 +1,7 @@
 # Extra system packages required by iNiR (github:snowarch/iNiR) on NixOS.
-# `inir doctor` reports these as missing because it assumes an Arch-style
-# package manager and tries to auto-install with pacman; on NixOS they
-# must be declared here and passed into programs.inir.extraPackages.
+# `inir doctor` reports these as missing because it expects an Arch-style
+# package manager; on NixOS they must be declared here and passed into
+# programs.inir.extraPackages from configuration.nix.
 { pkgs }:
 
 with pkgs; [
@@ -11,7 +11,7 @@ with pkgs; [
   swaylock
   swayidle
   blueman
-  uv
+  uv                # Python venv bootstrap for materialyoucolor pipeline
   networkmanagerapplet
   mission-center
   lsp-plugins
@@ -57,7 +57,7 @@ with pkgs; [
   upower
   wtype
   ydotool
-  ddcutil
+  ddcutil          # external monitor brightness (DDC/CI)
   geoclue2
   fprintd
   libqalculate
@@ -83,11 +83,6 @@ with pkgs; [
   # --- YT Music widget ---
   yt-dlp
   jq
-
-  # --- Python: intérprete plano (necesario para $PATH del servicio) ---
-  python3
-
-  # --- Python: pipeline de colores Material You ---
   (python3.withPackages (ps: with ps; [
     pip
     materialyoucolor
