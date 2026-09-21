@@ -1,0 +1,179 @@
+input {
+    keyboard {
+        xkb {
+            layout "latam,us"
+        }
+    }
+    touchpad {
+        tap
+        natural-scroll
+        accel-speed 0.3
+        accel-profile "adaptive"
+        dwt
+        click-method "clickfinger"
+        scroll-method "two-finger"
+    }
+    mouse {
+        accel-speed 0.2
+        accel-profile "flat"
+    }
+}
+
+cursor {
+    xcursor-theme "Adwaita"
+    xcursor-size 26
+}
+
+output "eDP-1" {
+    scale 1.0
+}
+
+xwayland-satellite {
+    path "/run/current-system/sw/bin/xwayland-satellite"
+}
+
+binds {
+    Mod+W { spawn "inir" "wallpaperSelector" "toggle"; }
+    Print { screenshot; }
+    Ctrl+Print { screenshot-screen; }
+    Alt+Print { screenshot-window; }
+    // --- Apps / Launcher (iNiR) ---
+    Mod+Return { spawn "alacritty"; }
+    Mod+Space  { spawn "inir" "overview" "toggle"; }
+    Super+Tab  { toggle-overview; }
+    Mod+V      { spawn "inir" "clipboard" "toggle"; }
+    Mod+Comma  { spawn "inir" "settings"; }
+    Mod+Slash  { spawn "inir" "cheatsheet" "toggle"; }
+    Mod+Shift+W { spawn "inir" "panelFamily" "cycle"; }
+    Mod+Shift+S { spawn "inir" "region" "screenshot"; }
+    Mod+Shift+X { spawn "inir" "region" "ocr"; }
+    Mod+E      { spawn "nautilus"; }
+    Mod+B      { spawn "brave"; }
+
+    // idioma de teclado
+    Mod+Alt+Space { switch-layout "next"; }
+
+    // --- Ventanas ---
+    Mod+Q       { close-window; }
+    Mod+Shift+Q { quit; }
+    Mod+F       { fullscreen-window; }
+    Mod+Shift+F { toggle-window-floating; }
+    Mod+Shift+C { center-window; }
+    Mod+Grave   { switch-focus-between-floating-and-tiling; }
+    Mod+C       { center-column; }
+    Mod+R       { switch-preset-column-width; }
+    Mod+M       { maximize-column; }
+    Mod+Shift+M { expand-column-to-available-width; }
+    Mod+U       { reset-window-height; }
+    Mod+Shift+R { switch-preset-window-height; }
+
+    // --- Navegación entre ventanas / columnas ---
+    Mod+Left  { focus-column-left; }
+    Mod+Right { focus-column-right; }
+    Mod+Up    { focus-window-up; }
+    Mod+Down  { focus-window-down; }
+    Mod+Shift+Left  { move-column-left; }
+    Mod+Shift+Right { move-column-right; }
+    Mod+Shift+Up    { move-window-up; }
+    Mod+Shift+Down  { move-window-down; }
+
+    // --- Workspaces ---
+    Mod+Page_Down { focus-workspace-down; }
+    Mod+Page_Up   { focus-workspace-up; }
+    Mod+1 { focus-workspace 1; }
+    Mod+2 { focus-workspace 2; }
+    Mod+3 { focus-workspace 3; }
+    Mod+4 { focus-workspace 4; }
+    Mod+5 { focus-workspace 5; }
+    Mod+Shift+1 { move-column-to-workspace 1; }
+    Mod+Shift+2 { move-column-to-workspace 2; }
+    Mod+Shift+3 { move-column-to-workspace 3; }
+    Mod+Shift+4 { move-column-to-workspace 4; }
+    Mod+Shift+5 { move-column-to-workspace 5; }
+
+    // --- Redimensionar columna ---
+    Mod+Minus { set-column-width "-10%"; }
+    Mod+Equal { set-column-width "+10%"; }
+    Mod+Shift+Minus { set-window-height "-10%"; }
+    Mod+Shift+Equal { set-window-height "+10%"; }
+
+    // --- Volumen ---
+    XF86AudioRaiseVolume { spawn "wpctl" "set-volume" "@DEFAULT_AUDIO_SINK@" "5%+"; }
+    XF86AudioLowerVolume { spawn "wpctl" "set-volume" "@DEFAULT_AUDIO_SINK@" "5%-"; }
+    XF86AudioMute        { spawn "wpctl" "set-mute" "@DEFAULT_AUDIO_SINK@" "toggle"; }
+
+    // --- Microfono ---
+    XF86AudioMicMute { spawn "wpctl" "set-mute" "@DEFAULT_AUDIO_SOURCE@" "toggle"; }
+
+    // --- Brillo ---
+    XF86MonBrightnessUp   { spawn "brightnessctl" "set" "5%+"; }
+    XF86MonBrightnessDown { spawn "brightnessctl" "set" "5%-"; }
+
+    // --- Multimedia ---
+    XF86AudioPlay { spawn "playerctl" "play-pause"; }
+    XF86AudioNext { spawn "playerctl" "next"; }
+    XF86AudioPrev { spawn "playerctl" "previous"; }
+}
+
+layout {
+    gaps 12
+    center-focused-column "never"
+
+    preset-column-widths {
+        proportion 0.33333
+        proportion 0.5
+        proportion 0.66667
+    }
+
+    default-column-width { proportion 0.5; }
+
+    focus-ring {
+        width 1
+        active-color "#B8CE9D"
+        inactive-color "#BFCBAD"
+    }
+
+    border {
+        off
+    }
+
+    shadow {
+        on
+        softness 30
+        spread 5
+        draw-behind-window true
+        color "#00000070"
+    }
+
+    struts {
+        left 4
+        right 4
+        top 4
+        bottom 4
+    }
+}
+
+window-rule {
+    geometry-corner-radius 8
+    clip-to-geometry true
+}
+
+environment {
+    ELECTRON_OZONE_PLATFORM_HINT "wayland"
+    QT_IMAGEIO_MAXALLOC "0"
+}
+
+spawn-at-startup "wl-paste" "--type" "text" "--watch" "cliphist" "store"
+spawn-at-startup "wl-paste" "--type" "image" "--watch" "cliphist" "store"
+
+layer-rule {
+    match namespace="^quickshell:(iiBackdrop|wBackdrop)$"
+    place-within-backdrop true
+}
+
+window-rule {
+    background-effect {
+        blur true
+        xray false
+    }
+}

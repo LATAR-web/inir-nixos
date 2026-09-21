@@ -72,18 +72,20 @@ deactivate
 systemctl --user restart inir.service
 ```
 
-## 8. Add the niri config snippets
+## 8. Copy the niri config
 
-Copy the contents of `niri/config.kdl.snippets` into your
-`~/.config/niri/config.kdl` (at the root level of the file, alongside
-`input {}`, `layout {}`, etc). Read it first — each block explains why it
-exists.
-
-Then reload:
+This repo ships a complete, working `config.kdl` (keybinds, layout,
+xwayland-satellite path, etc). Copy it directly:
 
 ```bash
+mkdir -p ~/.config/niri
+cp niri/config.kdl ~/.config/niri/config.kdl
 niri msg action load-config-file
 ```
+
+Note: `xwayland-satellite`'s `path` uses `$HOME` — niri does not expand
+shell variables in strings, so if the copy fails to launch it, replace
+`$HOME` with your literal home directory path in that one line.
 
 ## 9. Test it
 
