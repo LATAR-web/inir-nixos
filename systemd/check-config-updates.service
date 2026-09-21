@@ -1,0 +1,6 @@
+[Unit]
+Description=Check for NixOS config repo updates
+
+[Service]
+Type=oneshot
+ExecStart=/home/%u/.local/bin/check-config-updates.sh

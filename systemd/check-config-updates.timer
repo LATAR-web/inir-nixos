@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily check for NixOS config repo updates
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=1d
+Persistent=true
+
+[Install]
+WantedBy=timers.target

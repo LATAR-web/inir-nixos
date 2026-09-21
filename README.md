@@ -225,6 +225,22 @@ that. For a Nix install specifically, though, `inir update` is **not**
 the right path — update through `nix flake update` and rebuild instead,
 same as any other flake input.
 
+### 🔔 Optional: get notified when this repo has new commits
+
+This installs a daily background check that pops a desktop notification
+when `origin/main` has commits you haven't pulled yet. It never pulls or
+applies anything by itself — it only tells you.
+
+```bash
+cp scripts/check-config-updates.sh ~/.local/bin/
+chmod +x ~/.local/bin/check-config-updates.sh
+cp systemd/check-config-updates.service systemd/check-config-updates.timer ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable --now check-config-updates.timer
+```
+
+When it fires, run the two commands in the ["Updating"](#-updating) section above.
+
 ---
 
 ## 🐛 Known Issues / Gotchas
