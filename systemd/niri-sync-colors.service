@@ -1,6 +1,12 @@
 [Unit]
-Description=Sync niri focus-ring colors from iNiR palette
+Description=Sync niri focus-ring colors and lock wallpaper with iNiR palette
+After=inir.service
 
 [Service]
-Type=oneshot
-ExecStart=%h/.local/bin/niri-sync-colors
+Type=simple
+ExecStart=/usr/bin/env bash -c 'inotifywait -m -e close_write,moved_to --format "%%f" %h/.local/state/quickshell/user/generated/ | while read -r f; do [[ "$f" == "colors.json" || "$f" == "theme-meta.json" ]] && %h/.local/bin/sync-niri-colors.sh; done'
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=default.target

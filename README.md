@@ -71,9 +71,9 @@ By default, iNiR syncs wallpaper-derived colors to terminal, GTK, editors, etc. 
 mkdir -p ~/.local/bin ~/.config/systemd/user
 cp scripts/niri-sync-colors ~/.local/bin/
 chmod +x ~/.local/bin/niri-sync-colors
-cp systemd/niri-sync-colors.service systemd/niri-sync-colors.path ~/.config/systemd/user/
+cp systemd/niri-sync-colors.service ~/.config/systemd/user/
 systemctl --user daemon-reload
-systemctl --user enable --now niri-sync-colors.path
+systemctl --user enable --now niri-sync-colors.service
 ```
 
 ### 7️⃣ Create the Python venv for the color pipeline
