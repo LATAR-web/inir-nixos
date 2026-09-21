@@ -1,0 +1,8 @@
+[Unit]
+Description=Watch iNiR palette.json for changes
+
+[Path]
+PathChanged=%h/.local/state/quickshell/user/generated/palette.json
+
+[Install]
+WantedBy=default.target

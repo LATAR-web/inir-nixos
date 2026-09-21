@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+PALETTE="$HOME/.local/state/quickshell/user/generated/palette.json"
+CONFIG="$HOME/.config/niri/config.kdl"
+
+[[ -f "$PALETTE" ]] || exit 0
+
+primary=$(jq -r '.primary' "$PALETTE")
+secondary=$(jq -r '.secondary' "$PALETTE")
+
+[[ "$primary" == "null" || -z "$primary" ]] && exit 0
+
+python3 << PYEOF
+import re
+path = "$CONFIG"
+with open(path) as f:
+    content = f.read()
+content = re.sub(
+    r'(focus-ring \{\s*width \d+\s*active-color ")[^"]*(")',
+    r'\g<1>$primary\g<2>',
+    content
+)
+content = re.sub(
+    r'(focus-ring \{\s*width \d+\s*active-color "[^"]*"\s*inactive-color ")[^"]*(")',
+    r'\g<1>$secondary\g<2>',
+    content
+)
+with open(path, "w") as f:
+    f.write(content)
+PYEOF
+
+niri msg action load-config-file 2>/dev/null || true

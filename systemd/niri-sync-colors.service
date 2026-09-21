@@ -1,0 +1,6 @@
+[Unit]
+Description=Sync niri focus-ring colors from iNiR palette
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/niri-sync-colors
