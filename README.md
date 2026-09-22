@@ -1,6 +1,8 @@
 <div align="center">
 
 # ❄️ iNiR on NixOS
+<img width="1920" height="1080" alt="Screenshot from 2026-09-20 23-10-09" src="https://github.com/user-attachments/assets/56163c9d-20f7-417b-a4a9-c5e9ee86c26e" />
+
 ### A reproducible, from-scratch guide to running [iNiR](https://github.com/snowarch/iNiR) on Niri + NixOS with flakes
 
 [![Build](https://github.com/LATAR-web/inir-nixos/actions/workflows/check.yml/badge.svg)](https://github.com/LATAR-web/inir-nixos/actions/workflows/check.yml)
