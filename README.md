@@ -5,8 +5,6 @@
 
 ### A reproducible, from-scratch guide to running [iNiR](https://github.com/snowarch/iNiR) on Niri + NixOS with flakes
 
-[![Build](https://github.com/LATAR-web/inir-nixos/actions/workflows/check.yml/badge.svg)](https://github.com/LATAR-web/inir-nixos/actions/workflows/check.yml)
-[![NixOS](https://img.shields.io/badge/NixOS-5277C3?style=for-the-badge&logo=nixos&logoColor=white)](https://nixos.org)
 [![Niri](https://img.shields.io/badge/Niri-88C0D0?style=for-the-badge&logo=wayland&logoColor=white)](https://github.com/YaLTeR/niri)
 [![Flakes](https://img.shields.io/badge/Flakes-enabled-7EBAE4?style=for-the-badge)](https://nixos.wiki/wiki/Flakes)
 [![iNiR](https://img.shields.io/badge/iNiR-shell-orange?style=for-the-badge)](https://github.com/snowarch/iNiR)
