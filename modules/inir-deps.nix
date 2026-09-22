@@ -27,6 +27,7 @@ with pkgs; [
   gnome-keyring
   fish                    # some of iNiR's scripts shell out to fish specifically
   gum
+  uv                       # needed to create the venv in README step 7
   bc
   ripgrep
   jq
@@ -38,6 +39,10 @@ with pkgs; [
   kdePackages.qtmultimedia   # required for video wallpapers; without it they fall back to a blurry static thumbnail
   kdePackages.syntax-highlighting
   kdePackages.kdialog
+  kdePackages.plasma-integration
+  kdePackages.plasma-browser-integration
+  kdePackages.kconfig
+  darkly
 
   # --- Color theming pipeline ---
   matugen                          # the actual engine that generates the Material You palette

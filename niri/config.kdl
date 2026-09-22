@@ -129,8 +129,8 @@ layout {
 
     focus-ring {
         width 1
-        active-color "#B1CFA3"
-        inactive-color "#BBCBB1"
+        active-color "#54652E"
+        inactive-color "#5A6248"
     }
 
     border {
@@ -163,8 +163,6 @@ environment {
     QT_IMAGEIO_MAXALLOC "0"
 }
 
-spawn-at-startup "wl-paste" "--type" "text" "--watch" "cliphist" "store"
-spawn-at-startup "wl-paste" "--type" "image" "--watch" "cliphist" "store"
 
 layer-rule {
     match namespace="^quickshell:(iiBackdrop|wBackdrop)$"
