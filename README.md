@@ -329,20 +329,6 @@ set that piece up; a ❌ means go back and re-check that step.
 
 ---
 
-## ✅ Post-Install Checklist
-
-After following every step above, run this to confirm everything actually
-works — it only reads, never changes anything:
-
-```bash
-bash scripts/verify-setup.sh
-```
-
-Every line should say ✅. A ⚠️ is optional and safe to ignore if you didn't
-set that piece up; a ❌ means go back and re-check that step.
-
----
-
 ## ⏪ Rollback / Uninstall
 
 Nix never overwrites your previous working system — every `nixos-rebuild
