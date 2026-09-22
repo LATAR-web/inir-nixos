@@ -91,7 +91,7 @@ case "${1:-}" in
         while read -r file; do
             case "$file" in
                 colors.json|theme-meta.json)
-                    sync_once
+                    sync_once || echo "niri-sync-colors: sync failed, will retry on next event" >&2
                     ;;
             esac
         done
