@@ -3,6 +3,7 @@
 # ❄️ iNiR on NixOS
 ### A reproducible, from-scratch guide to running [iNiR](https://github.com/snowarch/iNiR) on Niri + NixOS with flakes
 
+[![Build](https://github.com/LATAR-web/inir-nixos/actions/workflows/check.yml/badge.svg)](https://github.com/LATAR-web/inir-nixos/actions/workflows/check.yml)
 [![NixOS](https://img.shields.io/badge/NixOS-5277C3?style=for-the-badge&logo=nixos&logoColor=white)](https://nixos.org)
 [![Niri](https://img.shields.io/badge/Niri-88C0D0?style=for-the-badge&logo=wayland&logoColor=white)](https://github.com/YaLTeR/niri)
 [![Flakes](https://img.shields.io/badge/Flakes-enabled-7EBAE4?style=for-the-badge)](https://nixos.wiki/wiki/Flakes)
@@ -339,6 +340,54 @@ bash scripts/verify-setup.sh
 
 Every line should say ✅. A ⚠️ is optional and safe to ignore if you didn't
 set that piece up; a ❌ means go back and re-check that step.
+
+---
+
+## ⏪ Rollback / Uninstall
+
+Nix never overwrites your previous working system — every `nixos-rebuild
+switch` creates a new, separate generation. If something in this repo
+breaks your system:
+
+**Roll back to the last working generation (fastest fix):**
+```bash
+sudo nixos-rebuild switch --rollback
+```
+
+**Or pick a specific older generation at boot:** reboot and select it from
+the systemd-boot menu — every generation stays bootable until you garbage-
+collect (`nix-collect-garbage -d`), so nothing is destructive until you
+explicitly clean up.
+
+**To fully stop using this config** and go back to a stock install, restore
+whatever you backed up in step 1 of Quick Start (`/etc/nixos.bak`) and
+rebuild from that.
+
+---
+
+## 🙋 Reporting issues
+
+- **Something in `config.kdl`, the Nix modules, or this README is
+  wrong/broken** → open an issue [in this repo](https://github.com/LATAR-web/inir-nixos/issues).
+- **The shell itself misbehaves** (a panel, the wallpaper selector, the bar,
+  etc.) once everything here is installed and running → that's upstream,
+  report it at [snowarch/inir](https://github.com/snowarch/iNiR/issues) instead
+  — this repo doesn't maintain the shell's code, only the NixOS packaging
+  around it.
+
+---
+
+## 🧪 Tested on
+
+| Component | Version |
+|---|---|
+| NixOS | 26.05/26.11 (unstable channel) |
+| niri | via `programs.niri.enable` (nixpkgs) |
+| iNiR | 2.30.0 |
+| GPU | Intel (i915) |
+
+Other hardware/GPU combos should work but are untested — open an issue if
+something GPU-specific breaks.
 
 ---
 
