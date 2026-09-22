@@ -1,26 +1,115 @@
 #!/usr/bin/env bash
+set -Eeuo pipefail
+
 COLORS_JSON="$HOME/.local/state/quickshell/user/generated/colors.json"
 META_JSON="$HOME/.local/state/quickshell/user/generated/theme-meta.json"
+GENERATED_DIR="$HOME/.local/state/quickshell/user/generated"
 NIRI_CONFIG_PY="$HOME/.config/quickshell/inir/scripts/niri-config.py"
 SHELL_CONFIG_FILE="$HOME/.config/illogical-impulse/config.json"
 PYTHON="python3"
 
-[[ -f "$COLORS_JSON" ]] || exit 0
+sync_once() {
+    [[ -f "$COLORS_JSON" ]] || return 0
 
-primary=$("$PYTHON" -c "import json; print(json.load(open('$COLORS_JSON'))['primary'])")
-secondary=$("$PYTHON" -c "import json; print(json.load(open('$COLORS_JSON'))['secondary'])")
+    command -v "$PYTHON" >/dev/null 2>&1 || {
+        echo "niri-sync-colors: python3 not found" >&2
+        return 1
+    }
 
-"$PYTHON" "$NIRI_CONFIG_PY" set layout focus-ring.active-color "$primary"
-"$PYTHON" "$NIRI_CONFIG_PY" set layout focus-ring.inactive-color "$secondary"
+    command -v jq >/dev/null 2>&1 || {
+        echo "niri-sync-colors: jq not found" >&2
+        return 1
+    }
 
-if [[ -f "$META_JSON" && -f "$SHELL_CONFIG_FILE" ]]; then
-    wallpaper_path=$("$PYTHON" -c "import json; print(json.load(open('$META_JSON')).get('source_path',''))")
-    if [[ -n "$wallpaper_path" ]]; then
-        lockfile="$SHELL_CONFIG_FILE.lock"
-        (
-            flock -w 5 200 || exit 1
-            jq --arg path "$wallpaper_path" '.background.wallpaperPath = $path' "$SHELL_CONFIG_FILE" > "$SHELL_CONFIG_FILE.tmp" && \
-                mv "$SHELL_CONFIG_FILE.tmp" "$SHELL_CONFIG_FILE"
-        ) 200>"$lockfile"
+    [[ -f "$NIRI_CONFIG_PY" ]] || {
+        echo "niri-sync-colors: missing $NIRI_CONFIG_PY" >&2
+        return 1
+    }
+
+    local primary
+    local secondary
+
+    primary="$(jq -er '.primary | strings' "$COLORS_JSON")"
+    secondary="$(jq -er '.secondary | strings' "$COLORS_JSON")"
+
+    "$PYTHON" "$NIRI_CONFIG_PY" \
+        set layout focus-ring.active-color "$primary"
+
+    "$PYTHON" "$NIRI_CONFIG_PY" \
+        set layout focus-ring.inactive-color "$secondary"
+
+    if [[ -f "$META_JSON" && -f "$SHELL_CONFIG_FILE" ]]; then
+        local wallpaper_path
+        wallpaper_path="$(jq -r '.source_path // empty' "$META_JSON")"
+
+        if [[ -n "$wallpaper_path" ]]; then
+            local lockfile
+            local tmpfile
+
+            lockfile="$SHELL_CONFIG_FILE.lock"
+            tmpfile="${SHELL_CONFIG_FILE}.tmp.$$"
+
+            if (
+                flock -w 5 200 || exit 1
+
+                jq --arg path "$wallpaper_path" \
+                    '.background.wallpaperPath = $path' \
+                    "$SHELL_CONFIG_FILE" > "$tmpfile"
+
+                mv -f "$tmpfile" "$SHELL_CONFIG_FILE"
+            ) 200>"$lockfile"; then
+                :
+            else
+                rm -f "$tmpfile"
+                echo "niri-sync-colors: could not update wallpaper path" >&2
+            fi
+        fi
     fi
-fi
+}
+
+case "${1:-}" in
+    "")
+        sync_once
+        ;;
+
+    --watch)
+        command -v inotifywait >/dev/null 2>&1 || {
+            echo "niri-sync-colors: inotifywait not found" >&2
+            exit 1
+        }
+
+        while [[ ! -d "$GENERATED_DIR" ]]; do
+            sleep 2
+        done
+
+        sync_once
+
+        inotifywait -m \
+            -e close_write,moved_to \
+            --format '%f' \
+            "$GENERATED_DIR" |
+        while read -r file; do
+            case "$file" in
+                colors.json|theme-meta.json)
+                    sync_once
+                    ;;
+            esac
+        done
+        ;;
+
+    --help|-h)
+        cat <<'HELP'
+Usage:
+  niri-sync-colors
+  niri-sync-colors --watch
+
+Synchronizes iNiR/Quickshell colors with Niri and keeps
+the iNiR wallpaper path in sync with theme metadata.
+HELP
+        ;;
+
+    *)
+        echo "Usage: niri-sync-colors [--watch]" >&2
+        exit 2
+        ;;
+esac

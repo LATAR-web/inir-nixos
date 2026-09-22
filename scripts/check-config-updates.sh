@@ -1,22 +1,37 @@
 #!/usr/bin/env bash
-# Checks if /etc/nixos has upstream commits not yet pulled, and notifies
-# the user via libnotify if so. Does NOT pull or apply anything automatically.
-set -euo pipefail
+# Checks whether /etc/nixos has upstream commits not yet pulled.
+# Does not pull or apply anything automatically.
+
+set -Eeuo pipefail
 
 REPO_DIR="/etc/nixos"
+
+command -v git >/dev/null 2>&1 || exit 0
+command -v notify-send >/dev/null 2>&1 || exit 0
+
+[[ -d "$REPO_DIR/.git" ]] || exit 0
+
 cd "$REPO_DIR"
 
 git fetch --quiet origin main 2>/dev/null || exit 0
 
-LOCAL=$(git rev-parse HEAD)
-REMOTE=$(git rev-parse origin/main)
+read -r LOCAL_ONLY REMOTE_ONLY < <(
+    git rev-list --left-right --count HEAD...origin/main
+)
 
-if [[ "$LOCAL" != "$REMOTE" ]]; then
-    COUNT=$(git rev-list --count HEAD..origin/main)
-    LATEST_MSG=$(git log origin/main -1 --pretty=%s)
+if (( REMOTE_ONLY > 0 && LOCAL_ONLY == 0 )); then
+    LATEST_MSG="$(git log origin/main -1 --pretty=%s)"
+
     notify-send \
         "NixOS config update available" \
-        "$COUNT new commit(s). Latest: $LATEST_MSG\n\nRun: cd /etc/nixos && git pull && sudo nixos-rebuild switch --flake /etc/nixos#nixos" \
+        "$REMOTE_ONLY new commit(s). Latest: $LATEST_MSG\n\nRun: cd /etc/nixos && git pull && sudo nixos-rebuild switch --flake /etc/nixos#nixos" \
         -a "NixOS Config" \
         -i software-update-available
+
+elif (( REMOTE_ONLY > 0 && LOCAL_ONLY > 0 )); then
+    notify-send \
+        "NixOS config repository diverged" \
+        "Local and remote histories have diverged. Review /etc/nixos before pulling." \
+        -a "NixOS Config" \
+        -i dialog-warning
 fi
