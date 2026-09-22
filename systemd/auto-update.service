@@ -1,0 +1,6 @@
+[Unit]
+Description=Automatic NixOS config update (opt-in)
+
+[Service]
+Type=oneshot
+ExecStart=/home/%u/.local/bin/auto-update.sh

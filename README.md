@@ -292,6 +292,26 @@ systemctl --user enable --now check-config-updates.timer
 
 When it fires, run the two commands in the ["Updating"](#-updating) section above.
 
+### ⚠️ Optional: fully automatic updates (use with caution)
+
+If you'd rather not be bothered — updates just apply themselves weekly.
+This is a real trade-off, not a strictly-better option:
+
+- ✅ Only ever switches to the new config if it builds successfully
+- ✅ Rolls the git checkout back to the last working commit if the build fails
+- ❌ Can restart services or change your compositor without you watching
+- ❌ You won't know something changed until you notice — or don't
+
+```bash
+cp scripts/auto-update.sh ~/.local/bin/
+chmod +x ~/.local/bin/auto-update.sh
+cp systemd/auto-update.service systemd/auto-update.timer ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable --now auto-update.timer
+```
+
+Don't enable both this and the notification-only timer above — pick one.
+
 ---
 
 ## ✅ Post-Install Checklist
