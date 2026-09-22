@@ -15,9 +15,9 @@ systemctl --user is-active --quiet inir.service \
     && ok "inir.service is running" \
     || fail "inir.service is NOT running"
 
-systemctl --user is-active --quiet niri-color-sync.service \
-    && ok "niri-color-sync.service is running" \
-    || warn "niri-color-sync.service not running"
+systemctl --user is-active --quiet niri-sync-colors.service \
+    && ok "niri-sync-colors.service is running" \
+    || warn "niri-sync-colors.service not running"
 
 command -v python3 >/dev/null && ok "python3 found" || fail "python3 not found"
 python3 -c "import materialyoucolor" 2>/dev/null \

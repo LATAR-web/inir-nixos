@@ -43,7 +43,6 @@ know exactly what changed on your machine.
 |---|---|---|
 | `configuration.nix` | `/etc/nixos/configuration.nix` | Main system config |
 | `flake.nix` | `/etc/nixos/flake.nix` | Flake inputs (nixpkgs, niri, inir) |
-| `modules/packages.nix` | `/etc/nixos/modules/packages.nix` | User apps + Python color pipeline |
 | `modules/inir-deps.nix` | `/etc/nixos/modules/inir-deps.nix` | iNiR-specific extra packages |
 | `niri/config.kdl` | `~/.config/niri/config.kdl` | Keybinds, layout, focus-ring |
 | `scripts/niri-sync-colors` | `~/.local/bin/niri-sync-colors` | Syncs wallpaper colors → niri border |
@@ -186,7 +185,7 @@ systemctl --user enable --now niri-sync-colors.service
 
 ### 7️⃣ Python packages for the color pipeline
 
-Already declared in `modules/packages.nix` via `python3.withPackages`
+Already declared in `modules/inir-deps.nix` via `python3.withPackages`
 (`materialyoucolor`, `pillow`, `numpy`, `evdev`) — no manual venv needed.
 See [Known Issues](#-known-issues--gotchas) below for why a manual venv
 is a trap here.
@@ -387,7 +386,7 @@ something GPU-specific breaks.
 |---|---|
 | 🚫 **`inir doctor` is not safe to run on NixOS** | Its auto-fix mode assumes Arch: it can reinstall a launcher at `~/.local/bin/inir` and write an `inir.service` by hand to `~/.config/systemd/user/`, which systemd prioritizes over the one Nix generates (`/etc/systemd/user/`) — silently making your declarative config completely ignored, with no visible error. If you run it by accident, check and remove those two paths. |
 | 🔄 **`inir.service` doesn't pick up environment changes after a rebuild** | You're almost always missing `systemctl --user daemon-reload && systemctl --user restart inir.service` — `nixos-rebuild switch` updates the service definition on disk, but does not restart an already-running process. |
-| 📁 **A manual Python venv under `~/.local/share/...` breaks after a rebuild** | If the venv's `python3` symlink pointed at a store path that a later rebuild garbage-collects, every script using it starts failing with "No such file or directory". Use `python3.withPackages` in Nix instead (see `modules/packages.nix`) — no venv to go stale. |
+| 📁 **A manual Python venv under `~/.local/share/...` breaks after a rebuild** | If the venv's `python3` symlink pointed at a store path that a later rebuild garbage-collects, every script using it starts failing with "No such file or directory". Use `python3.withPackages` in Nix instead (see `modules/inir-deps.nix`) — no venv to go stale. |
 | 🐍 **A plain `python3` in `systemd.user.services.<name>.path` can't see libraries from separate `python3Packages.*` derivations** | Use a single `(python3.withPackages (ps: with ps; [ ... ]))` derivation everywhere `import materialyoucolor` (or similar) needs to work — both in `environment.systemPackages` and in the service's `.path`. Keeping two such derivations in sync by hand is fragile; consider factoring the package list into a shared `let` binding. |
 | 🔊 **NixOS has no `/bin/cat`** (and other FHS paths) some scripts hardcode | `systemd.tmpfiles.rules = [ "L+ /bin/cat - - - - ${pkgs.coreutils}/bin/cat" ];` — see `configuration.nix`. |
 | 🧵 **`inotifywait` on a single file misses events** | Scripts that `mv` a `.tmp` file into place (atomic rename) don't fire `close_write` on the final filename. Watch the *directory* with `-m` and filter by `--format "%f"` instead of watching the file directly — and remember to escape `%f` as `%%f` in a systemd `ExecStart=` line, since systemd treats a bare `%f` as its own specifier. |
