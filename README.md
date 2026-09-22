@@ -67,7 +67,11 @@ know exactly what changed on your machine.
 
 ## 🚀 Quick Start
 
-### Option A — automated (recommended)
+### Option A — 
+> [!WARNING]
+> This is an experiment. I recommend choosing Option B instead.
+
+
 
 ```bash
 git clone https://github.com/LATAR-web/inir-nixos.git
