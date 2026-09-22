@@ -1,7 +1,7 @@
 <div align="center">
 
 # ❄️ iNiR on NixOS
-![Uploading Screenshot from 2026-09-20 23-10-09.png…]()
+<img width="1920" height="1080" alt="Screenshot from 2026-09-20 23-10-09" src="https://github.com/user-attachments/assets/56163c9d-20f7-417b-a4a9-c5e9ee86c26e" />
 
 ### A reproducible, from-scratch guide to running [iNiR](https://github.com/snowarch/iNiR) on Niri + NixOS with flakes
 
