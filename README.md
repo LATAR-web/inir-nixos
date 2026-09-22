@@ -64,6 +64,21 @@ know exactly what changed on your machine.
 
 ## 🚀 Quick Start
 
+### Option A — automated (recommended)
+
+```bash
+git clone https://github.com/LATAR-web/inir-nixos.git
+cd inir-nixos
+./install.sh
+```
+
+Asks before touching anything destructive, backs up any file it would
+overwrite (with a `.bak.<timestamp>` suffix), and runs `scripts/verify-setup.sh`
+guidance at the end. Read [Option B](#option-b--manual-step-by-step) below
+first if you want to understand what it's doing before running it.
+
+### Option B — manual, step by step
+
 ### 1️⃣ Clone this repo into `/etc/nixos`
 
 ```bash

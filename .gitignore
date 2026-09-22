@@ -1,6 +1,5 @@
-*.bak
+*.bak.*
 *.tmp
 *.swp
-.DS_Store
 result
 result-*
