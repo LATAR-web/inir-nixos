@@ -4,9 +4,18 @@ set -Eeuo pipefail
 COLORS_JSON="$HOME/.local/state/quickshell/user/generated/colors.json"
 META_JSON="$HOME/.local/state/quickshell/user/generated/theme-meta.json"
 GENERATED_DIR="$HOME/.local/state/quickshell/user/generated"
-NIRI_CONFIG_PY="$HOME/.config/quickshell/inir/scripts/niri-config.py"
 SHELL_CONFIG_FILE="$HOME/.config/illogical-impulse/config.json"
 PYTHON="python3"
+
+find_niri_config_py() {
+    if [[ -f "$HOME/.config/quickshell/inir/scripts/niri-config.py" ]]; then
+        echo "$HOME/.config/quickshell/inir/scripts/niri-config.py"
+    elif [[ -f "/run/current-system/sw/share/quickshell/inir/scripts/niri-config.py" ]]; then
+        echo "/run/current-system/sw/share/quickshell/inir/scripts/niri-config.py"
+    else
+        echo ""
+    fi
+}
 
 sync_once() {
     [[ -f "$COLORS_JSON" ]] || return 0
@@ -16,54 +25,73 @@ sync_once() {
         return 1
     }
 
-    command -v jq >/dev/null 2>&1 || {
-        echo "niri-sync-colors: jq not found" >&2
+    local niri_config_py
+    niri_config_py="$(find_niri_config_py)"
+
+    [[ -n "$niri_config_py" ]] || {
+        echo "niri-sync-colors: niri-config.py not found" >&2
         return 1
     }
 
-    [[ -f "$NIRI_CONFIG_PY" ]] || {
-        echo "niri-sync-colors: missing $NIRI_CONFIG_PY" >&2
-        return 1
-    }
+    # Extract primary and secondary colors
+    local primary=""
+    local secondary=""
 
-    local primary
-    local secondary
+    if command -v jq >/dev/null 2>&1; then
+        primary="$(jq -er '.primary | strings' "$COLORS_JSON" 2>/dev/null || true)"
+        secondary="$(jq -er '.secondary | strings' "$COLORS_JSON" 2>/dev/null || true)"
+    fi
 
-    primary="$(jq -er '.primary | strings' "$COLORS_JSON")"
-    secondary="$(jq -er '.secondary | strings' "$COLORS_JSON")"
+    if [[ -z "$primary" || -z "$secondary" ]]; then
+        read -r primary secondary < <("$PYTHON" -c '
+import json, sys
+try:
+    with open(sys.argv[1]) as f:
+        d = json.load(f)
+    print(d.get("primary", ""), d.get("secondary", ""))
+except Exception:
+    print("", "")
+' "$COLORS_JSON")
+    fi
 
-    "$PYTHON" "$NIRI_CONFIG_PY" \
-        set layout focus-ring.active-color "$primary"
+    if [[ -n "$primary" && -n "$secondary" ]]; then
+        "$PYTHON" "$niri_config_py" \
+            set layout focus-ring.active-color "$primary" 2>/dev/null || true
 
-    "$PYTHON" "$NIRI_CONFIG_PY" \
-        set layout focus-ring.inactive-color "$secondary"
+        "$PYTHON" "$niri_config_py" \
+            set layout focus-ring.inactive-color "$secondary" 2>/dev/null || true
+    fi
 
+    # Sync wallpaper path into iNiR shell config if metadata exists
     if [[ -f "$META_JSON" && -f "$SHELL_CONFIG_FILE" ]]; then
-        local wallpaper_path
-        wallpaper_path="$(jq -r '.source_path // empty' "$META_JSON")"
+        "$PYTHON" -c '
+import json, sys, os
 
-        if [[ -n "$wallpaper_path" ]]; then
-            local lockfile
-            local tmpfile
+meta_file = sys.argv[1]
+conf_file = sys.argv[2]
 
-            lockfile="$SHELL_CONFIG_FILE.lock"
-            tmpfile="${SHELL_CONFIG_FILE}.tmp.$$"
+try:
+    with open(meta_file) as f:
+        meta = json.load(f)
+    wp = meta.get("source_path")
+    if not wp or not os.path.exists(wp):
+        sys.exit(0)
 
-            if (
-                flock -w 5 200 || exit 1
+    with open(conf_file) as f:
+        conf = json.load(f)
 
-                jq --arg path "$wallpaper_path" \
-                    '.background.wallpaperPath = $path' \
-                    "$SHELL_CONFIG_FILE" > "$tmpfile"
+    if not isinstance(conf.get("background"), dict):
+        conf["background"] = {}
 
-                mv -f "$tmpfile" "$SHELL_CONFIG_FILE"
-            ) 200>"$lockfile"; then
-                :
-            else
-                rm -f "$tmpfile"
-                echo "niri-sync-colors: could not update wallpaper path" >&2
-            fi
-        fi
+    if conf["background"].get("wallpaperPath") != wp:
+        conf["background"]["wallpaperPath"] = wp
+        tmp = f"{conf_file}.tmp.{os.getpid()}"
+        with open(tmp, "w") as f:
+            json.dump(conf, f, indent=2)
+        os.replace(tmp, conf_file)
+except Exception:
+    sys.exit(0)
+' "$META_JSON" "$SHELL_CONFIG_FILE" 2>/dev/null || true
     fi
 }
 

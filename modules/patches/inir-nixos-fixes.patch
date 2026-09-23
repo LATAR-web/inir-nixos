@@ -1,0 +1,92 @@
+--- a/welcome.qml
++++ b/welcome.qml
+@@ -759,7 +759,7 @@
+         repeat: false
+         onTriggered: {
+             // first_run.txt is already written by FirstRunExperience before launching us
+-            Quickshell.execDetached(["/usr/bin/notify-send", Translation.tr("Welcome to inir"), Translation.tr("Press Super+/ for all keyboard shortcuts."), "-a", "Shell"])
++            Quickshell.execDetached(["notify-send", Translation.tr("Welcome to inir"), Translation.tr("Press Super+/ for all keyboard shortcuts."), "-a", "Shell"])
+             Qt.quit()
+         }
+     }
+--- a/killDialog.qml
++++ b/killDialog.qml
+@@ -60,7 +60,7 @@
+ 
+         Process {
+             running: true
+-            command: ["/usr/bin/pidof", ...conflictGroup.programs]
++            command: ["pidof", ...conflictGroup.programs]
+             onExited: (exitCode, exitStatus) => {
+                 if (exitCode === 0) {
+                     conflictGroup.visible = true
+@@ -89,7 +89,7 @@
+                     text: Translation.tr("Always")
+                 }
+                 onClicked: {
+-                    Quickshell.execDetached(["/usr/bin/killall", ...conflictGroup.programs])
++                    Quickshell.execDetached(["killall", ...conflictGroup.programs])
+                     conflictGroup.alwaysSelected()
+                     conflictGroup.visible = false
+                 }
+@@ -100,7 +100,7 @@
+                     text: Translation.tr("Yes")
+                 }
+                 onClicked: {
+-                    Quickshell.execDetached(["/usr/bin/killall", ...conflictGroup.programs])
++                    Quickshell.execDetached(["killall", ...conflictGroup.programs])
+                     conflictGroup.visible = false
+                 }
+             }
+--- a/scripts/inir
++++ b/scripts/inir
+@@ -3881,7 +3881,7 @@
+             echo "hyprpicker not found — install it to use colorpicker" >&2
+             exit 1
+         fi
+-        exec /usr/bin/hyprpicker -a
++        exec hyprpicker -a
+         ;;
+     ipc)
+         require_qs
+--- a/scripts/colors/switchwall.sh
++++ b/scripts/colors/switchwall.sh
+@@ -111,7 +111,11 @@ check_and_prompt_upscale() {
+     local img="$1"
+ 
+     # Check if upscale notifications are disabled in config
+-    if [[ "$cfg_hide_upscale" == "true" ]]; then
++    local hide_upscale="${cfg_hide_upscale:-}"
++    if [[ -z "$hide_upscale" && -f "$SHELL_CONFIG_FILE" ]]; then
++        hide_upscale=$(jq -r '.background.hideUpscaleNotification // false' "$SHELL_CONFIG_FILE" 2>/dev/null)
++    fi
++    if [[ "$hide_upscale" == "true" ]]; then
+         return
+     fi
+ 
+@@ -129,24 +133,12 @@ check_and_prompt_upscale() {
+         if [[ "$img_width" -lt "$min_width_desired" || "$img_height" -lt "$min_height_desired" ]]; then
+             action=$(notify-send "Upscale?" \
+                 "Image resolution (${img_width}x${img_height}) is lower than screen resolution (${min_width_desired}x${min_height_desired})" \
++                -t 10000 \
+                 -A "open_upscayl=Open Upscayl"\
+                 -a "Wallpaper switcher")
+             if [[ "$action" == "open_upscayl" ]]; then
+                 if command -v upscayl &>/dev/null; then
+                     nohup upscayl > /dev/null 2>&1 &
+-                else
+-                    action2=$(notify-send \
+-                        -a "Wallpaper switcher" \
+-                        -c "im.error" \
+-                        -A "install_upscayl=Install Upscayl (Arch)" \
+-                        "Install Upscayl?" \
+-                        "yay -S upscayl-bin")
+-                    if [[ "$action2" == "install_upscayl" ]]; then
+-                        kitty -1 yay -S upscayl-bin
+-                        if command -v upscayl &>/dev/null; then
+-                            nohup upscayl > /dev/null 2>&1 &
+-                        fi
+-                    fi
+                 fi
+             fi
+         fi

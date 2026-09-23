@@ -52,6 +52,7 @@ with pkgs; [
     materialyoucolor
     pillow
     evdev
+    numpy
   ]))
 
   # --- Screenshots / OCR / screen recording ---

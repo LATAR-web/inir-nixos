@@ -1,0 +1,63 @@
+--- a/services/IconThemeService.qml	2026-09-22 22:07:48.072975675 -0600
++++ b/services/IconThemeService.qml	2026-09-22 22:07:48.105799111 -0600
+@@ -73,24 +73,38 @@
+         
+         return [
+             `file://${home}/.local/share/icons/${theme}/apps/scalable/${iconName}.svg`,
++            `file://${home}/.icons/${theme}/apps/scalable/${iconName}.svg`,
++            `file:///run/current-system/sw/share/icons/${theme}/apps/scalable/${iconName}.svg`,
+             `file:///usr/share/icons/${theme}/apps/scalable/${iconName}.svg`,
+             `file://${home}/.local/share/icons/${theme}/scalable/apps/${iconName}.svg`,
++            `file://${home}/.icons/${theme}/scalable/apps/${iconName}.svg`,
++            `file:///run/current-system/sw/share/icons/${theme}/scalable/apps/${iconName}.svg`,
+             `file:///usr/share/icons/${theme}/scalable/apps/${iconName}.svg`,
+             `file://${home}/.local/share/icons/${theme}/apps/256x256/${iconName}.png`,
++            `file://${home}/.icons/${theme}/apps/256x256/${iconName}.png`,
++            `file:///run/current-system/sw/share/icons/${theme}/apps/256x256/${iconName}.png`,
+             `file:///usr/share/icons/${theme}/apps/256x256/${iconName}.png`,
+             `file://${home}/.local/share/icons/${theme}/256x256/apps/${iconName}.png`,
++            `file://${home}/.icons/${theme}/256x256/apps/${iconName}.png`,
++            `file:///run/current-system/sw/share/icons/${theme}/256x256/apps/${iconName}.png`,
+             `file:///usr/share/icons/${theme}/256x256/apps/${iconName}.png`,
++            `file://${home}/.local/share/icons/${theme}/48x48/apps/${iconName}.svg`,
++            `file://${home}/.icons/${theme}/48x48/apps/${iconName}.svg`,
++            `file:///run/current-system/sw/share/icons/${theme}/48x48/apps/${iconName}.svg`,
++            `file://${home}/.local/share/icons/${theme}/48x48/apps/${iconName}.png`,
++            `file://${home}/.icons/${theme}/48x48/apps/${iconName}.png`,
++            `file:///run/current-system/sw/share/icons/${theme}/48x48/apps/${iconName}.png`,
+         ]
+     }
+ 
+     function ensureInitialized(): void {
++        listThemesProc.running = false
++        listThemesProc.running = true
++
+         if (root._initialized)
+             return;
+         root._initialized = true;
+         
+-        listThemesProc.running = false
+-        listThemesProc.running = true
+-        
+         // Load system theme
+         const savedTheme = Config.ready ? (Config.options?.appearance?.iconTheme ?? "") : ""
+         if (savedTheme && String(savedTheme).trim().length > 0) {
+@@ -373,12 +387,15 @@
+     Process {
+         id: listThemesProc
+         command: [
+-            "/usr/bin/find",
+-            "/usr/share/icons",
++            "find",
+             `${FileUtils.trimFileProtocol(Directories.home)}/.local/share/icons`,
++            `${FileUtils.trimFileProtocol(Directories.home)}/.icons`,
++            "/run/current-system/sw/share/icons",
+             "-maxdepth",
+             "1",
+-            "-type",
++            "-mindepth",
++            "1",
++            "-xtype",
+             "d"
+         ]
+         

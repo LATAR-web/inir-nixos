@@ -338,7 +338,7 @@ fi
 # 0. Pre-flight
 # ============================================================
 
-step "0/7 — Pre-flight checks"
+step "0/6 — Pre-flight checks"
 
 if [[ "$CHECK_ONLY" -eq 1 ]]; then
     exec bash "$REPO_DIR/scripts/verify-setup.sh"
@@ -416,7 +416,7 @@ fi
 # 1. Detect this machine
 # ============================================================
 
-step "1/7 — Detecting this machine's settings"
+step "1/6 — Detecting this machine's settings"
 
 DETECTED_USER="$(whoami)"
 DETECTED_HOSTNAME="$(hostname 2>/dev/null || echo nixos)"
@@ -448,7 +448,7 @@ fi
 # 2. Stray inir.service check (the #1 gotcha from Known Issues)
 # ============================================================
 
-step "2/7 — Checking for a stray inir.service"
+step "2/6 — Checking for stray and obsolete services"
 
 STRAY_SERVICE="$HOME/.config/systemd/user/inir.service"
 
@@ -489,11 +489,22 @@ if [[ -e "$OLD_XWAYLAND_SERVICE" || -e "$HOME/.config/systemd/user/graphical-ses
     success "Removed obsolete xwayland-satellite service"
 fi
 
+# Clean up obsolete update services/timers if present
+for obsolete_unit in check-config-updates.timer check-config-updates.service auto-update.timer auto-update.service; do
+    if [[ -e "$HOME/.config/systemd/user/$obsolete_unit" || -e "$HOME/.config/systemd/user/timers.target.wants/$obsolete_unit" ]]; then
+        systemctl --user stop "$obsolete_unit" 2>/dev/null || true
+        systemctl --user disable "$obsolete_unit" 2>/dev/null || true
+        rm -f "$HOME/.config/systemd/user/$obsolete_unit" "$HOME/.config/systemd/user/timers.target.wants/$obsolete_unit" 2>/dev/null || true
+        rm -f "$HOME/.local/bin/check-config-updates.sh" "$HOME/.local/bin/auto-update.sh" 2>/dev/null || true
+        success "Removed obsolete $obsolete_unit"
+    fi
+done
+
 # ============================================================
 # 3. System configuration
 # ============================================================
 
-step "3/7 — System configuration → /etc/nixos"
+step "3/6 — System configuration → /etc/nixos"
 
 echo
 printf '%sThe following files may be replaced:%s\n' "$BOLD" "$RESET"
@@ -526,8 +537,13 @@ run "Install configuration.nix" \
 run "Install flake.nix" \
     sudo cp -a "$REPO_DIR/flake.nix" /etc/nixos/flake.nix
 
-run "Install NixOS modules" \
-    sudo cp -a "$REPO_DIR/modules" /etc/nixos/
+if [[ "$DRY_RUN" -eq 0 ]]; then
+    sudo rm -rf /etc/nixos/modules
+    sudo cp -a "$REPO_DIR/modules" /etc/nixos/modules
+    success "Install NixOS modules"
+else
+    dry_run_msg "Would install NixOS modules to /etc/nixos/modules"
+fi
 
 if [[ "$DRY_RUN" -eq 0 ]]; then
     info "Substituting detected values into installed files..."
@@ -542,6 +558,11 @@ if [[ "$DRY_RUN" -eq 0 ]]; then
         sudo sed -i \
             -e "s/layout = \"latam\";/layout = \"$DETECTED_LAYOUT\";/" \
             /etc/nixos/modules/desktop.nix
+    fi
+
+    if [[ -d /etc/nixos/.git ]]; then
+        info "Staging installed files in /etc/nixos git repo..."
+        sudo git -C /etc/nixos add -A || true
     fi
 
     success "Placeholders replaced with detected values"
@@ -571,10 +592,10 @@ else
 fi
 
 # ============================================================
-# 2. Niri
+# 4. Niri
 # ============================================================
 
-step "4/7 — Niri configuration"
+step "4/6 — Niri configuration"
 
 if [[ "$DRY_RUN" -eq 0 ]]; then
     mkdir -p "$HOME/.config/niri"
@@ -589,10 +610,10 @@ run "Install Niri config" \
     "$HOME/.config/niri/config.kdl"
 
 # ============================================================
-# 3. Color synchronization
+# 5. Color synchronization
 # ============================================================
 
-step "5/7 — Wallpaper → Niri color synchronization"
+step "5/6 — Wallpaper → Niri color synchronization"
 
 if [[ "$DRY_RUN" -eq 0 ]]; then
     mkdir -p \
@@ -614,70 +635,19 @@ if [[ -f "$REPO_DIR/systemd/niri-sync-colors.service" ]]; then
     run "Install color-sync systemd service" \
         cp "$REPO_DIR/systemd/niri-sync-colors.service" \
         "$HOME/.config/systemd/user/niri-sync-colors.service"
-else
-    warning "niri-sync-colors.service not found."
-fi
 
-# ============================================================
-# 4. Optional extras
-# ============================================================
+    run "Reload systemd user manager" \
+        systemctl --user daemon-reload
 
-step "6/7 — Optional extras"
-
-INSTALL_NOTIFIER=0
-
-if [[ -f "$REPO_DIR/scripts/check-config-updates.sh" &&
-      -f "$REPO_DIR/systemd/check-config-updates.service" &&
-      -f "$REPO_DIR/systemd/check-config-updates.timer" ]]; then
-
-    if confirm "Install daily update notification?"; then
-        INSTALL_NOTIFIER=1
-
-        run "Install update notifier" \
-            cp "$REPO_DIR/scripts/check-config-updates.sh" \
-            "$HOME/.local/bin/check-config-updates.sh"
-
-        run "Make update notifier executable" \
-            chmod +x "$HOME/.local/bin/check-config-updates.sh"
-
-        run "Install update notifier service" \
-            cp "$REPO_DIR/systemd/check-config-updates.service" \
-            "$HOME/.config/systemd/user/check-config-updates.service"
-
-        run "Install update notifier timer" \
-            cp "$REPO_DIR/systemd/check-config-updates.timer" \
-            "$HOME/.config/systemd/user/check-config-updates.timer"
-    else
-        info "Daily update notification skipped."
-    fi
-else
-    info "Optional update notifier files not found — skipping."
-fi
-
-# ============================================================
-# 5. User services
-# ============================================================
-
-step "7a/7 — User services"
-
-run "Reload systemd user manager" \
-    systemctl --user daemon-reload
-
-if [[ -f "$HOME/.config/systemd/user/niri-sync-colors.service" ]]; then
     run "Enable color synchronization" \
         systemctl --user enable --now niri-sync-colors.service
-fi
-
-if [[ "$INSTALL_NOTIFIER" -eq 1 ]]; then
-    run "Enable update notification timer" \
-        systemctl --user enable --now check-config-updates.timer
 fi
 
 # ============================================================
 # 6. NixOS rebuild
 # ============================================================
 
-step "7b/7 — Apply NixOS configuration"
+step "6/6 — Apply NixOS configuration"
 
 REBUILD_CMD=(
     sudo

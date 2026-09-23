@@ -100,7 +100,7 @@ else
     fail "color-sync systemd service missing"
 fi
 
-if [[ -f "$HOME/.config/quickshell/inir/scripts/niri-config.py" ]]; then
+if [[ -f "$HOME/.config/quickshell/inir/scripts/niri-config.py" || -f "/run/current-system/sw/share/quickshell/inir/scripts/niri-config.py" ]]; then
     ok "iNiR niri-config.py exists"
 else
     warn "iNiR niri-config.py not found"
@@ -110,14 +110,6 @@ if [[ -w "$HOME/.local/bin" ]]; then
     ok "~/.local/bin is writable"
 else
     fail "~/.local/bin is NOT writable"
-fi
-
-if [[ -f "$HOME/.config/systemd/user/check-config-updates.timer" ]]; then
-    if systemctl --user is-enabled --quiet check-config-updates.timer; then
-        ok "update notification timer is enabled"
-    else
-        warn "update notification timer is not enabled"
-    fi
 fi
 
 echo "── Done ──"
