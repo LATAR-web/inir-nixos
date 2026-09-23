@@ -44,6 +44,8 @@ know exactly what changed on your machine.
 | `configuration.nix` | `/etc/nixos/configuration.nix` | Main system config |
 | `flake.nix` | `/etc/nixos/flake.nix` | Flake inputs (nixpkgs, niri, inir) |
 | `modules/inir-deps.nix` | `/etc/nixos/modules/inir-deps.nix` | iNiR-specific extra packages |
+| `modules/audio.nix` | `/etc/nixos/modules/audio.nix` | PipeWire (audio) — without this, NixOS has NO audio server enabled at all |
+| `modules/desktop.nix` | `/etc/nixos/modules/desktop.nix` | GDM login screen + GNOME fallback session — without this, there is no graphical login at all |
 | `niri/config.kdl` | `~/.config/niri/config.kdl` | Keybinds, layout, focus-ring |
 | `scripts/niri-sync-colors` | `~/.local/bin/niri-sync-colors` | Syncs wallpaper colors → niri border |
 | `scripts/check-config-updates.sh` | `~/.local/bin/check-config-updates.sh` | Optional update notifier |
