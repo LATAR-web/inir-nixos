@@ -28,12 +28,29 @@
   # programs.inir.desktop.enable = true;             # Enabled by default (GDM)
   # programs.inir.desktop.enableGnomeFallback = false; # Set true only if you want GNOME installed as fallback
 
+  # Virtualization: QEMU / KVM, GNOME Boxes & Virt-Manager (Optional)
+  # virtualisation.libvirtd = {
+  #   enable = true;
+  #   qemu = {
+  #     package = pkgs.qemu_kvm;
+  #     runAsRoot = true;
+  #     swtpm.enable = true;
+  #   };
+  # };
+  # virtualisation.spiceUSBRedirection.enable = true;
+  # programs.virt-manager.enable = true;
+  # environment.systemPackages = with pkgs; [
+  #   gnome-boxes # Simple & modern VM manager
+  #   qemu        # QEMU utilities
+  # ];
+
   # Primary User (automatically configured by install.sh)
   # NOTE: 'video' and 'i2c' groups are required for monitor brightness controls (ddcutil)
+  # NOTE: 'libvirtd' and 'kvm' groups are required for hardware-accelerated VMs without root
   users.users."YOUR_USERNAME" = {
     isNormalUser = true;
     description = "Primary User";
-    extraGroups = [ "networkmanager" "wheel" "video" "i2c" ];
+    extraGroups = [ "networkmanager" "wheel" "video" "i2c" "libvirtd" "kvm" ];
     packages = with pkgs; [ ];
   };
 
