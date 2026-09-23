@@ -2,7 +2,12 @@
 
 # ❄️ iNiR on NixOS
 
-[![Experimental](https://img.shields.io/badge/Status-Experimental-orange?style=for-the-badge&logo=flattr&logoColor=white)](#-aviso-de-estado-experimental)
+<p>
+  <b>English</b> |
+  <b><a href="README.es.md">Español</a></b>
+</p>
+
+[![Experimental](https://img.shields.io/badge/Status-Experimental-orange?style=for-the-badge&logo=flattr&logoColor=white)](#-experimental-status-notice)
 [![NixOS](https://img.shields.io/badge/NixOS-unstable-5277C3?style=for-the-badge&logo=nixos&logoColor=white)](https://nixos.org)
 [![Niri](https://img.shields.io/badge/Niri-wayland-88C0D0?style=for-the-badge&logo=wayland&logoColor=white)](https://github.com/YaLTeR/niri)
 [![Flakes](https://img.shields.io/badge/Flakes-enabled-7EBAE4?style=for-the-badge)](https://nixos.wiki/wiki/Flakes)
@@ -11,151 +16,151 @@
 
 <img width="1920" height="1080" alt="iNiR on NixOS" src="https://github.com/user-attachments/assets/56163c9d-20f7-417b-a4a9-c5e9ee86c26e" />
 
-### Guía modular reproducible e instalador automatizado para ejecutar [iNiR](https://github.com/snowarch/iNiR) sobre el compositor Wayland Niri en NixOS con Flakes.
+### A reproducible, modular NixOS guide and automated installer for running [iNiR](https://github.com/snowarch/iNiR) on the Niri Wayland compositor with Nix Flakes.
 
 </div>
 
 ---
 
 > [!WARNING]
-> ### ⚠️ AVISO DE ESTADO EXPERIMENTAL
-> Este proyecto y su script de instalación automatizado (`install.sh`) se encuentran en **fase experimental**.
-> - El instalador está diseñado para ser **no destructivo** y genera copias de seguridad con marca de tiempo (`.bak.<timestamp>`) de cualquier archivo que toque.
-> - Se adapta a tu configuración existente de NixOS sin borrar tus programas ni usuarios, pero se aconseja ejecutar `./install.sh --dry-run` antes de aplicar cambios en sistemas de producción.
+> ### ⚠️ EXPERIMENTAL STATUS NOTICE
+> This project and its automated installer (`install.sh`) are in an **experimental stage**.
+> - The installer is designed to be **non-destructive**: it automatically creates timestamped backups (`.bak.<timestamp>`) before modifying any files.
+> - It seamlessly adapts to your existing NixOS system without overwriting your applications, user accounts, or custom packages. However, it is strongly recommended to test first using `./install.sh --dry-run` on production setups.
 
 ---
 
-## 📑 Tabla de Contenidos
+## 📑 Table of Contents
 
-- [¿Son necesarios el audio, el gestor de login y GNOME?](#-preguntas-frecuentes-audio-escritorio-y-requisitos)
-  - [¿Es necesario el audio? (`modules/audio.nix`)](#1-es-necesario-el-audio-modulesaudionix)
-  - [¿Es necesario GNOME o GDM? (`modules/desktop.nix`)](#2-es-necesario-gnome-o-gdm-modulesdesktopnix)
-- [¿Cómo funciona el instalador automatizado? (`install.sh`)](#-cómo-funciona-el-script-de-instalación-installsh)
-  - [Fases de ejecución paso a paso](#fases-de-ejecución-paso-a-paso)
-  - [Opciones del instalador](#opciones-del-instalador)
-- [Adaptación a la configuración del usuario](#-adaptación-a-la-configuración-del-usuario)
-- [Estructura del Repositorio](#-estructura-del-repositorio--qué-va-en-dónde)
-- [Instalación Rápida](#-instalación-rápida)
-  - [Opción A — Instalador Automatizado (Recomendada)](#opción-a--instalador-automatizado-recomendada)
-  - [Opción B — Instalación Manual](#opción-b--instalación-manual-paso-a-paso)
-- [Sincronización de Color (Material You ↔ Niri)](#-sincronización-de-color-niri--fondo-de-pantalla)
-- [Atajos de Teclado de Niri](#-atajos-de-teclado-en-niri)
-- [Verificación y Diagnóstico](#-verificación-post-instalación)
-- [Actualizaciones y Rollbacks](#-actualizaciones)
-- [Solución de Problemas Conocidos](#-problemas-conocidos-y-soluciones)
+- [Are Audio, Display Manager, and GNOME required?](#-faq-audio-desktop-and-requirements)
+  - [Is Audio required? (`modules/audio.nix`)](#1-is-audio-required-modulesaudionix)
+  - [Are GNOME or GDM required? (`modules/desktop.nix`)](#2-are-gnome-or-gdm-required-modulesdesktopnix)
+- [How Does the Installer Script Work? (`install.sh`)](#-how-does-the-installer-script-work-installsh)
+  - [Step-by-Step Execution Phases](#step-by-step-execution-phases)
+  - [Installer CLI Options](#installer-cli-options)
+- [Adapting to the User's Configuration](#-adapting-to-user-configuration)
+- [Repository Structure — What Goes Where](#-repository-structure--what-goes-where)
+- [Quick Start](#-quick-start)
+  - [Option A — Automated Installer (Recommended)](#option-a--automated-installer-recommended)
+  - [Option B — Manual Step-by-Step](#option-b--manual-step-by-step)
+- [Dynamic Color Synchronization (Material You ↔ Niri)](#-color-sync--niri--wallpaper)
+- [Niri Configuration & Keybinds](#-niri-configuration--keybinds)
+- [Post-Install Verification & Diagnostics](#-post-install-verification)
+- [Updating & Rollbacks](#-updating)
+- [Troubleshooting & Known Gotchas](#-troubleshooting--known-gotchas)
 
 ---
 
-## 💡 Preguntas Frecuentes: Audio, Escritorio y Requisitos
+## 💡 FAQ: Audio, Desktop, and Requirements
 
-### 1. ¿Es necesario el audio? (`modules/audio.nix`)
-* **Para el compositor Niri:** No. Niri puede gestionar ventanas y pantallas sin servidor de audio.
-* **Para el entorno iNiR:** **Sí, para sus widgets interactivos.** iNiR incluye en su barra y centro de control:
-  - Deslizador de volumen del sistema y nivel del micrófono.
-  - Menú de cambio dinámico de dispositivos de salida/entrada.
-  - Controles multimedia mediante MPRIS (`playerctl`).
-  - Mezcla de audio en capturas de pantalla de vídeo (`wf-recorder`).
-* **¿Qué hace `modules/audio.nix`?** Configura PipeWire con emulación PulseAudio y soporte ALSA de 32 bits.
-* **¿Cómo se adapta a tu configuración?** Utiliza `lib.mkDefault`, lo que significa que **si ya tienes configurado PipeWire o PulseAudio en tu `configuration.nix`, NixOS respetará tu configuración personal sin provocar colisiones**.
-* **¿Puedo desactivarlo?** Sí. Si prefieres gestionar el audio íntegramente por tu cuenta, puedes desactivar el módulo con:
+### 1. Is Audio required? (`modules/audio.nix`)
+* **For the Niri compositor:** **No.** Niri can open windows, tile columns, and manage outputs without an audio daemon running.
+* **For the iNiR desktop shell:** **Yes, for its interactive multimedia widgets.** The iNiR top bar and quick settings panel include:
+  - System volume and microphone level sliders.
+  - Interactive input/output audio sink switcher menus.
+  - Media player widgets powered by MPRIS (`playerctl`).
+  - System sound effects and screen recording audio mixing (`wf-recorder`).
+* **What does `modules/audio.nix` do?** It configures PipeWire with PulseAudio emulation and 32-bit ALSA support.
+* **How does it adapt to your configuration?** All directives use `lib.mkDefault`. **If you already have PipeWire or PulseAudio configured in your `/etc/nixos/configuration.nix`, NixOS will respect your configuration without collision.**
+* **Can I disable it?** Yes. If you prefer to manage audio yourself or don't want PipeWire:
   ```nix
   programs.inir.audio.enable = false;
   ```
 
 ---
 
-### 2. ¿Es necesario GNOME o GDM? (`modules/desktop.nix`)
-* **¿Es necesario GNOME? ¡NO!** iNiR es un entorno de escritorio completo autónomo escrito en QuickShell y Qt6. GNOME se consideraba originalmente sólo como una "sesión de emergencia", pero añadía gigabytes de paquetes innecesarios. Por ello, **el fallback de GNOME viene DESHABILITADO POR DEFECTO (`enableGnomeFallback = false`)**. No descargará ni ocupará espacio con el escritorio GNOME a menos que lo pidas explícitamente.
-* **¿Es necesario GDM?** GDM es únicamente un gestor de pantalla gráfico (pantalla de inicio de sesión). Cuando `programs.niri.enable = true` está activo, Niri genera automáticamente una entrada de sesión Wayland estándar (`niri.desktop`) que cualquier gestor de pantalla (GDM, SDDM, greetd/tuigreet, LightDM) reconoce de inmediato.
-* **¿Puedo desactivar GDM si ya uso otro gestor o inicio desde TTY?** Sí, simplemente añade a tu `configuration.nix`:
+### 2. Are GNOME or GDM required? (`modules/desktop.nix`)
+* **Is GNOME required? NO!** iNiR is a complete, standalone desktop shell written in QuickShell and Qt6. GNOME was originally included only as an emergency "fallback session", but downloading it pulled gigabytes of unnecessary packages. Therefore, **the GNOME fallback is DISABLED BY DEFAULT (`enableGnomeFallback = false`)**. It will never download GNOME unless you explicitly opt in.
+* **Is GDM required?** GDM is merely a graphical display manager (login screen). When `programs.niri.enable = true` is active, Niri automatically installs a standard Wayland session desktop file (`niri.desktop`) that any display manager (GDM, SDDM, greetd/tuigreet, LightDM) recognizes immediately.
+* **Can I disable GDM if I use another display manager or start from TTY?** Yes, simply set in your `configuration.nix`:
   ```nix
   programs.inir.desktop.enable = false;
   ```
 
 ---
 
-## 🛠️ ¿Cómo funciona el script de instalación (`install.sh`)?
+## 🛠️ How Does the Installer Script Work? (`install.sh`)
 
-El instalador `install.sh` automatiza la configuración de forma reproducible, declarativa y segura mediante 7 fases consecutivas (de la 0 a la 6):
+`install.sh` automates the entire installation in a reproducible, declarative, and safe workflow spanning 7 sequential phases (0 to 6):
 
 ```mermaid
 flowchart TD
-    A["0/6: Pre-flight checks<br>(NixOS, sudo, git, nix, flake check)"] --> B["1/6: Detección inteligente<br>(Usuario, home, timezone, locale, teclado)"]
-    B --> C["2/6: Limpieza de trampas de systemd<br>(Elimina ~/.config/systemd/user/inir.service erróneo)"]
-    C --> D["3/6: Adaptación de /etc/nixos<br>(Instala /modules, respeta apps y configuration.nix)"]
-    D --> E["4/6: Despliegue de Niri<br>(Configura ~/.config/niri/config.kdl y teclado)"]
-    E --> F["5/6: Pipeline Material You<br>(Instala niri-sync-colors y activa servicio systemd)"]
-    F --> G["6/6: Rebuild del sistema<br>(sudo nixos-rebuild switch --flake)"]
-    G --> H["Verificación post-instalación<br>(Recarga systemd, verifica inir.service)"]
+    A["0/6: Pre-flight checks<br>(NixOS, sudo, git, nix, flake check)"] --> B["1/6: Smart environment detection<br>(User, home, timezone, locale, keyboard)"]
+    B --> C["2/6: Clean up systemd traps<br>(Removes conflicting ~/.config/systemd/user/inir.service)"]
+    C --> D["3/6: Adapt /etc/nixos<br>(Installs /modules, preserves user apps & configuration.nix)"]
+    D --> E["4/6: Deploy Niri config<br>(Sets up ~/.config/niri/config.kdl & adapts layout)"]
+    E --> F["5/6: Material You color pipeline<br>(Installs niri-sync-colors & activates systemd daemon)"]
+    F --> G["6/6: System rebuild<br>(sudo nixos-rebuild switch --flake)"]
+    G --> H["Post-install verification<br>(Reloads systemd, checks inir.service health)"]
 ```
 
-### Fases de ejecución paso a paso:
+### Step-by-Step Execution Phases:
 
-1. **Fase 0/6 — Comprobaciones iniciales (Pre-flight):**
-   - Comprueba que el sistema sea NixOS (`/etc/nixos` presente).
-   - Valida la disponibilidad de herramientas base de instalación: `git`, `nix` y `sudo`.
-   - *Nota:* No requiere herramientas de usuario como `inotifywait` o `jq` antes de reconstruir el sistema, ya que los propios módulos de NixOS las instalarán.
-   - Ejecuta `nix flake check` en el repositorio para validar la sintaxis antes de tocar cualquier archivo.
+1. **Phase 0/6 — Pre-Flight Validation:**
+   - Verifies running on NixOS (`/etc/nixos` present).
+   - Validates essential installation prerequisites: `git`, `nix`, and `sudo`.
+   - *Note:* Does not block on runtime dependencies (`inotifywait`, `jq`, `python3`) beforehand, as NixOS modules will deliver them during the system build.
+   - Runs `nix flake check` on the repository to guarantee syntax correctness before making any changes.
 
-2. **Fase 1/6 — Detección inteligente del entorno del usuario:**
-   - Detecta el usuario objetivo de forma precisa (si se invoca con `sudo`, localiza a `$SUDO_USER` y su directorio `$HOME` para no escribir en `/root`).
-   - Lee el nombre de host (`hostname`), la zona horaria (`timedatectl`), el locale (`localectl`) y la distribución de teclado (`X11 Layout`).
-   - Si ya existe `/etc/nixos/configuration.nix`, lee los valores configurados en tu archivo para mantener consistencia exacta.
-   - Permite al usuario confirmar o personalizar interactivamente los valores detectados.
+2. **Phase 1/6 — Smart Environment & User Detection:**
+   - Detects the target user account (resolves `$SUDO_USER` and their actual `$HOME` directory even if run with `sudo` to prevent writing to `/root`).
+   - Reads hostname (`hostname`), timezone (`timedatectl`), system locale (`localectl`), and keyboard layout (`X11 Layout`).
+   - If `/etc/nixos/configuration.nix` already defines these parameters, the installer extracts and respects them to maintain absolute consistency.
+   - Prompts for interactive confirmation or allows custom overrides.
 
-3. **Fase 2/6 — Limpieza de servicios obsoletos y trampas de systemd:**
-   - **Solución al gotcha #1:** `inir doctor` suele generar un archivo estático en `~/.config/systemd/user/inir.service`. Este archivo tiene mayor prioridad que el servicio declarativo de NixOS en `/etc/systemd/user/`, impidiendo que las actualizaciones de Nix surtan efecto de forma invisible. El instalador detecta y elimina este archivo conflictivo.
-   - Limpia servicios obsoletos o heredados de versiones anteriores (`niri-color-sync.service`, `xwayland-satellite.service`, scripts de actualización antiguos).
+3. **Phase 2/6 — Systemd Trap Mitigation & Obsolete Service Cleanup:**
+   - **Gotcha #1 Fix:** Running `inir doctor` upstream creates a static file at `~/.config/systemd/user/inir.service`. This static file silently overrides the NixOS declarative service in `/etc/systemd/user/inir.service`, causing runtime failures. The installer safely detects and removes it.
+   - Cleans up legacy/stale services from previous versions (`niri-color-sync.service`, `xwayland-satellite.service`, obsolete cron timers).
 
-4. **Fase 3/6 — Adaptación de la configuración del sistema (`/etc/nixos`):**
-   - Crea un respaldo con timestamp de `/etc/nixos/modules` e instala los módulos limpios.
-   - **Si ya tienes `/etc/nixos/configuration.nix`:**
-     - Realiza una copia de seguridad (`configuration.nix.bak.<timestamp>`).
-     - **Conserva todos tus paquetes, programas, discos y usuarios existentes.**
-     - Inyecta únicamente `./modules` en tu bloque `imports = [ ... ]`.
-     - Verifica si tu usuario tiene asignados los grupos `video` e `i2c` (requeridos para el brillo de pantalla externa con `ddcutil`).
-   - **Si es una instalación limpia:**
-     - Despliega la plantilla de referencia sustituyendo tu usuario, hostname, zona horaria y locale detectados.
-   - **Adaptación del Flake:**
-     - Si ya tienes `/etc/nixos/flake.nix`, verifica que contenga la entrada de `snowarch/inir`. Si falta, te muestra la sintaxis exacta para integrarlo.
-     - Si no tienes `flake.nix`, instala la plantilla oficial de referencia adaptada a tu hostname.
+4. **Phase 3/6 — System Configuration Adaptation (`/etc/nixos`):**
+   - Creates a timestamped backup of `/etc/nixos/modules` and installs the fresh iNiR modules.
+   - **If you have an existing `/etc/nixos/configuration.nix`:**
+     - Creates a backup (`configuration.nix.bak.<timestamp>`).
+     - **Preserves all your existing packages, applications, drives, and user accounts.**
+     - Safely injects `./modules` into your `imports = [ ... ]` block.
+     - Verifies whether your user is in the `video` and `i2c` groups (required for DDC/CI monitor brightness).
+   - **If this is a fresh installation:**
+     - Deploys the clean reference template substituted with your detected settings.
+   - **Flake Configuration:**
+     - If `/etc/nixos/flake.nix` exists, it verifies the `snowarch/inir` input.
+     - If not, it installs the reference flake configured for your hostname.
 
-5. **Fase 4/6 — Configuración del compositor Niri:**
-   - Realiza copia de seguridad de `~/.config/niri/config.kdl` si ya existía.
-   - Copia la configuración optimizada de Niri y adapta la regla de teclados (`xkb { layout "..." }`) a la distribución detectada en tu equipo.
+5. **Phase 4/6 — Niri Compositor Configuration:**
+   - Creates timestamped backups of `~/.config/niri/config.kdl` if already present.
+   - Deploys the recommended Niri configuration and automatically adapts keyboard layout settings (`xkb { layout "..." }`) to match your detected keyboard layout.
 
-6. **Fase 5/6 — Sincronización de colores Material You:**
-   - Instala el binario `niri-sync-colors` en `~/.local/bin/`.
-   - Instala y habilita el daemon de usuario `niri-sync-colors.service` para sincronizar los bordes y temas cada vez que cambies el fondo de pantalla con <kbd>Mod</kbd> + <kbd>W</kbd>.
+6. **Phase 5/6 — Material You Dynamic Theming Pipeline:**
+   - Installs `niri-sync-colors` to `~/.local/bin/`.
+   - Installs and enables the `niri-sync-colors.service` user systemd daemon to synchronize borders and colors whenever you pick a wallpaper with <kbd>Mod</kbd> + <kbd>W</kbd>.
 
-7. **Fase 6/6 — Aplicación declarativa (`nixos-rebuild switch`):**
-   - Detecta automáticamente el target del flake (`/etc/nixos#<hostname>` o `/etc/nixos`).
-   - Ejecuta la compilación con logs completos en `/tmp/inir-nixos-install-<fecha>.log`.
-   - Recarga el gestor de systemd del usuario y comprueba que `inir.service` y `niri-sync-colors.service` queden activos.
+7. **Phase 6/6 — Declarative Rebuild (`nixos-rebuild switch`):**
+   - Automatically detects the correct flake target (`/etc/nixos#<hostname>` or `/etc/nixos`).
+   - Executes the rebuild and streams complete build logs to `/tmp/inir-nixos-install-<timestamp>.log`.
+   - Reloads the user systemd daemon and restarts `inir.service` and `niri-sync-colors.service`.
 
 ---
 
-### Opciones del instalador
+### Installer CLI Options
 
-| Opción | Descripción |
+| Flag | Description |
 |---|---|
-| `./install.sh` | Instalación guiada e interactiva con confirmaciones en cada paso crítico. |
-| `./install.sh --yes` (`-y`) | Modo no interactivo: asume respuesta afirmativa a todas las preguntas. |
-| `./install.sh --dry-run` | Modo simulación: muestra detalladamente qué archivos y comandos se ejecutarían sin tocar el disco. |
-| `./install.sh --skip-rebuild` | Instala archivos de configuración, servicios y módulos, pero omite `nixos-rebuild switch`. |
-| `./install.sh --check` | Ejecuta el script de diagnóstico `scripts/verify-setup.sh` sin instalar nada. |
-| `./install.sh --help` (`-h`) | Muestra la ayuda de opciones y uso. |
+| `./install.sh` | Interactive mode with step-by-step confirmation prompts. |
+| `./install.sh --yes` (`-y`) | Non-interactive mode: automatically answers yes to all prompts. |
+| `./install.sh --dry-run` | Simulation mode: shows all commands and file operations without altering the system. |
+| `./install.sh --skip-rebuild` | Deploys files, configs, and user services, but skips running `nixos-rebuild switch`. |
+| `./install.sh --check` | Runs the non-destructive verification script `scripts/verify-setup.sh` and exits. |
+| `./install.sh --help` (`-h`) | Displays CLI help and usage examples. |
 
 ---
 
-## 🧩 Adaptación a la Configuración del Usuario
+## 🧩 Adapting to User Configuration
 
-La configuración está diseñada para integrarse con cualquier instalación existente de NixOS sin causar conflictos:
+The modules are built around `lib.mkDefault` and declarative toggle options so they never fight your existing configuration.
 
-### Opciones configurables en `configuration.nix`:
+### Configurable Module Options:
 
 ```nix
-# Dentro de tu /etc/nixos/configuration.nix:
+# In your /etc/nixos/configuration.nix:
 
 {
   imports = [
@@ -163,18 +168,18 @@ La configuración está diseñada para integrarse con cualquier instalación exi
     ./modules
   ];
 
-  # --- Opciones modulares de iNiR ---
-  # Audio con PipeWire (activo por defecto, usa lib.mkDefault para respetar tus ajustes):
+  # --- iNiR Modular Options ---
+  # Audio with PipeWire (enabled by default; uses lib.mkDefault to merge cleanly):
   programs.inir.audio.enable = true;
 
-  # Gestor de inicio gráfico (GDM):
+  # Display Manager (GDM) for login screen:
   programs.inir.desktop.enable = true;
 
-  # Fallback de GNOME (DESACTIVADO por defecto para evitar descargas pesadas):
+  # GNOME emergency fallback (DISABLED by default to eliminate system bloat):
   programs.inir.desktop.enableGnomeFallback = false;
 
-  # Asegúrate de que tu usuario tenga los grupos 'video' e 'i2c' para control de brillo:
-  users.users.tu_usuario = {
+  # Ensure your user has 'video' and 'i2c' for DDC/CI external monitor brightness:
+  users.users.your_user = {
     isNormalUser = true;
     extraGroups = [ "wheel" "networkmanager" "video" "i2c" ];
   };
@@ -183,33 +188,33 @@ La configuración está diseñada para integrarse con cualquier instalación exi
 
 ---
 
-## 🗺️ Estructura del Repositorio — qué va en dónde
+## 🗺️ Repository Structure — What Goes Where
 
-| Archivo en el repositorio | Destino en el sistema | Propósito |
+| In this repository | System Destination | Purpose |
 |---|---|---|
-| `configuration.nix` | `/etc/nixos/configuration.nix` | Configuración base del sistema (importa `./hardware-configuration.nix` y `./modules`) |
-| `flake.nix` | `/etc/nixos/flake.nix` | Flake con entradas fijadas de `nixpkgs` y el repositorio upstream de `inir` |
-| `modules/default.nix` | `/etc/nixos/modules/default.nix` | Agregador de módulos |
-| `modules/inir.nix` | `/etc/nixos/modules/inir.nix` | Paquete parcheado de iNiR, variables de entorno y enlaces symlink de tmpfiles |
-| `modules/inir-deps.nix` | `/etc/nixos/modules/inir-deps.nix` | Dependencias de runtime, frameworks Qt6/KDE y paquetes Python |
-| `modules/runtime.nix` | `/etc/nixos/modules/runtime.nix` | Compatibilidad de flakes, nix-ld, `QT_PLUGIN_PATH` y `QML2_IMPORT_PATH` |
-| `modules/fonts.nix` | `/etc/nixos/modules/fonts.nix` | Fuentes necesarias (`material-symbols`, JetBrains Mono Nerd Font, Roboto) |
-| `modules/patches/` | `/etc/nixos/modules/patches/` | Parches para resolución de iconos en NixOS y rutas estándar FHS |
-| `modules/audio.nix` | `/etc/nixos/modules/audio.nix` | Servidor PipeWire con compatibilidad PulseAudio |
-| `modules/desktop.nix` | `/etc/nixos/modules/desktop.nix` | Gestor de inicio de sesión GDM (con fallback de GNOME opcional) |
-| `niri/config.kdl` | `~/.config/niri/config.kdl` | Configuración del compositor Niri, atajos de teclado y focus-ring |
-| `scripts/niri-sync-colors` | `~/.local/bin/niri-sync-colors` | Observa la paleta generada y actualiza en tiempo real los colores del focus-ring |
-| `systemd/niri-sync-colors.service` | `~/.config/systemd/user/` | Servicio daemon de systemd de usuario para `niri-sync-colors --watch` |
-| `scripts/verify-setup.sh` | Ejecutable localmente | Diagnóstico no destructivo del estado del entorno y servicios |
-| `install.sh` | Ejecutable localmente | Instalador modular automatizado con backups y autodetección |
+| `configuration.nix` | `/etc/nixos/configuration.nix` | Base system config (imports `./hardware-configuration.nix` and `./modules`) |
+| `flake.nix` | `/etc/nixos/flake.nix` | Flake pinning nixpkgs and upstream iNiR input |
+| `modules/default.nix` | `/etc/nixos/modules/default.nix` | Module aggregator |
+| `modules/inir.nix` | `/etc/nixos/modules/inir.nix` | Patched iNiR package, environment variables & tmpfiles symlinks |
+| `modules/inir-deps.nix` | `/etc/nixos/modules/inir-deps.nix` | Runtime dependencies, Qt6/KDE frameworks, Python theming libraries |
+| `modules/runtime.nix` | `/etc/nixos/modules/runtime.nix` | Flakes, nix-ld compatibility, `QT_PLUGIN_PATH` and `QML2_IMPORT_PATH` |
+| `modules/fonts.nix` | `/etc/nixos/modules/fonts.nix` | Required UI fonts (`material-symbols`, JetBrains Mono Nerd Font, Roboto) |
+| `modules/patches/` | `/etc/nixos/modules/patches/` | NixOS icon resolution patches and FHS path replacements |
+| `modules/audio.nix` | `/etc/nixos/modules/audio.nix` | PipeWire server with PulseAudio emulation |
+| `modules/desktop.nix` | `/etc/nixos/modules/desktop.nix` | GDM display manager integration (GNOME fallback optional) |
+| `niri/config.kdl` | `~/.config/niri/config.kdl` | Niri compositor keybinds, layout, and focus-ring configuration |
+| `scripts/niri-sync-colors` | `~/.local/bin/niri-sync-colors` | Watches generated palette and updates Niri focus-ring in real-time |
+| `systemd/niri-sync-colors.service` | `~/.config/systemd/user/` | User systemd daemon running `niri-sync-colors --watch` |
+| `scripts/verify-setup.sh` | Run locally | Diagnostic script checking dependencies, services, and permissions |
+| `install.sh` | Run locally | Automated modular installer with backups and environment auto-detection |
 
 ---
 
-## 🚀 Instalación Rápida
+## 🚀 Quick Start
 
-### Opción A — Instalador Automatizado (Recomendada)
+### Option A — Automated Installer (Recommended)
 
-Clona el repositorio y ejecuta el instalador:
+Clone the repository and run the installer:
 
 ```bash
 git clone https://github.com/LATAR-web/inir-nixos.git
@@ -219,24 +224,24 @@ chmod +x install.sh
 ```
 
 > [!TIP]
-> Puedes realizar una simulación previa ejecutando:
+> Perform a test run without modifying any files:
 > ```bash
 > ./install.sh --dry-run
 > ```
 
 ---
 
-### Opción B — Instalación Manual Paso a Paso
+### Option B — Manual Step-by-Step
 
-#### 1️⃣ Copiar los módulos a `/etc/nixos`
+#### 1️⃣ Copy modules to `/etc/nixos`
 
 ```bash
 sudo cp -a modules/ /etc/nixos/modules/
 ```
 
-#### 2️⃣ Añadir `./modules` a tu `configuration.nix`
+#### 2️⃣ Add `./modules` to your `configuration.nix`
 
-Edita `/etc/nixos/configuration.nix` y asegúrate de que incluya `./modules`:
+Edit `/etc/nixos/configuration.nix` to include `./modules` in `imports`:
 
 ```nix
 imports = [
@@ -245,14 +250,14 @@ imports = [
 ];
 ```
 
-Asegúrate también de que tu usuario tenga los grupos `video` e `i2c`:
+Ensure your user has `video` and `i2c` groups:
 ```nix
-users.users."tu_usuario".extraGroups = [ "networkmanager" "wheel" "video" "i2c" ];
+users.users."your_user".extraGroups = [ "networkmanager" "wheel" "video" "i2c" ];
 ```
 
-#### 3️⃣ Configurar el Flake en `/etc/nixos/flake.nix`
+#### 3️⃣ Configure Flake inputs in `/etc/nixos/flake.nix`
 
-Asegúrate de que tu `flake.nix` incluya la entrada de `inir` y la pase en `specialArgs`:
+Ensure your `flake.nix` defines the `inir` input and passes it through `specialArgs`:
 
 ```nix
 inputs = {
@@ -264,7 +269,7 @@ inputs = {
 };
 
 outputs = { self, nixpkgs, inir, ... }: {
-  nixosConfigurations."tu_hostname" = nixpkgs.lib.nixosSystem {
+  nixosConfigurations."your_hostname" = nixpkgs.lib.nixosSystem {
     system = "x86_64-linux";
     specialArgs = { inherit inir; };
     modules = [ ./configuration.nix ];
@@ -272,7 +277,7 @@ outputs = { self, nixpkgs, inir, ... }: {
 };
 ```
 
-#### 4️⃣ Compilar y aplicar la configuración
+#### 4️⃣ Build and Switch
 
 ```bash
 cd /etc/nixos
@@ -280,7 +285,7 @@ sudo git add -A
 sudo nixos-rebuild switch --flake /etc/nixos
 ```
 
-#### 5️⃣ Instalar configuración de Niri y sincronización de color
+#### 5️⃣ Install Niri Config & Color Sync Daemon
 
 ```bash
 mkdir -p ~/.config/niri ~/.local/bin ~/.config/systemd/user
@@ -296,62 +301,65 @@ systemctl --user enable --now niri-sync-colors.service
 
 ---
 
-## 🎨 Sincronización de Color (Niri ↔ Fondo de Pantalla)
+## 🎨 Color Sync — Niri ↔ Wallpaper
 
-iNiR genera dinámicamente esquemas de color Material You a partir de tu fondo de pantalla activo utilizando `matugen` y una cadena de procesamiento en Python (`materialyoucolor`, `pillow`, `numpy`, `evdev`).
+iNiR generates dynamic Material You color schemes from your active wallpaper using `matugen` and a Python pipeline (`materialyoucolor`, `pillow`, `numpy`, `evdev`).
 
-1. Al seleccionar un fondo de pantalla con <kbd>Mod</kbd> + <kbd>W</kbd>, iNiR escribe:
+To synchronize these generated colors with the Niri compositor:
+1. When you select a wallpaper with <kbd>Mod</kbd> + <kbd>W</kbd>, iNiR writes:
    - `~/.local/state/quickshell/user/generated/colors.json`
    - `~/.local/state/quickshell/user/generated/theme-meta.json`
-2. El servicio de fondo `niri-sync-colors` (`systemd/niri-sync-colors.service`) detecta la modificación mediante `inotifywait`.
-3. Llama a `niri-config.py` para actualizar los colores activo e inactivo del `focus-ring` en `~/.config/niri/config.kdl` en tiempo real.
-4. Actualiza atómicamente la ruta del fondo activo en `~/.config/illogical-impulse/config.json`.
+2. The `niri-sync-colors` background service (`systemd/niri-sync-colors.service`) detects modifications via `inotifywait`.
+3. It calls `niri-config.py` to update active and inactive `focus-ring` colors in `~/.config/niri/config.kdl` live.
+4. It atomically updates the active wallpaper path in `~/.config/illogical-impulse/config.json`.
 
 ---
 
-## ⌨️ Atajos de Teclado en Niri
+## ⌨️ Niri Configuration & Keybinds
 
-| Atajo | Acción |
+Key shortcuts pre-configured in `niri/config.kdl`:
+
+| Key | Action |
 |---|---|
-| <kbd>Mod</kbd> + <kbd>Enter</kbd> | Abrir terminal (`alacritty`) |
-| <kbd>Mod</kbd> + <kbd>W</kbd> | Selector de fondo de pantalla |
-| <kbd>Mod</kbd> + <kbd>Espacio</kbd> | Alternar vista general (Overview) |
-| <kbd>Mod</kbd> + <kbd>V</kbd> | Historial del portapapeles |
-| <kbd>Mod</kbd> + <kbd>,</kbd> | Ajustes de iNiR |
-| <kbd>Mod</kbd> + <kbd>/</kbd> | Guía de atajos de teclado (Cheatsheet) |
-| <kbd>Mod</kbd> + <kbd>Shift</kbd> + <kbd>W</kbd> | Alternar estilo de barra/paneles |
-| <kbd>Mod</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd> | Captura de pantalla de región |
-| <kbd>Mod</kbd> + <kbd>Shift</kbd> + <kbd>X</kbd> | Reconocimiento OCR de texto en pantalla |
-| <kbd>Mod</kbd> + <kbd>E</kbd> | Gestor de archivos |
-| <kbd>Mod</kbd> + <kbd>B</kbd> | Navegador web |
-| <kbd>Mod</kbd> + <kbd>Alt</kbd> + <kbd>Espacio</kbd> | Cambiar idioma de teclado |
-| <kbd>Mod</kbd> + <kbd>Q</kbd> | Cerrar ventana activa |
-| <kbd>Mod</kbd> + <kbd>Shift</kbd> + <kbd>Q</kbd> | Salir de la sesión de Niri |
-| <kbd>Mod</kbd> + <kbd>F</kbd> | Pantalla completa |
-| <kbd>Mod</kbd> + <kbd>1</kbd>–<kbd>5</kbd> | Ir al espacio de trabajo 1–5 |
-| <kbd>Mod</kbd> + <kbd>Shift</kbd> + <kbd>1</kbd>–<kbd>5</kbd> | Mover ventana al espacio de trabajo 1–5 |
+| <kbd>Mod</kbd> + <kbd>Return</kbd> | Open terminal (`alacritty`) |
+| <kbd>Mod</kbd> + <kbd>W</kbd> | Wallpaper selector |
+| <kbd>Mod</kbd> + <kbd>Space</kbd> | Toggle workspace overview |
+| <kbd>Mod</kbd> + <kbd>V</kbd> | Clipboard history |
+| <kbd>Mod</kbd> + <kbd>,</kbd> | iNiR settings |
+| <kbd>Mod</kbd> + <kbd>/</kbd> | Cheatsheet overlay |
+| <kbd>Mod</kbd> + <kbd>Shift</kbd> + <kbd>W</kbd> | Cycle panel style family |
+| <kbd>Mod</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd> | Region screenshot |
+| <kbd>Mod</kbd> + <kbd>Shift</kbd> + <kbd>X</kbd> | Region OCR recognition |
+| <kbd>Mod</kbd> + <kbd>E</kbd> | File manager |
+| <kbd>Mod</kbd> + <kbd>B</kbd> | Web browser |
+| <kbd>Mod</kbd> + <kbd>Alt</kbd> + <kbd>Space</kbd> | Switch keyboard layout |
+| <kbd>Mod</kbd> + <kbd>Q</kbd> | Close window |
+| <kbd>Mod</kbd> + <kbd>Shift</kbd> + <kbd>Q</kbd> | Quit Niri session |
+| <kbd>Mod</kbd> + <kbd>F</kbd> | Toggle fullscreen |
+| <kbd>Mod</kbd> + <kbd>1</kbd>–<kbd>5</kbd> | Focus workspace 1–5 |
+| <kbd>Mod</kbd> + <kbd>Shift</kbd> + <kbd>1</kbd>–<kbd>5</kbd> | Move column to workspace 1–5 |
 
 ---
 
-## ✅ Verificación Post-Instalación
+## ✅ Post-Install Verification
 
-Ejecuta el script de diagnóstico para verificar que todos los componentes y servicios estén operando correctamente:
+Run the diagnostic verification script at any time:
 
 ```bash
 bash scripts/verify-setup.sh
 ```
 
-El script comprueba:
-- Existencia y disponibilidad de herramientas en el PATH (`niri`, `inir`, `python3`, `jq`, `inotifywait`, `cliphist`).
-- Importación del módulo de Python `materialyoucolor`.
-- Estado activo de `inir.service` y `niri-sync-colors.service`.
-- Integridad de `config.kdl` y observadores del portapapeles (`wl-paste --watch`).
+Checks performed:
+- Availability of required CLI tools (`niri`, `inir`, `python3`, `jq`, `inotifywait`, `cliphist`).
+- Python `materialyoucolor` module import test.
+- Active status of `inir.service` and `niri-sync-colors.service`.
+- Niri configuration and clipboard watcher validation.
 
 ---
 
-## 🔄 Actualizaciones
+## 🔄 Updating
 
-Para actualizar los paquetes y ramas fijadas en el Flake:
+To update flake inputs and rebuild your system:
 
 ```bash
 cd /etc/nixos
@@ -360,26 +368,26 @@ sudo nixos-rebuild switch --flake /etc/nixos
 systemctl --user restart inir.service
 ```
 
-Si algo no funciona tras una actualización, puedes hacer rollback al instante:
+Roll back instantly if an update causes issues:
 ```bash
 sudo nixos-rebuild switch --rollback
 ```
 
 ---
 
-## 🐛 Problemas Conocidos y Soluciones
+## 🐛 Troubleshooting & Known Gotchas
 
-| Problema | Causa y Solución |
+| Issue | Cause & Solution |
 |---|---|
-| **Archivo `inir.service` huérfano en el usuario** | Ejecutar `inir doctor` puede crear un archivo estático en `~/.config/systemd/user/inir.service`. Este archivo ignora la configuración declarativa de NixOS. Debe eliminarse (`rm ~/.config/systemd/user/inir.service`). El instalador lo detecta y limpia automáticamente. |
-| **Error por ruta ausente `/bin/cat`** | Algunos scripts upstream de iNiR usan `/bin/cat`. Está corregido mediante `systemd.tmpfiles.rules = [ "L+ /bin/cat - - - - ${pkgs.coreutils}/bin/cat" ];` en `modules/inir.nix`. |
-| **Iconos ausentes en QuickShell** | El código original de iNiR asume la ruta fija de Arch Linux `/usr/share/icons`. Se soluciona mediante el parche `modules/patches/inir-icon-theme.patch` y el enlace simbólico a `/run/current-system/sw/share/icons`. |
-| **Control de brillo de pantalla externa (DDC/CI) falla** | Requiere que el usuario pertenezca a los grupos `video` e `i2c`, y que `hardware.i2c.enable = true` esté activo en NixOS (incluido por defecto en `modules/inir.nix`). |
+| **Stray `inir.service` in user directory** | Running `inir doctor` creates `~/.config/systemd/user/inir.service`. This file overrides `/etc/systemd/user/inir.service` generated by NixOS and breaks declarative configuration. Remove it (`rm ~/.config/systemd/user/inir.service`). The installer cleans this automatically. |
+| **Missing `/bin/cat`** | iNiR scripts rely on FHS `/bin/cat`. Fixed via `systemd.tmpfiles.rules = [ "L+ /bin/cat - - - - ${pkgs.coreutils}/bin/cat" ];` in `modules/inir.nix`. |
+| **Missing Icons in QuickShell** | Upstream iNiR searches Arch `/usr/share/icons`. Fixed by `modules/patches/inir-icon-theme.patch` and symlinking `/run/current-system/sw/share/icons`. |
+| **Brightness controls (DDC/CI) fail** | Make sure your user belongs to `video` and `i2c` groups, and `hardware.i2c.enable = true` is set in `modules/inir.nix`. |
 
 ---
 
 <div align="center">
 
-Hecho con ❄️ para NixOS y Niri
+Made with ❄️ for NixOS and Niri
 
 </div>
