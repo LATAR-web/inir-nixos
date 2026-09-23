@@ -283,29 +283,31 @@ systemctl --user enable --now niri-sync-colors.service
 iNiR generates dynamic Material You color schemes from your active wallpaper using `matugen` and a Python pipeline (`materialyoucolor`, `pillow`, `numpy`, `evdev`).
 
 To synchronize these generated colors with the Niri compositor:
-1. When you select a wallpaper with <kbd>Mod</kbd> + <kbd>W</kbd>, iNiR writes:
+1. When you select a wallpaper with <kbd>Mod</kbd> + <kbd>W</kbd>, iNiR writes the extracted color palette to:
    - `~/.local/state/quickshell/user/generated/colors.json`
    - `~/.local/state/quickshell/user/generated/theme-meta.json`
-2. The `niri-sync-colors` background service (`systemd/niri-sync-colors.service`) detects modifications via `inotifywait`.
-3. It calls `niri-config.py` to update active and inactive `focus-ring` colors in `~/.config/niri/config.kdl` live.
+
+2. The `niri-sync-colors` background daemon (`systemd/niri-sync-colors.service`) detects modifications via `inotifywait` and executes:
+   ```bash
+   niri-sync-colors --watch
+   ```
+
+3. It parses the generated colors and executes the Python script `niri-config.py` to update active and inactive `focus-ring` colors in `~/.config/niri/config.kdl` live:
+   ```bash
+   # Executed automatically by the color sync service:
+   python3 ~/.config/quickshell/inir/scripts/niri-config.py set layout focus-ring.active-color "$primary"
+   python3 ~/.config/quickshell/inir/scripts/niri-config.py set layout focus-ring.inactive-color "$secondary"
+   ```
+
 4. It atomically updates the active wallpaper path in `~/.config/illogical-impulse/config.json`.
 
-### Manual Testing & Python Commands
-
-You can run the synchronization tools or call the Python scripts directly in your terminal:
-
+You can also run a one-time manual synchronization or test the Python script directly in your terminal:
 ```bash
-# 1. Verify the Python theming environment:
-python3 -c "import materialyoucolor; print('materialyoucolor import OK')"
-
-# 2. Test updating Niri focus-ring colors directly with the python script:
-python3 ~/.config/quickshell/inir/scripts/niri-config.py set layout focus-ring.active-color "#a8c7fa"
-
-# 3. Trigger a manual sync from the current wallpaper palette:
+# Run a one-time manual sync:
 niri-sync-colors
 
-# 4. Or watch for wallpaper changes interactively in the terminal:
-niri-sync-colors --watch
+# Or invoke the Python script directly to test focus-ring updates:
+python3 ~/.config/quickshell/inir/scripts/niri-config.py set layout focus-ring.active-color "#a8c7fa"
 ```
 
 ---

@@ -282,29 +282,31 @@ systemctl --user enable --now niri-sync-colors.service
 
 iNiR genera dinámicamente esquemas de color Material You a partir de tu fondo de pantalla activo utilizando `matugen` y una cadena de procesamiento en Python (`materialyoucolor`, `pillow`, `numpy`, `evdev`).
 
-1. Al seleccionar un fondo de pantalla con <kbd>Mod</kbd> + <kbd>W</kbd>, iNiR escribe:
+1. Al seleccionar un fondo de pantalla con <kbd>Mod</kbd> + <kbd>W</kbd>, iNiR extrae la paleta y escribe:
    - `~/.local/state/quickshell/user/generated/colors.json`
    - `~/.local/state/quickshell/user/generated/theme-meta.json`
-2. El servicio de fondo `niri-sync-colors` (`systemd/niri-sync-colors.service`) detecta la modificación mediante `inotifywait`.
-3. Llama a `niri-config.py` para actualizar los colores activo e inactivo del `focus-ring` en `~/.config/niri/config.kdl` en tiempo real.
+
+2. El servicio de fondo `niri-sync-colors` (`systemd/niri-sync-colors.service`) detecta la modificación mediante `inotifywait` ejecutando:
+   ```bash
+   niri-sync-colors --watch
+   ```
+
+3. Lee los colores generados y ejecuta el script de Python `niri-config.py` para actualizar los colores activo e inactivo del `focus-ring` en `~/.config/niri/config.kdl` en tiempo real:
+   ```bash
+   # Ejecutado automáticamente por el servicio de sincronización:
+   python3 ~/.config/quickshell/inir/scripts/niri-config.py set layout focus-ring.active-color "$primary"
+   python3 ~/.config/quickshell/inir/scripts/niri-config.py set layout focus-ring.inactive-color "$secondary"
+   ```
+
 4. Actualiza atómicamente la ruta del fondo activo en `~/.config/illogical-impulse/config.json`.
 
-### Pruebas Manuales y Comandos de Scripts de Python
-
-Puedes ejecutar la sincronización o invocar los scripts de Python directamente en tu terminal:
-
+También puedes forzar una sincronización manual o probar el script de Python directamente en la terminal:
 ```bash
-# 1. Comprobar que el entorno de Python para Material You funciona:
-python3 -c "import materialyoucolor; print('materialyoucolor import OK')"
-
-# 2. Probar la actualización de bordes de Niri directamente con el script de Python:
-python3 ~/.config/quickshell/inir/scripts/niri-config.py set layout focus-ring.active-color "#a8c7fa"
-
-# 3. Ejecutar una sincronización puntual desde la paleta actual:
+# Sincronización manual puntual:
 niri-sync-colors
 
-# 4. O monitorear cambios de fondo interactivamente en la terminal:
-niri-sync-colors --watch
+# O probar el cambio de color directamente con el script de Python:
+python3 ~/.config/quickshell/inir/scripts/niri-config.py set layout focus-ring.active-color "#a8c7fa"
 ```
 
 ---
