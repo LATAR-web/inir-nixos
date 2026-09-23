@@ -512,54 +512,78 @@ done
 step "3/6 — System configuration → /etc/nixos"
 
 echo
-printf '%sThe following files may be replaced:%s\n' "$BOLD" "$RESET"
-echo "  • /etc/nixos/configuration.nix"
-echo "  • /etc/nixos/flake.nix"
-echo "  • /etc/nixos/modules/"
+printf '%sInstalling iNiR modules to /etc/nixos/modules...%s\n' "$BOLD" "$RESET"
+echo "  • Preserves your existing applications, packages, and users"
+echo "  • Adapts to your current configuration without overwriting it"
 echo
-printf '%sYour existing hardware-configuration.nix will NOT be replaced.%s\n' \
-    "$GREEN" "$RESET"
 
 if [[ "$DRY_RUN" -eq 0 ]]; then
-    if [[ -e /etc/nixos/configuration.nix ||
-          -e /etc/nixos/flake.nix ||
-          -d /etc/nixos/modules ]]; then
+    backup_if_exists "/etc/nixos/modules"
+    sudo rm -rf /etc/nixos/modules
+    sudo cp -a "$REPO_DIR/modules" /etc/nixos/modules
+    success "Installed iNiR modules to /etc/nixos/modules"
+else
+    dry_run_msg "Would install iNiR modules to /etc/nixos/modules"
+fi
 
-        if ! confirm "Create backups and continue?"; then
-            error "Installation cancelled."
-            exit 1
+if [[ -f /etc/nixos/configuration.nix ]]; then
+    info "Existing /etc/nixos/configuration.nix detected."
+    info "Adapting your existing configuration (apps and user settings will be preserved)..."
+
+    backup_if_exists "/etc/nixos/configuration.nix"
+
+    if [[ "$DRY_RUN" -eq 0 ]]; then
+        if grep -Eq '(\./modules|modules/inir)' /etc/nixos/configuration.nix; then
+            success "./modules is already imported in /etc/nixos/configuration.nix"
+        else
+            if grep -q "imports = \[" /etc/nixos/configuration.nix; then
+                sudo sed -i 's|imports = \[|imports = [\n    ./modules|' /etc/nixos/configuration.nix
+                success "Added ./modules to imports in /etc/nixos/configuration.nix"
+            else
+                warning "Could not automatically inject ./modules into imports."
+                info "Please add './modules' to imports in /etc/nixos/configuration.nix manually."
+            fi
         fi
+    else
+        dry_run_msg "Would add ./modules to imports in /etc/nixos/configuration.nix"
+    fi
+else
+    info "No existing configuration.nix found. Installing reference configuration..."
+    backup_if_exists "/etc/nixos/configuration.nix"
+    run "Install configuration.nix" \
+        sudo cp -a "$REPO_DIR/configuration.nix" /etc/nixos/configuration.nix
 
-        backup_if_exists "/etc/nixos/configuration.nix"
-        backup_if_exists "/etc/nixos/flake.nix"
-        backup_if_exists "/etc/nixos/modules"
+    if [[ "$DRY_RUN" -eq 0 ]]; then
+        sudo sed -i \
+            -e "s/\"YOUR_USERNAME\"/\"$DETECTED_USER\"/g" \
+            -e "s/networking.hostName = \"nixos\";/networking.hostName = \"$DETECTED_HOSTNAME\";/" \
+            -e "s#time.timeZone = \"America/Mexico_City\";#time.timeZone = \"$DETECTED_TZ\";#" \
+            -e "s/i18n.defaultLocale = \"es_MX.UTF-8\";/i18n.defaultLocale = \"$DETECTED_LOCALE\";/" \
+            /etc/nixos/configuration.nix
+        success "Configured reference configuration.nix with detected values"
+    else
+        dry_run_msg "Would substitute username/hostname/timezone/locale into configuration.nix"
     fi
 fi
 
-run "Install configuration.nix" \
-    sudo cp -a "$REPO_DIR/configuration.nix" /etc/nixos/configuration.nix
-
-run "Install flake.nix" \
-    sudo cp -a "$REPO_DIR/flake.nix" /etc/nixos/flake.nix
-
-if [[ "$DRY_RUN" -eq 0 ]]; then
-    sudo rm -rf /etc/nixos/modules
-    sudo cp -a "$REPO_DIR/modules" /etc/nixos/modules
-    success "Install NixOS modules"
+if [[ -f /etc/nixos/flake.nix ]]; then
+    info "Existing /etc/nixos/flake.nix detected."
+    if grep -q "snowarch/inir" /etc/nixos/flake.nix; then
+        success "iNiR flake input is already configured in /etc/nixos/flake.nix"
+    else
+        warning "iNiR input not detected in /etc/nixos/flake.nix."
+        info "Make sure your flake.nix includes the inir input and passes it in specialArgs:"
+        printf '      inputs.inir.url = "github:snowarch/inir";\n'
+        printf '      specialArgs = { inherit inir; };\n'
+    fi
 else
-    dry_run_msg "Would install NixOS modules to /etc/nixos/modules"
+    info "No flake.nix found. Installing reference flake.nix..."
+    backup_if_exists "/etc/nixos/flake.nix"
+    run "Install flake.nix" \
+        sudo cp -a "$REPO_DIR/flake.nix" /etc/nixos/flake.nix
 fi
 
 if [[ "$DRY_RUN" -eq 0 ]]; then
-    info "Substituting detected values into installed files..."
-
-    sudo sed -i \
-        -e "s/\"YOUR_USERNAME\"/\"$DETECTED_USER\"/g" \
-        -e "s/networking.hostName = \"nixos\";/networking.hostName = \"$DETECTED_HOSTNAME\";/" \
-        -e "s#time.timeZone = \"America/Mexico_City\";#time.timeZone = \"$DETECTED_TZ\";#" \
-        -e "s/i18n.defaultLocale = \"es_MX.UTF-8\";/i18n.defaultLocale = \"$DETECTED_LOCALE\";/" \
-        /etc/nixos/configuration.nix
-
     if [[ -f /etc/nixos/modules/desktop.nix ]]; then
         sudo sed -i \
             -e "s/layout = \"latam\";/layout = \"$DETECTED_LAYOUT\";/" \
@@ -575,10 +599,6 @@ if [[ "$DRY_RUN" -eq 0 ]]; then
         info "Staging installed files in /etc/nixos git repo..."
         sudo git -C /etc/nixos add -A || true
     fi
-
-    success "Placeholders replaced with detected values"
-else
-    dry_run_msg "Would substitute username/hostname/timezone/locale/layout into installed files"
 fi
 
 if [[ ! -f /etc/nixos/hardware-configuration.nix ]]; then

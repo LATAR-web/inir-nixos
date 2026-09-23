@@ -35,7 +35,18 @@ in
   environment.systemPackages = inirDeps;
 
   # Control de hardware para brillo de monitores externos mediante ddcutil
-  hardware.i2c.enable = true;
+  hardware.i2c.enable = lib.mkDefault true;
+
+  # Rutas estándar FHS y temas de iconos para compatibilidad de scripts
+  systemd.tmpfiles.rules = [
+    "L+ /bin/cat - - - - ${pkgs.coreutils}/bin/cat"
+    "d /usr/share 0755 root root -"
+    "L+ /usr/share/icons - - - - /run/current-system/sw/share/icons"
+  ];
+
+  # Habilitar Niri y dconf por defecto
+  programs.niri.enable = lib.mkDefault true;
+  programs.dconf.enable = lib.mkDefault true;
 
   # Variables de entorno para el servicio user de systemd
   systemd.user.services.inir = {
