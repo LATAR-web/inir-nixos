@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # iNiR + Niri + NixOS
-# Automated installer for:
+# Automated installer [EXPERIMENTAL] for:
 #   https://github.com/LATAR-web/inir-nixos
 #
 # Usage:
@@ -9,6 +9,7 @@
 #   ./install.sh --yes
 #   ./install.sh --dry-run
 #   ./install.sh --skip-rebuild
+#   ./install.sh --check
 #   ./install.sh --help
 #
 
@@ -121,6 +122,7 @@ if [[ "$COLOR" -eq 1 ]]; then
     BG_RED=$'\033[41m'
     BG_GREEN=$'\033[42m'
     BG_BLUE=$'\033[44m'
+    BG_YELLOW=$'\033[43m'
 else
     RESET=''
     BOLD=''
@@ -137,6 +139,7 @@ else
     BG_RED=''
     BG_GREEN=''
     BG_BLUE=''
+    BG_YELLOW=''
 fi
 
 # ============================================================
@@ -310,13 +313,12 @@ require_command() {
 # Header
 # ============================================================
 
-
 printf '\n'
 printf '%s%s╔══════════════════════════════════════════════════════╗%s\n' \
     "$BOLD" "$CYAN" "$RESET"
 printf '%s%s║              iNiR + Niri + NixOS                  ║%s\n' \
     "$BOLD" "$CYAN" "$RESET"
-printf '%s%s║                 Automated Installer                ║%s\n' \
+printf '%s%s║       Automated Modular Installer [EXPERIMENTAL]   ║%s\n' \
     "$BOLD" "$CYAN" "$RESET"
 printf '%s%s╚══════════════════════════════════════════════════════╝%s\n' \
     "$BOLD" "$CYAN" "$RESET"
@@ -327,6 +329,11 @@ printf 'Repository: %shttps://github.com/LATAR-web/inir-nixos%s\n' \
 
 printf 'Installer:  %s%s%s\n' "$DIM" "$REPO_DIR" "$RESET"
 printf 'Log file:   %s%s%s\n' "$DIM" "$LOG_FILE" "$RESET"
+
+echo
+printf '%s%s ⚠️  EXPERIMENTAL SETUP %s\n' "$BG_YELLOW" "$WHITE" "$RESET"
+printf '  This installer modifies your NixOS configuration and systemd user services.\n'
+printf '  Existing configurations are backed up with timestamps (.bak.<date>).\n'
 
 if [[ "$DRY_RUN" -eq 1 ]]; then
     echo
@@ -357,13 +364,12 @@ if [[ ! -f /etc/NIXOS ]]; then
     warning "Continuing because /etc/nixos exists."
 fi
 
+# Only require tools needed to run the installer and rebuild.
+# Runtime packages (python3, jq, inotifywait, etc.) are installed
+# by NixOS modules during the rebuild and checked post-rebuild.
 require_command git "git"
 require_command nix "nix"
 require_command sudo "sudo"
-require_command python3 "python3"
-require_command jq "jq"
-require_command inotifywait "inotify-tools"
-require_command flock "util-linux"
 
 if [[ ! -f "$REPO_DIR/configuration.nix" ]]; then
     error "Missing configuration.nix in repository."
@@ -394,8 +400,7 @@ success "Repository structure looks valid"
 
 if [[ "$DRY_RUN" -eq 1 ]]; then
     dry_run_msg "Would validate the Nix flake:"
-    printf '      nix flake check --no-write-lock-file "%s"
-' "$REPO_DIR"
+    printf '      nix flake check --no-write-lock-file "%s"\n' "$REPO_DIR"
 else
     info "Validating Nix flake..."
 
@@ -405,37 +410,59 @@ else
     else
         error "Nix flake validation failed."
         error "Run manually:"
-        printf '      nix flake check --no-write-lock-file "%s"
-' "$REPO_DIR"
+        printf '      nix flake check --no-write-lock-file "%s"\n' "$REPO_DIR"
         exit 1
     fi
 fi
 
-
 # ============================================================
-# 1. Detect this machine
+# 1. Detect target user and machine settings
 # ============================================================
 
-step "1/6 — Detecting this machine's settings"
+step "1/6 — Detecting environment and user configuration"
 
-DETECTED_USER="$(whoami)"
-DETECTED_HOSTNAME="$(hostname 2>/dev/null || echo nixos)"
+if [[ "$EUID" -eq 0 && -z "${SUDO_USER:-}" ]]; then
+    warning "Running directly as root."
+    warning "It is recommended to run ./install.sh as your normal user (sudo is used when needed)."
+fi
+
+TARGET_USER="${SUDO_USER:-$(whoami)}"
+if [[ -n "${SUDO_USER:-}" && "$SUDO_USER" != "root" ]]; then
+    TARGET_HOME="$(getent passwd "$SUDO_USER" | cut -d: -f6)"
+else
+    TARGET_HOME="$HOME"
+fi
+
+DETECTED_USER="$TARGET_USER"
+DETECTED_HOSTNAME="$(hostname 2>/dev/null || cat /etc/hostname 2>/dev/null || echo nixos)"
 DETECTED_TZ="$(timedatectl show --property=Timezone --value 2>/dev/null || echo "")"
 DETECTED_LAYOUT="$(localectl status 2>/dev/null | grep 'X11 Layout' | awk -F': ' '{print $2}' | tr -d ' ')"
 DETECTED_LOCALE="$(localectl status 2>/dev/null | grep 'System Locale' | awk -F'LANG=' '{print $2}' | tr -d ' ')"
+
+# If /etc/nixos/configuration.nix already defines these, respect them!
+if [[ -f /etc/nixos/configuration.nix ]]; then
+    CONF_TZ="$(grep -E '^\s*time\.timeZone\s*=' /etc/nixos/configuration.nix | head -n1 | sed -E 's/.*"([^"]+)".*/\1/' || true)"
+    [[ -n "$CONF_TZ" ]] && DETECTED_TZ="$CONF_TZ"
+
+    CONF_HOST="$(grep -E '^\s*networking\.hostName\s*=' /etc/nixos/configuration.nix | head -n1 | sed -E 's/.*"([^"]+)".*/\1/' || true)"
+    [[ -n "$CONF_HOST" ]] && DETECTED_HOSTNAME="$CONF_HOST"
+
+    CONF_LOC="$(grep -E '^\s*i18n\.defaultLocale\s*=' /etc/nixos/configuration.nix | head -n1 | sed -E 's/.*"([^"]+)".*/\1/' || true)"
+    [[ -n "$CONF_LOC" ]] && DETECTED_LOCALE="$CONF_LOC"
+fi
 
 [[ -z "$DETECTED_TZ" ]] && DETECTED_TZ="UTC"
 [[ -z "$DETECTED_LAYOUT" ]] && DETECTED_LAYOUT="us"
 [[ -z "$DETECTED_LOCALE" ]] && DETECTED_LOCALE="en_US.UTF-8"
 
-info "User:      $DETECTED_USER"
-info "Hostname:  $DETECTED_HOSTNAME"
-info "Timezone:  $DETECTED_TZ"
-info "Locale:    $DETECTED_LOCALE"
-info "Keyboard:  $DETECTED_LAYOUT"
+info "Target User:     $DETECTED_USER (home: $TARGET_HOME)"
+info "Hostname:        $DETECTED_HOSTNAME"
+info "Timezone:        $DETECTED_TZ"
+info "Locale:          $DETECTED_LOCALE"
+info "Keyboard Layout: $DETECTED_LAYOUT"
 
 if [[ "$ASSUME_YES" -ne 1 && "$DRY_RUN" -ne 1 ]]; then
-    if ! confirm "Use these values for configuration.nix / desktop.nix?"; then
+    if ! confirm "Confirm detected settings for configuration?"; then
         read -rp "Username [$DETECTED_USER]: " _u
         read -rp "Hostname [$DETECTED_HOSTNAME]: " _h
         read -rp "Timezone [$DETECTED_TZ]: " _t
@@ -450,71 +477,72 @@ if [[ "$ASSUME_YES" -ne 1 && "$DRY_RUN" -ne 1 ]]; then
 fi
 
 # ============================================================
-# 2. Stray inir.service check (the #1 gotcha from Known Issues)
+# 2. Stray inir.service check & obsolete service cleanup
 # ============================================================
 
-step "2/6 — Checking for stray and obsolete services"
+step "2/6 — Checking for stray and obsolete user services"
 
-STRAY_SERVICE="$HOME/.config/systemd/user/inir.service"
+STRAY_SERVICE="$TARGET_HOME/.config/systemd/user/inir.service"
 
 if [[ -e "$STRAY_SERVICE" ]]; then
     warning "$STRAY_SERVICE exists."
-    warning "This file, if present, silently overrides the one Nix generates"
-    warning "in /etc/systemd/user/ — your declarative config would be ignored"
-    warning "with no error shown anywhere. Usually left behind by 'inir doctor'."
+    warning "This file silently overrides the NixOS declarative service in"
+    warning "/etc/systemd/user/ — preventing inir from running properly."
+    warning "(Usually generated mistakenly by running 'inir doctor')."
 
     if [[ "$DRY_RUN" -eq 1 ]]; then
         dry_run_msg "Would remove: $STRAY_SERVICE"
-    elif confirm "Remove it now?"; then
+    elif confirm "Remove stray inir.service now?"; then
         rm -f "$STRAY_SERVICE"
-        rm -f "$HOME/.config/systemd/user/inir.service.d/"*.conf 2>/dev/null || true
+        rm -f "$TARGET_HOME/.config/systemd/user/inir.service.d/"*.conf 2>/dev/null || true
         success "Stray service file removed"
     else
-        warning "Leaving it in place — this WILL cause problems later."
+        warning "Leaving it in place — this will cause inir service conflicts."
     fi
 else
     success "No stray inir.service found"
 fi
 
 # Clean up obsolete niri-color-sync service if present (replaced by niri-sync-colors)
-OLD_COLOR_SERVICE="$HOME/.config/systemd/user/niri-color-sync.service"
+OLD_COLOR_SERVICE="$TARGET_HOME/.config/systemd/user/niri-color-sync.service"
 if [[ -e "$OLD_COLOR_SERVICE" ]]; then
     systemctl --user stop niri-color-sync.service 2>/dev/null || true
     systemctl --user disable niri-color-sync.service 2>/dev/null || true
-    rm -f "$OLD_COLOR_SERVICE" "$HOME/.local/bin/sync-niri-colors.sh" 2>/dev/null || true
+    rm -f "$OLD_COLOR_SERVICE" "$TARGET_HOME/.local/bin/sync-niri-colors.sh" 2>/dev/null || true
     success "Removed obsolete niri-color-sync service"
 fi
 
 # Clean up obsolete xwayland-satellite service if present (niri manages xwayland natively)
-OLD_XWAYLAND_SERVICE="$HOME/.config/systemd/user/xwayland-satellite.service"
-if [[ -e "$OLD_XWAYLAND_SERVICE" || -e "$HOME/.config/systemd/user/graphical-session.target.wants/xwayland-satellite.service" ]]; then
+OLD_XWAYLAND_SERVICE="$TARGET_HOME/.config/systemd/user/xwayland-satellite.service"
+if [[ -e "$OLD_XWAYLAND_SERVICE" || -e "$TARGET_HOME/.config/systemd/user/graphical-session.target.wants/xwayland-satellite.service" ]]; then
     systemctl --user stop xwayland-satellite.service 2>/dev/null || true
     systemctl --user disable xwayland-satellite.service 2>/dev/null || true
-    rm -f "$OLD_XWAYLAND_SERVICE" "$HOME/.config/systemd/user/graphical-session.target.wants/xwayland-satellite.service" 2>/dev/null || true
+    rm -f "$OLD_XWAYLAND_SERVICE" "$TARGET_HOME/.config/systemd/user/graphical-session.target.wants/xwayland-satellite.service" 2>/dev/null || true
     success "Removed obsolete xwayland-satellite service"
 fi
 
 # Clean up obsolete update services/timers if present
 for obsolete_unit in check-config-updates.timer check-config-updates.service auto-update.timer auto-update.service; do
-    if [[ -e "$HOME/.config/systemd/user/$obsolete_unit" || -e "$HOME/.config/systemd/user/timers.target.wants/$obsolete_unit" ]]; then
+    if [[ -e "$TARGET_HOME/.config/systemd/user/$obsolete_unit" || -e "$TARGET_HOME/.config/systemd/user/timers.target.wants/$obsolete_unit" ]]; then
         systemctl --user stop "$obsolete_unit" 2>/dev/null || true
         systemctl --user disable "$obsolete_unit" 2>/dev/null || true
-        rm -f "$HOME/.config/systemd/user/$obsolete_unit" "$HOME/.config/systemd/user/timers.target.wants/$obsolete_unit" 2>/dev/null || true
-        rm -f "$HOME/.local/bin/check-config-updates.sh" "$HOME/.local/bin/auto-update.sh" 2>/dev/null || true
+        rm -f "$TARGET_HOME/.config/systemd/user/$obsolete_unit" "$TARGET_HOME/.config/systemd/user/timers.target.wants/$obsolete_unit" 2>/dev/null || true
+        rm -f "$TARGET_HOME/.local/bin/check-config-updates.sh" "$TARGET_HOME/.local/bin/auto-update.sh" 2>/dev/null || true
         success "Removed obsolete $obsolete_unit"
     fi
 done
 
 # ============================================================
-# 3. System configuration
+# 3. System configuration (NixOS modules)
 # ============================================================
 
 step "3/6 — System configuration → /etc/nixos"
 
 echo
 printf '%sInstalling iNiR modules to /etc/nixos/modules...%s\n' "$BOLD" "$RESET"
-echo "  • Preserves your existing applications, packages, and users"
+echo "  • Preserves existing user packages, settings, and users"
 echo "  • Adapts to your current configuration without overwriting it"
+echo "  • GNOME fallback is disabled by default to eliminate system bloat"
 echo
 
 if [[ "$DRY_RUN" -eq 0 ]]; then
@@ -528,7 +556,7 @@ fi
 
 if [[ -f /etc/nixos/configuration.nix ]]; then
     info "Existing /etc/nixos/configuration.nix detected."
-    info "Adapting your existing configuration (apps and user settings will be preserved)..."
+    info "Adapting your existing configuration (user packages and apps preserved)..."
 
     backup_if_exists "/etc/nixos/configuration.nix"
 
@@ -536,13 +564,19 @@ if [[ -f /etc/nixos/configuration.nix ]]; then
         if grep -Eq '(\./modules|modules/inir)' /etc/nixos/configuration.nix; then
             success "./modules is already imported in /etc/nixos/configuration.nix"
         else
-            if grep -q "imports = \[" /etc/nixos/configuration.nix; then
-                sudo sed -i 's|imports = \[|imports = [\n    ./modules|' /etc/nixos/configuration.nix
+            if grep -Eq 'imports\s*=\s*\[' /etc/nixos/configuration.nix; then
+                sudo sed -i -E 's|(imports\s*=\s*\[)|\1\n    ./modules|' /etc/nixos/configuration.nix
                 success "Added ./modules to imports in /etc/nixos/configuration.nix"
             else
                 warning "Could not automatically inject ./modules into imports."
                 info "Please add './modules' to imports in /etc/nixos/configuration.nix manually."
             fi
+        fi
+
+        # Check required user groups for monitor brightness control (DDC/CI)
+        if ! grep -q "i2c" /etc/nixos/configuration.nix 2>/dev/null || ! grep -q "video" /etc/nixos/configuration.nix 2>/dev/null; then
+            warning "Notice: Monitor brightness control (DDC/CI via ddcutil) requires groups 'video' and 'i2c'."
+            info "Make sure your user has 'video' and 'i2c' in extraGroups in /etc/nixos/configuration.nix."
         fi
     else
         dry_run_msg "Would add ./modules to imports in /etc/nixos/configuration.nix"
@@ -581,20 +615,17 @@ else
     backup_if_exists "/etc/nixos/flake.nix"
     run "Install flake.nix" \
         sudo cp -a "$REPO_DIR/flake.nix" /etc/nixos/flake.nix
+
+    if [[ "$DRY_RUN" -eq 0 ]]; then
+        if [[ "$DETECTED_HOSTNAME" != "nixos" ]]; then
+            sudo sed -i \
+                -e "s/nixosConfigurations\.nixos/nixosConfigurations.\"$DETECTED_HOSTNAME\"/g" \
+                /etc/nixos/flake.nix 2>/dev/null || true
+        fi
+    fi
 fi
 
 if [[ "$DRY_RUN" -eq 0 ]]; then
-    if [[ -f /etc/nixos/modules/desktop.nix ]]; then
-        sudo sed -i \
-            -e "s/layout = \"latam\";/layout = \"$DETECTED_LAYOUT\";/" \
-            /etc/nixos/modules/desktop.nix
-        if [[ "$DETECTED_LAYOUT" != "latam" ]]; then
-            sudo sed -i \
-                -e "s/console.keyMap = \"la-latin1\";/console.keyMap = \"$DETECTED_LAYOUT\";/" \
-                /etc/nixos/modules/desktop.nix
-        fi
-    fi
-
     if [[ -d /etc/nixos/.git ]]; then
         info "Staging installed files in /etc/nixos git repo..."
         sudo git -C /etc/nixos add -A || true
@@ -623,22 +654,29 @@ else
 fi
 
 # ============================================================
-# 4. Niri
+# 4. Niri configuration
 # ============================================================
 
 step "4/6 — Niri configuration"
 
 if [[ "$DRY_RUN" -eq 0 ]]; then
-    mkdir -p "$HOME/.config/niri"
+    mkdir -p "$TARGET_HOME/.config/niri"
 else
-    dry_run_msg "Would create ~/.config/niri"
+    dry_run_msg "Would create $TARGET_HOME/.config/niri"
 fi
 
-backup_if_exists "$HOME/.config/niri/config.kdl"
+backup_if_exists "$TARGET_HOME/.config/niri/config.kdl"
 
 run "Install Niri config" \
     cp "$REPO_DIR/niri/config.kdl" \
-    "$HOME/.config/niri/config.kdl"
+    "$TARGET_HOME/.config/niri/config.kdl"
+
+if [[ "$DRY_RUN" -eq 0 ]]; then
+    if [[ "$DETECTED_LAYOUT" != "latam" && -n "$DETECTED_LAYOUT" ]]; then
+        sed -i "s/layout \"latam,us\"/layout \"$DETECTED_LAYOUT,us\"/" "$TARGET_HOME/.config/niri/config.kdl" 2>/dev/null || true
+        debug "Adapted Niri keyboard layout to: $DETECTED_LAYOUT,us"
+    fi
+fi
 
 # ============================================================
 # 5. Color synchronization
@@ -648,24 +686,24 @@ step "5/6 — Wallpaper → Niri color synchronization"
 
 if [[ "$DRY_RUN" -eq 0 ]]; then
     mkdir -p \
-        "$HOME/.local/bin" \
-        "$HOME/.config/systemd/user"
+        "$TARGET_HOME/.local/bin" \
+        "$TARGET_HOME/.config/systemd/user"
 else
-    dry_run_msg "Would create ~/.local/bin"
-    dry_run_msg "Would create ~/.config/systemd/user"
+    dry_run_msg "Would create $TARGET_HOME/.local/bin"
+    dry_run_msg "Would create $TARGET_HOME/.config/systemd/user"
 fi
 
 run "Install niri-sync-colors" \
     cp "$REPO_DIR/scripts/niri-sync-colors" \
-    "$HOME/.local/bin/niri-sync-colors"
+    "$TARGET_HOME/.local/bin/niri-sync-colors"
 
 run "Make niri-sync-colors executable" \
-    chmod +x "$HOME/.local/bin/niri-sync-colors"
+    chmod +x "$TARGET_HOME/.local/bin/niri-sync-colors"
 
 if [[ -f "$REPO_DIR/systemd/niri-sync-colors.service" ]]; then
     run "Install color-sync systemd service" \
         cp "$REPO_DIR/systemd/niri-sync-colors.service" \
-        "$HOME/.config/systemd/user/niri-sync-colors.service"
+        "$TARGET_HOME/.config/systemd/user/niri-sync-colors.service"
 
     run "Reload systemd user manager" \
         systemctl --user daemon-reload
@@ -680,12 +718,19 @@ fi
 
 step "6/6 — Apply NixOS configuration"
 
+REBUILD_TARGET="/etc/nixos"
+if nix flake show /etc/nixos 2>/dev/null | grep -q "$DETECTED_HOSTNAME"; then
+    REBUILD_TARGET="/etc/nixos#$DETECTED_HOSTNAME"
+elif nix flake show /etc/nixos 2>/dev/null | grep -q "nixos"; then
+    REBUILD_TARGET="/etc/nixos#nixos"
+fi
+
 REBUILD_CMD=(
     sudo
     nixos-rebuild
     switch
     --flake
-    /etc/nixos#nixos
+    "$REBUILD_TARGET"
 )
 
 if [[ "$SKIP_REBUILD" -eq 1 ]]; then
@@ -694,16 +739,16 @@ if [[ "$SKIP_REBUILD" -eq 1 ]]; then
     echo "Run manually when ready:"
     echo
     printf '    %s\n' \
-        "sudo nixos-rebuild switch --flake /etc/nixos#nixos"
+        "sudo nixos-rebuild switch --flake $REBUILD_TARGET"
 
 elif [[ "$DRY_RUN" -eq 1 ]]; then
     dry_run_msg "Would run:"
     printf '    %q ' "${REBUILD_CMD[@]}"
     echo
 
-elif confirm "Run nixos-rebuild now?"; then
+elif confirm "Run nixos-rebuild switch now?"; then
 
-    info "Building NixOS configuration..."
+    info "Building NixOS configuration with flake $REBUILD_TARGET..."
     info "This can take several minutes on the first run."
 
     log "RUN: ${REBUILD_CMD[*]}"
@@ -725,11 +770,11 @@ else
     echo "Run manually when ready:"
     echo
     printf '    %s\n' \
-        "sudo nixos-rebuild switch --flake /etc/nixos#nixos"
+        "sudo nixos-rebuild switch --flake $REBUILD_TARGET"
 fi
 
 # ============================================================
-# Final
+# Final & Verification
 # ============================================================
 
 echo
@@ -737,51 +782,46 @@ echo
 if [[ "$DRY_RUN" -eq 0 && "$SKIP_REBUILD" -eq 0 ]]; then
     step "Post-install verification"
 
+    info "Reloading systemd user daemon..."
+    systemctl --user daemon-reload || true
+    systemctl --user restart inir.service 2>/dev/null || true
+    systemctl --user restart niri-sync-colors.service 2>/dev/null || true
+
     sleep 2  # give systemd a moment to (re)start inir.service after the rebuild
 
     if systemctl --user is-active --quiet inir.service; then
         success "inir.service is active (running)"
     else
-        warning "inir.service is NOT active. Check:"
-        printf '      systemctl --user status inir.service\n'
-        printf '      inir logs\n'
+        warning "inir.service is not currently active."
+        info "Note: inir.service starts automatically when you log into a Niri session."
     fi
 
-    INIR_PATH_LINE="$(systemctl --user show inir.service -p Environment --no-pager 2>/dev/null || true)"
-    if echo "$INIR_PATH_LINE" | grep -q "python3"; then
-        success "inir.service's PATH includes python3"
-    else
-        warning "inir.service's PATH does not appear to include python3."
-        warning "Wallpaper-driven theming will silently fail — see Known Issues."
+    if systemctl --user is-active --quiet niri-sync-colors.service; then
+        success "niri-sync-colors.service is active (running)"
     fi
 fi
 
 if [[ "$DRY_RUN" -eq 1 ]]; then
     printf '%s%s╔══════════════════════════════════════════════════════╗%s\n' \
         "$BOLD" "$BLUE" "$RESET"
-
     printf '%s%s║              Dry-run completed!                   ║%s\n' \
         "$BOLD" "$BLUE" "$RESET"
-
     printf '%s%s╚══════════════════════════════════════════════════════╝%s\n' \
         "$BOLD" "$BLUE" "$RESET"
-
     echo
     printf '%sNo changes were made to the system.%s\n' \
         "$YELLOW" "$RESET"
 else
     printf '%s%s╔══════════════════════════════════════════════════════╗%s\n' \
         "$BOLD" "$GREEN" "$RESET"
-
     printf '%s%s║             Installation complete!                 ║%s\n' \
         "$BOLD" "$GREEN" "$RESET"
-
     printf '%s%s╚══════════════════════════════════════════════════════╝%s\n' \
         "$BOLD" "$GREEN" "$RESET"
 fi
 
 echo
-printf 'Verify your installation:\n'
+printf 'Run diagnostic verification at any time:\n'
 printf '  %s\n' \
     "bash $REPO_DIR/scripts/verify-setup.sh"
 
@@ -791,7 +831,7 @@ printf '  %s\n' "$LOG_FILE"
 
 echo
 printf '%sUseful commands:%s\n' "$BOLD" "$RESET"
-echo "  systemctl --user status niri-sync-colors.service"
-echo "  journalctl --user -u niri-sync-colors.service"
-echo "  sudo nixos-rebuild switch --flake /etc/nixos#nixos"
+printf '  systemctl --user status niri-sync-colors.service\n'
+printf '  journalctl --user -u niri-sync-colors.service\n'
+printf '  sudo nixos-rebuild switch --flake %s\n' "$REBUILD_TARGET"
 echo

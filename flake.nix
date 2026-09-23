@@ -16,5 +16,8 @@
       specialArgs = { inherit inir; };
       modules = [ ./configuration.nix ];
     };
+
+    # Default configuration fallback
+    nixosConfigurations.default = self.nixosConfigurations.nixos;
   };
 }

@@ -20,19 +20,16 @@
   time.timeZone = "America/Mexico_City";
   i18n.defaultLocale = "es_MX.UTF-8";
 
-  # Base programs & permissions
+  # Nixpkgs configuration
   nixpkgs.config.allowUnfree = true;
-  programs.dconf.enable = true;
-  programs.niri.enable = true;
 
-  # Standard paths & icon theme compatibility
-  systemd.tmpfiles.rules = [
-    "L+ /bin/cat - - - - ${pkgs.coreutils}/bin/cat"
-    "d /usr/share 0755 root root -"
-    "L+ /usr/share/icons - - - - /run/current-system/sw/share/icons"
-  ];
+  # Optional iNiR module customizations:
+  # programs.inir.audio.enable = true;               # Enabled by default (PipeWire)
+  # programs.inir.desktop.enable = true;             # Enabled by default (GDM)
+  # programs.inir.desktop.enableGnomeFallback = false; # Set true only if you want GNOME installed as fallback
 
   # Primary User (automatically configured by install.sh)
+  # NOTE: 'video' and 'i2c' groups are required for monitor brightness controls (ddcutil)
   users.users."YOUR_USERNAME" = {
     isNormalUser = true;
     description = "Primary User";

@@ -1,18 +1,36 @@
 { config, pkgs, lib, ... }:
+let
+  cfg = config.programs.inir.desktop;
+in
 {
-  # Display manager (login screen) + GNOME as a fallback session.
-  # Niri itself is a separate session GDM lists automatically once
-  # programs.niri.enable is on — this file's job is just to make sure
-  # there IS a graphical login screen at all, and a safe fallback
-  # session exists if niri/iNiR ever fails to start.
-  services.xserver.enable = lib.mkDefault true;
-  services.xserver.xkb = {
-    layout = lib.mkDefault "latam";
-    variant = lib.mkDefault "";
+  options.programs.inir.desktop = {
+    enable = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Enable GDM display manager so you have a graphical login screen out of the box.";
+    };
+
+    enableGnomeFallback = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = ''
+        Install and enable GNOME desktop environment as an emergency fallback session.
+        Disabled by default to avoid downloading gigabytes of unused GNOME packages.
+      '';
+    };
   };
 
-  services.displayManager.gdm.enable = lib.mkDefault true;
-  services.desktopManager.gnome.enable = lib.mkDefault true;
+  config = lib.mkIf cfg.enable {
+    # Display manager (login screen)
+    # Niri registers its own Wayland session automatically once programs.niri.enable is true.
+    services.xserver.enable = lib.mkDefault true;
+    services.displayManager.gdm.enable = lib.mkDefault true;
+    services.desktopManager.gnome.enable = lib.mkDefault cfg.enableGnomeFallback;
 
-  console.keyMap = lib.mkDefault "la-latin1";
+    # Keyboard layout (defaults to user's existing settings if already defined)
+    services.xserver.xkb = {
+      layout = lib.mkDefault "us";
+      variant = lib.mkDefault "";
+    };
+  };
 }
