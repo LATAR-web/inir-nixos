@@ -29,6 +29,7 @@ LOG_FILE="/tmp/inir-nixos-install-${TIMESTAMP}.log"
 ASSUME_YES=0
 DRY_RUN=0
 SKIP_REBUILD=0
+CHECK_ONLY=0
 
 usage() {
     sed -n '2,/^$/p' "${BASH_SOURCE[0]}"
@@ -44,6 +45,9 @@ Options:
 
   --skip-rebuild
       Install files and services but do not run nixos-rebuild.
+
+  --check
+      Run scripts/verify-setup.sh and exit. Installs nothing.
 
   -h, --help
       Show this help message.
@@ -67,6 +71,9 @@ for arg in "$@"; do
             ;;
         --skip-rebuild)
             SKIP_REBUILD=1
+            ;;
+        --check)
+            CHECK_ONLY=1
             ;;
         --help|-h)
             usage
@@ -331,7 +338,11 @@ fi
 # 0. Pre-flight
 # ============================================================
 
-step "0/6 — Pre-flight checks"
+step "0/7 — Pre-flight checks"
+
+if [[ "$CHECK_ONLY" -eq 1 ]]; then
+    exec bash "$REPO_DIR/scripts/verify-setup.sh"
+fi
 
 if [[ ! -d /etc/nixos ]]; then
     error "/etc/nixos does not exist."
@@ -400,11 +411,71 @@ else
     fi
 fi
 
+
 # ============================================================
-# 1. System configuration
+# 1. Detect this machine
 # ============================================================
 
-step "1/6 — System configuration → /etc/nixos"
+step "1/7 — Detecting this machine's settings"
+
+DETECTED_USER="$(whoami)"
+DETECTED_HOSTNAME="$(hostname 2>/dev/null || echo nixos)"
+DETECTED_TZ="$(timedatectl show --property=Timezone --value 2>/dev/null || echo "")"
+DETECTED_LAYOUT="$(localectl status 2>/dev/null | grep 'X11 Layout' | awk -F': ' '{print $2}' | tr -d ' ')"
+
+[[ -z "$DETECTED_TZ" ]] && DETECTED_TZ="UTC"
+[[ -z "$DETECTED_LAYOUT" ]] && DETECTED_LAYOUT="us"
+
+info "User:      $DETECTED_USER"
+info "Hostname:  $DETECTED_HOSTNAME"
+info "Timezone:  $DETECTED_TZ"
+info "Keyboard:  $DETECTED_LAYOUT"
+
+if [[ "$ASSUME_YES" -ne 1 && "$DRY_RUN" -ne 1 ]]; then
+    if ! confirm "Use these values for configuration.nix / desktop.nix?"; then
+        read -rp "Username [$DETECTED_USER]: " _u
+        read -rp "Hostname [$DETECTED_HOSTNAME]: " _h
+        read -rp "Timezone [$DETECTED_TZ]: " _t
+        read -rp "Keyboard layout [$DETECTED_LAYOUT]: " _l
+        [[ -n "$_u" ]] && DETECTED_USER="$_u"
+        [[ -n "$_h" ]] && DETECTED_HOSTNAME="$_h"
+        [[ -n "$_t" ]] && DETECTED_TZ="$_t"
+        [[ -n "$_l" ]] && DETECTED_LAYOUT="$_l"
+    fi
+fi
+
+# ============================================================
+# 2. Stray inir.service check (the #1 gotcha from Known Issues)
+# ============================================================
+
+step "2/7 — Checking for a stray inir.service"
+
+STRAY_SERVICE="$HOME/.config/systemd/user/inir.service"
+
+if [[ -e "$STRAY_SERVICE" ]]; then
+    warning "$STRAY_SERVICE exists."
+    warning "This file, if present, silently overrides the one Nix generates"
+    warning "in /etc/systemd/user/ — your declarative config would be ignored"
+    warning "with no error shown anywhere. Usually left behind by 'inir doctor'."
+
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        dry_run_msg "Would remove: $STRAY_SERVICE"
+    elif confirm "Remove it now?"; then
+        rm -f "$STRAY_SERVICE"
+        rm -f "$HOME/.config/systemd/user/inir.service.d/"*.conf 2>/dev/null || true
+        success "Stray service file removed"
+    else
+        warning "Leaving it in place — this WILL cause problems later."
+    fi
+else
+    success "No stray inir.service found"
+fi
+
+# ============================================================
+# 3. System configuration
+# ============================================================
+
+step "3/7 — System configuration → /etc/nixos"
 
 echo
 printf '%sThe following files may be replaced:%s\n' "$BOLD" "$RESET"
@@ -440,6 +511,26 @@ run "Install flake.nix" \
 run "Install NixOS modules" \
     sudo cp -a "$REPO_DIR/modules" /etc/nixos/
 
+if [[ "$DRY_RUN" -eq 0 ]]; then
+    info "Substituting detected values into installed files..."
+
+    sudo sed -i \
+        -e "s/\"YOUR_USERNAME\"/\"$DETECTED_USER\"/g" \
+        -e "s/networking.hostName = \"nixos\";/networking.hostName = \"$DETECTED_HOSTNAME\";/" \
+        -e "s#time.timeZone = \"America/Mexico_City\";#time.timeZone = \"$DETECTED_TZ\";#" \
+        /etc/nixos/configuration.nix
+
+    if [[ -f /etc/nixos/modules/desktop.nix ]]; then
+        sudo sed -i \
+            -e "s/layout = \"latam\";/layout = \"$DETECTED_LAYOUT\";/" \
+            /etc/nixos/modules/desktop.nix
+    fi
+
+    success "Placeholders replaced with detected values"
+else
+    dry_run_msg "Would substitute username/hostname/timezone/layout into installed files"
+fi
+
 if [[ ! -f /etc/nixos/hardware-configuration.nix ]]; then
     info "No hardware-configuration.nix found."
 
@@ -465,7 +556,7 @@ fi
 # 2. Niri
 # ============================================================
 
-step "2/6 — Niri configuration"
+step "4/7 — Niri configuration"
 
 if [[ "$DRY_RUN" -eq 0 ]]; then
     mkdir -p "$HOME/.config/niri"
@@ -483,7 +574,7 @@ run "Install Niri config" \
 # 3. Color synchronization
 # ============================================================
 
-step "3/6 — Wallpaper → Niri color synchronization"
+step "5/7 — Wallpaper → Niri color synchronization"
 
 if [[ "$DRY_RUN" -eq 0 ]]; then
     mkdir -p \
@@ -513,7 +604,7 @@ fi
 # 4. Optional extras
 # ============================================================
 
-step "4/6 — Optional extras"
+step "6/7 — Optional extras"
 
 INSTALL_NOTIFIER=0
 
@@ -549,7 +640,7 @@ fi
 # 5. User services
 # ============================================================
 
-step "5/6 — User services"
+step "7a/7 — User services"
 
 run "Reload systemd user manager" \
     systemctl --user daemon-reload
@@ -568,7 +659,7 @@ fi
 # 6. NixOS rebuild
 # ============================================================
 
-step "6/6 — Apply NixOS configuration"
+step "7b/7 — Apply NixOS configuration"
 
 REBUILD_CMD=(
     sudo
@@ -623,6 +714,28 @@ fi
 # ============================================================
 
 echo
+
+if [[ "$DRY_RUN" -eq 0 && "$SKIP_REBUILD" -eq 0 ]]; then
+    step "Post-install verification"
+
+    sleep 2  # give systemd a moment to (re)start inir.service after the rebuild
+
+    if systemctl --user is-active --quiet inir.service; then
+        success "inir.service is active (running)"
+    else
+        warning "inir.service is NOT active. Check:"
+        printf '      systemctl --user status inir.service\n'
+        printf '      inir logs\n'
+    fi
+
+    INIR_PATH_LINE="$(systemctl --user show inir.service -p Environment --no-pager 2>/dev/null || true)"
+    if echo "$INIR_PATH_LINE" | grep -q "python3"; then
+        success "inir.service's PATH includes python3"
+    else
+        warning "inir.service's PATH does not appear to include python3."
+        warning "Wallpaper-driven theming will silently fail — see Known Issues."
+    fi
+fi
 
 if [[ "$DRY_RUN" -eq 1 ]]; then
     printf '%s%s╔══════════════════════════════════════════════════════╗%s\n' \
