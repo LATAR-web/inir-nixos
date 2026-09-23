@@ -471,6 +471,24 @@ else
     success "No stray inir.service found"
 fi
 
+# Clean up obsolete niri-color-sync service if present (replaced by niri-sync-colors)
+OLD_COLOR_SERVICE="$HOME/.config/systemd/user/niri-color-sync.service"
+if [[ -e "$OLD_COLOR_SERVICE" ]]; then
+    systemctl --user stop niri-color-sync.service 2>/dev/null || true
+    systemctl --user disable niri-color-sync.service 2>/dev/null || true
+    rm -f "$OLD_COLOR_SERVICE" "$HOME/.local/bin/sync-niri-colors.sh" 2>/dev/null || true
+    success "Removed obsolete niri-color-sync service"
+fi
+
+# Clean up obsolete xwayland-satellite service if present (niri manages xwayland natively)
+OLD_XWAYLAND_SERVICE="$HOME/.config/systemd/user/xwayland-satellite.service"
+if [[ -e "$OLD_XWAYLAND_SERVICE" || -e "$HOME/.config/systemd/user/graphical-session.target.wants/xwayland-satellite.service" ]]; then
+    systemctl --user stop xwayland-satellite.service 2>/dev/null || true
+    systemctl --user disable xwayland-satellite.service 2>/dev/null || true
+    rm -f "$OLD_XWAYLAND_SERVICE" "$HOME/.config/systemd/user/graphical-session.target.wants/xwayland-satellite.service" 2>/dev/null || true
+    success "Removed obsolete xwayland-satellite service"
+fi
+
 # ============================================================
 # 3. System configuration
 # ============================================================

@@ -36,6 +36,8 @@ check_command inir "inir"
 check_command python3 "python3"
 check_command jq "jq"
 check_command inotifywait "inotifywait"
+check_command wl-paste "wl-paste"
+check_command cliphist "cliphist"
 
 if python3 -c "import materialyoucolor" 2>/dev/null; then
     ok "materialyoucolor importable"
@@ -63,8 +65,27 @@ fi
 
 if [[ -f "$HOME/.config/niri/config.kdl" ]]; then
     ok "config.kdl exists"
+    if grep -Eq 'wl-paste .*--watch' "$HOME/.config/niri/config.kdl" 2>/dev/null; then
+        ok "clipboard watcher configured in config.kdl"
+    else
+        fail "clipboard watcher missing in config.kdl"
+    fi
 else
     fail "~/.config/niri/config.kdl missing"
+fi
+
+if pgrep -f "wl-paste.*--watch" >/dev/null 2>&1; then
+    ok "clipboard watcher process is running"
+else
+    fail "clipboard watcher process is NOT running"
+fi
+
+if [[ -f "$HOME/.config/systemd/user/niri-color-sync.service" ]]; then
+    fail "stale niri-color-sync.service found (remove to prevent conflicts)"
+fi
+
+if [[ -f "$HOME/.config/systemd/user/xwayland-satellite.service" ]]; then
+    fail "stale xwayland-satellite.service found (remove to prevent conflicts; niri manages xwayland natively)"
 fi
 
 if [[ -x "$HOME/.local/bin/niri-sync-colors" ]]; then

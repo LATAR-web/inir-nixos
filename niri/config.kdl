@@ -163,6 +163,8 @@ environment {
     QT_IMAGEIO_MAXALLOC "0"
 }
 
+spawn-at-startup "bash" "-c" "wl-paste --no-newline --type text --watch ~/.config/quickshell/inir/scripts/clipboard-store.py &"
+spawn-at-startup "bash" "-c" "wl-paste --type image --watch ~/.config/quickshell/inir/scripts/clipboard-image-store.sh &"
 
 layer-rule {
     match namespace="^quickshell:(iiBackdrop|wBackdrop)$"

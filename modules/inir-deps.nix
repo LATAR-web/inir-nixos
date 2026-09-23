@@ -14,6 +14,7 @@ with pkgs; [
   inotify-tools            # provides `inotifywait`, used by systemd/niri-sync-colors.service
   quickshell              # the actual runtime iNiR's `inir` launcher wraps
   xwayland-satellite       # Xwayland support under niri (non-native apps)
+  psmisc                   # provides `killall`, used by iNiR conflict dialog and process management
   swaylock
   swayidle
   wl-clipboard
@@ -73,6 +74,7 @@ with pkgs; [
   # --- Fonts the shell's icons/UI actually depend on ---
   nerd-fonts.jetbrains-mono
   material-symbols          # the icon font used throughout iNiR's UI — do not remove
+  papirus-icon-theme        # desktop icon theme
   alacritty                 # terminal used by niri/config.kdl's Mod+Return bind — required for the shared config to work out of the box
 
   # ===========================================================================
