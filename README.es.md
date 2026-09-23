@@ -32,13 +32,12 @@
 
 ## 📑 Tabla de Contenidos
 
-- [¿Son necesarios el audio, el gestor de login y GNOME?](#-preguntas-frecuentes-audio-escritorio-y-requisitos)
-  - [¿Es necesario el audio? (`modules/audio.nix`)](#1-es-necesario-el-audio-modulesaudionix)
-  - [¿Es necesario GNOME o GDM? (`modules/desktop.nix`)](#2-es-necesario-gnome-o-gdm-modulesdesktopnix)
 - [¿Cómo funciona el instalador automatizado? (`install.sh`)](#-cómo-funciona-el-script-de-instalación-installsh)
   - [Fases de ejecución paso a paso](#fases-de-ejecución-paso-a-paso)
   - [Opciones del instalador](#opciones-del-instalador)
 - [Adaptación a la configuración del usuario](#-adaptación-a-la-configuración-del-usuario)
+  - [Opciones modulares configurables](#opciones-modulares-configurables)
+  - [Gestión de audio y escritorio](#gestión-de-audio-y-escritorio)
 - [Estructura del Repositorio](#-estructura-del-repositorio--qué-va-en-dónde)
 - [Instalación Rápida](#-instalación-rápida)
   - [Opción A — Instalador Automatizado (Recomendada)](#opción-a--instalador-automatizado-recomendada)
@@ -48,34 +47,6 @@
 - [Verificación y Diagnóstico](#-verificación-post-instalación)
 - [Actualizaciones y Rollbacks](#-actualizaciones)
 - [Solución de Problemas Conocidos](#-problemas-conocidos-y-soluciones)
-
----
-
-## 💡 Preguntas Frecuentes: Audio, Escritorio y Requisitos
-
-### 1. ¿Es necesario el audio? (`modules/audio.nix`)
-* **Para el compositor Niri:** No. Niri puede gestionar ventanas y pantallas sin servidor de audio.
-* **Para el entorno iNiR:** **Sí, para sus widgets interactivos.** iNiR incluye en su barra y centro de control:
-  - Deslizador de volumen del sistema y nivel del micrófono.
-  - Menú de cambio dinámico de dispositivos de salida/entrada.
-  - Controles multimedia mediante MPRIS (`playerctl`).
-  - Mezcla de audio en capturas de pantalla de vídeo (`wf-recorder`).
-* **¿Qué hace `modules/audio.nix`?** Configura PipeWire con emulación PulseAudio y soporte ALSA de 32 bits.
-* **¿Cómo se adapta a tu configuración?** Utiliza `lib.mkDefault`, lo que significa que **si ya tienes configurado PipeWire o PulseAudio en tu `configuration.nix`, NixOS respetará tu configuración personal sin provocar colisiones**.
-* **¿Puedo desactivarlo?** Sí. Si prefieres gestionar el audio íntegramente por tu cuenta, puedes desactivar el módulo con:
-  ```nix
-  programs.inir.audio.enable = false;
-  ```
-
----
-
-### 2. ¿Es necesario GNOME o GDM? (`modules/desktop.nix`)
-* **¿Es necesario GNOME? ¡NO!** iNiR es un entorno de escritorio completo autónomo escrito en QuickShell y Qt6. GNOME se consideraba originalmente sólo como una "sesión de emergencia", pero añadía gigabytes de paquetes innecesarios. Por ello, **el fallback de GNOME viene DESHABILITADO POR DEFECTO (`enableGnomeFallback = false`)**. No descargará ni ocupará espacio con el escritorio GNOME a menos que lo pidas explícitamente.
-* **¿Es necesario GDM?** GDM es únicamente un gestor de pantalla gráfico (pantalla de inicio de sesión). Cuando `programs.niri.enable = true` está activo, Niri genera automáticamente una entrada de sesión Wayland estándar (`niri.desktop`) que cualquier gestor de pantalla (GDM, SDDM, greetd/tuigreet, LightDM) reconoce de inmediato.
-* **¿Puedo desactivar GDM si ya uso otro gestor o inicio desde TTY?** Sí, simplemente añade a tu `configuration.nix`:
-  ```nix
-  programs.inir.desktop.enable = false;
-  ```
 
 ---
 
@@ -155,9 +126,9 @@ flowchart TD
 
 ## 🧩 Adaptación a la Configuración del Usuario
 
-La configuración está diseñada para integrarse con cualquier instalación existente de NixOS sin causar conflictos:
+La configuración está diseñada para integrarse con cualquier instalación existente de NixOS sin causar conflictos ni imponer software innecesario:
 
-### Opciones configurables en `configuration.nix`:
+### Opciones modulares configurables:
 
 ```nix
 # Dentro de tu /etc/nixos/configuration.nix:
@@ -185,6 +156,12 @@ La configuración está diseñada para integrarse con cualquier instalación exi
   };
 }
 ```
+
+### Gestión de audio y escritorio:
+
+- **Servidor de Audio (`modules/audio.nix`):** PipeWire con emulación PulseAudio viene habilitado por defecto para dar soporte a los controles de volumen, micrófono, selector de salida y widgets multimedia (MPRIS/`playerctl`) de la barra de iNiR. Como usa `lib.mkDefault`, no colisiona si ya tienes audio configurado en tu sistema. Se puede desactivar con `programs.inir.audio.enable = false;`.
+- **Gestor de Pantalla y GNOME (`modules/desktop.nix`):** GNOME viene **deshabilitado por defecto** (`enableGnomeFallback = false`) para evitar descargas masivas de paquetes no utilizados. GDM se incluye por comodidad para inicio de sesión gráfico, pero puede desactivarse con `programs.inir.desktop.enable = false;` si utilizas otro gestor (como `greetd`, `tuigreet`, `sddm`) o inicias directamente desde TTY.
+- **Distribución de teclado:** La configuración de teclado usa `lib.mkDefault "us"`, permitiendo que cualquier teclado o variante previamente establecida en tu `configuration.nix` se mantenga sin cambios.
 
 ---
 

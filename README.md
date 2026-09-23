@@ -32,13 +32,12 @@
 
 ## 📑 Table of Contents
 
-- [Are Audio, Display Manager, and GNOME required?](#-faq-audio-desktop-and-requirements)
-  - [Is Audio required? (`modules/audio.nix`)](#1-is-audio-required-modulesaudionix)
-  - [Are GNOME or GDM required? (`modules/desktop.nix`)](#2-are-gnome-or-gdm-required-modulesdesktopnix)
 - [How Does the Installer Script Work? (`install.sh`)](#-how-does-the-installer-script-work-installsh)
   - [Step-by-Step Execution Phases](#step-by-step-execution-phases)
   - [Installer CLI Options](#installer-cli-options)
-- [Adapting to the User's Configuration](#-adapting-to-user-configuration)
+- [Adapting to User Configuration](#-adapting-to-user-configuration)
+  - [Configurable Module Options](#configurable-module-options)
+  - [Audio and Desktop Management Notes](#audio-and-desktop-management-notes)
 - [Repository Structure — What Goes Where](#-repository-structure--what-goes-where)
 - [Quick Start](#-quick-start)
   - [Option A — Automated Installer (Recommended)](#option-a--automated-installer-recommended)
@@ -48,34 +47,6 @@
 - [Post-Install Verification & Diagnostics](#-post-install-verification)
 - [Updating & Rollbacks](#-updating)
 - [Troubleshooting & Known Gotchas](#-troubleshooting--known-gotchas)
-
----
-
-## 💡 FAQ: Audio, Desktop, and Requirements
-
-### 1. Is Audio required? (`modules/audio.nix`)
-* **For the Niri compositor:** **No.** Niri can open windows, tile columns, and manage outputs without an audio daemon running.
-* **For the iNiR desktop shell:** **Yes, for its interactive multimedia widgets.** The iNiR top bar and quick settings panel include:
-  - System volume and microphone level sliders.
-  - Interactive input/output audio sink switcher menus.
-  - Media player widgets powered by MPRIS (`playerctl`).
-  - System sound effects and screen recording audio mixing (`wf-recorder`).
-* **What does `modules/audio.nix` do?** It configures PipeWire with PulseAudio emulation and 32-bit ALSA support.
-* **How does it adapt to your configuration?** All directives use `lib.mkDefault`. **If you already have PipeWire or PulseAudio configured in your `/etc/nixos/configuration.nix`, NixOS will respect your configuration without collision.**
-* **Can I disable it?** Yes. If you prefer to manage audio yourself or don't want PipeWire:
-  ```nix
-  programs.inir.audio.enable = false;
-  ```
-
----
-
-### 2. Are GNOME or GDM required? (`modules/desktop.nix`)
-* **Is GNOME required? NO!** iNiR is a complete, standalone desktop shell written in QuickShell and Qt6. GNOME was originally included only as an emergency "fallback session", but downloading it pulled gigabytes of unnecessary packages. Therefore, **the GNOME fallback is DISABLED BY DEFAULT (`enableGnomeFallback = false`)**. It will never download GNOME unless you explicitly opt in.
-* **Is GDM required?** GDM is merely a graphical display manager (login screen). When `programs.niri.enable = true` is active, Niri automatically installs a standard Wayland session desktop file (`niri.desktop`) that any display manager (GDM, SDDM, greetd/tuigreet, LightDM) recognizes immediately.
-* **Can I disable GDM if I use another display manager or start from TTY?** Yes, simply set in your `configuration.nix`:
-  ```nix
-  programs.inir.desktop.enable = false;
-  ```
 
 ---
 
@@ -109,7 +80,7 @@ flowchart TD
    - Prompts for interactive confirmation or allows custom overrides.
 
 3. **Phase 2/6 — Systemd Trap Mitigation & Obsolete Service Cleanup:**
-   - **Gotcha #1 Fix:** Running `inir doctor` upstream creates a static file at `~/.config/systemd/user/inir.service`. This static file silently overrides the NixOS declarative service in `/etc/systemd/user/inir.service`, causing runtime failures. The installer safely detects and removes it.
+   - **Gotcha Fix:** Running `inir doctor` upstream creates a static file at `~/.config/systemd/user/inir.service`. This static file silently overrides the NixOS declarative service in `/etc/systemd/user/inir.service`, causing runtime failures. The installer safely detects and removes it.
    - Cleans up legacy/stale services from previous versions (`niri-color-sync.service`, `xwayland-satellite.service`, obsolete cron timers).
 
 4. **Phase 3/6 — System Configuration Adaptation (`/etc/nixos`):**
@@ -185,6 +156,12 @@ The modules are built around `lib.mkDefault` and declarative toggle options so t
   };
 }
 ```
+
+### Audio and Desktop Management Notes:
+
+- **Audio Stack (`modules/audio.nix`):** PipeWire with PulseAudio emulation is enabled by default to power iNiR's top-bar volume sliders, microphone toggles, and MPRIS player controls. All directives use `lib.mkDefault`, so if you already have custom audio definitions, they take precedence without error. Can be completely disabled with `programs.inir.audio.enable = false;`.
+- **Desktop & Display Manager (`modules/desktop.nix`):** GNOME fallback is **disabled by default** (`enableGnomeFallback = false`) to avoid downloading gigabytes of unused packages. GDM is provided for convenience, but can be disabled via `programs.inir.desktop.enable = false;` if you use another display manager (such as `greetd`, `tuigreet`, or `sddm`) or launch Niri directly from the TTY.
+- **Keyboard Layout:** X11/Wayland keyboard layout in `desktop.nix` defaults to `lib.mkDefault "us"`, so any layout already declared in your `configuration.nix` is preserved untouched.
 
 ---
 
