@@ -289,6 +289,24 @@ iNiR genera dinámicamente esquemas de color Material You a partir de tu fondo d
 3. Llama a `niri-config.py` para actualizar los colores activo e inactivo del `focus-ring` en `~/.config/niri/config.kdl` en tiempo real.
 4. Actualiza atómicamente la ruta del fondo activo en `~/.config/illogical-impulse/config.json`.
 
+### Pruebas Manuales y Comandos de Scripts de Python
+
+Puedes ejecutar la sincronización o invocar los scripts de Python directamente en tu terminal:
+
+```bash
+# 1. Comprobar que el entorno de Python para Material You funciona:
+python3 -c "import materialyoucolor; print('materialyoucolor import OK')"
+
+# 2. Probar la actualización de bordes de Niri directamente con el script de Python:
+python3 ~/.config/quickshell/inir/scripts/niri-config.py set layout focus-ring.active-color "#a8c7fa"
+
+# 3. Ejecutar una sincronización puntual desde la paleta actual:
+niri-sync-colors
+
+# 4. O monitorear cambios de fondo interactivamente en la terminal:
+niri-sync-colors --watch
+```
+
 ---
 
 ## ⌨️ Atajos de Teclado en Niri
@@ -321,6 +339,12 @@ Ejecuta el script de diagnóstico para verificar que todos los componentes y ser
 
 ```bash
 bash scripts/verify-setup.sh
+```
+
+También puedes probar la importación del módulo `materialyoucolor` de Python directamente en la terminal:
+
+```bash
+python3 -c "import materialyoucolor; print('materialyoucolor funciona correctamente!')"
 ```
 
 El script comprueba:

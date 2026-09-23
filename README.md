@@ -290,6 +290,24 @@ To synchronize these generated colors with the Niri compositor:
 3. It calls `niri-config.py` to update active and inactive `focus-ring` colors in `~/.config/niri/config.kdl` live.
 4. It atomically updates the active wallpaper path in `~/.config/illogical-impulse/config.json`.
 
+### Manual Testing & Python Commands
+
+You can run the synchronization tools or call the Python scripts directly in your terminal:
+
+```bash
+# 1. Verify the Python theming environment:
+python3 -c "import materialyoucolor; print('materialyoucolor import OK')"
+
+# 2. Test updating Niri focus-ring colors directly with the python script:
+python3 ~/.config/quickshell/inir/scripts/niri-config.py set layout focus-ring.active-color "#a8c7fa"
+
+# 3. Trigger a manual sync from the current wallpaper palette:
+niri-sync-colors
+
+# 4. Or watch for wallpaper changes interactively in the terminal:
+niri-sync-colors --watch
+```
+
 ---
 
 ## ⌨️ Niri Configuration & Keybinds
@@ -324,6 +342,12 @@ Run the diagnostic verification script at any time:
 
 ```bash
 bash scripts/verify-setup.sh
+```
+
+You can also test the Python `materialyoucolor` module import directly in your terminal:
+
+```bash
+python3 -c "import materialyoucolor; print('materialyoucolor is working!')"
 ```
 
 Checks performed:
