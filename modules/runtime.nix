@@ -10,6 +10,7 @@
   };
   environment.localBinInPath = true;
   environment.variables.LD_LIBRARY_PATH = "/run/current-system/sw/share/nix-ld/lib";
+  # Optional: fixes screen flickering on Intel laptops (Gen 9-12) with Panel Self Refresh
   boot.kernelParams = [ "i915.enable_psr=0" ];
 
   environment.variables.QML2_IMPORT_PATH = lib.makeSearchPath "lib/qt-6/qml" [

@@ -2,7 +2,7 @@
 #
 # iNiR + Niri + NixOS
 # Automated installer for:
-#   https://github.com/LATAR-web/inir-nixos-setup
+#   https://github.com/LATAR-web/inir-nixos
 #
 # Usage:
 #   ./install.sh
@@ -322,7 +322,7 @@ printf '%s%s╚═════════════════════�
     "$BOLD" "$CYAN" "$RESET"
 printf '\n'
 
-printf 'Repository: %shttps://github.com/LATAR-web/inir-nixos-setup%s\n' \
+printf 'Repository: %shttps://github.com/LATAR-web/inir-nixos%s\n' \
     "$BLUE" "$RESET"
 
 printf 'Installer:  %s%s%s\n' "$DIM" "$REPO_DIR" "$RESET"
@@ -422,13 +422,16 @@ DETECTED_USER="$(whoami)"
 DETECTED_HOSTNAME="$(hostname 2>/dev/null || echo nixos)"
 DETECTED_TZ="$(timedatectl show --property=Timezone --value 2>/dev/null || echo "")"
 DETECTED_LAYOUT="$(localectl status 2>/dev/null | grep 'X11 Layout' | awk -F': ' '{print $2}' | tr -d ' ')"
+DETECTED_LOCALE="$(localectl status 2>/dev/null | grep 'System Locale' | awk -F'LANG=' '{print $2}' | tr -d ' ')"
 
 [[ -z "$DETECTED_TZ" ]] && DETECTED_TZ="UTC"
 [[ -z "$DETECTED_LAYOUT" ]] && DETECTED_LAYOUT="us"
+[[ -z "$DETECTED_LOCALE" ]] && DETECTED_LOCALE="en_US.UTF-8"
 
 info "User:      $DETECTED_USER"
 info "Hostname:  $DETECTED_HOSTNAME"
 info "Timezone:  $DETECTED_TZ"
+info "Locale:    $DETECTED_LOCALE"
 info "Keyboard:  $DETECTED_LAYOUT"
 
 if [[ "$ASSUME_YES" -ne 1 && "$DRY_RUN" -ne 1 ]]; then
@@ -436,10 +439,12 @@ if [[ "$ASSUME_YES" -ne 1 && "$DRY_RUN" -ne 1 ]]; then
         read -rp "Username [$DETECTED_USER]: " _u
         read -rp "Hostname [$DETECTED_HOSTNAME]: " _h
         read -rp "Timezone [$DETECTED_TZ]: " _t
+        read -rp "Locale [$DETECTED_LOCALE]: " _loc
         read -rp "Keyboard layout [$DETECTED_LAYOUT]: " _l
         [[ -n "$_u" ]] && DETECTED_USER="$_u"
         [[ -n "$_h" ]] && DETECTED_HOSTNAME="$_h"
         [[ -n "$_t" ]] && DETECTED_TZ="$_t"
+        [[ -n "$_loc" ]] && DETECTED_LOCALE="$_loc"
         [[ -n "$_l" ]] && DETECTED_LAYOUT="$_l"
     fi
 fi
@@ -552,12 +557,18 @@ if [[ "$DRY_RUN" -eq 0 ]]; then
         -e "s/\"YOUR_USERNAME\"/\"$DETECTED_USER\"/g" \
         -e "s/networking.hostName = \"nixos\";/networking.hostName = \"$DETECTED_HOSTNAME\";/" \
         -e "s#time.timeZone = \"America/Mexico_City\";#time.timeZone = \"$DETECTED_TZ\";#" \
+        -e "s/i18n.defaultLocale = \"es_MX.UTF-8\";/i18n.defaultLocale = \"$DETECTED_LOCALE\";/" \
         /etc/nixos/configuration.nix
 
     if [[ -f /etc/nixos/modules/desktop.nix ]]; then
         sudo sed -i \
             -e "s/layout = \"latam\";/layout = \"$DETECTED_LAYOUT\";/" \
             /etc/nixos/modules/desktop.nix
+        if [[ "$DETECTED_LAYOUT" != "latam" ]]; then
+            sudo sed -i \
+                -e "s/console.keyMap = \"la-latin1\";/console.keyMap = \"$DETECTED_LAYOUT\";/" \
+                /etc/nixos/modules/desktop.nix
+        fi
     fi
 
     if [[ -d /etc/nixos/.git ]]; then
@@ -567,7 +578,7 @@ if [[ "$DRY_RUN" -eq 0 ]]; then
 
     success "Placeholders replaced with detected values"
 else
-    dry_run_msg "Would substitute username/hostname/timezone/layout into installed files"
+    dry_run_msg "Would substitute username/hostname/timezone/locale/layout into installed files"
 fi
 
 if [[ ! -f /etc/nixos/hardware-configuration.nix ]]; then

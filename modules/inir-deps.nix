@@ -10,7 +10,7 @@
 
 with pkgs; [
   # --- Core shell / compositor glue ---
-  git                      # needed by scripts/auto-update.sh and check-config-updates.sh (git fetch/pull)
+  git                      # version control and flake management
   inotify-tools            # provides `inotifywait`, used by systemd/niri-sync-colors.service
   quickshell              # the actual runtime iNiR's `inir` launcher wraps
   xwayland-satellite       # Xwayland support under niri (non-native apps)
@@ -28,7 +28,7 @@ with pkgs; [
   gnome-keyring
   fish                    # some of iNiR's scripts shell out to fish specifically
   gum
-  uv                       # needed to create the venv in README step 7
+  uv                       # fast Python package / project runner
   bc
   ripgrep
   jq

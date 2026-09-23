@@ -3,8 +3,8 @@
 let
   inirDeps = import ./inir-deps.nix { inherit pkgs; };
   versionJsonFile = pkgs.writeText "inir-version.json" ((builtins.toJSON {
-    version = "2.31.0";
-    commit = "9574fa424c0d1008e927454e933a7fbe292f9fb2";
+    version = inir.shortRev or "2.31.0";
+    commit = inir.rev or "9574fa424c0d1008e927454e933a7fbe292f9fb2";
     installMode = "package-managed";
     updateStrategy = "package-manager";
     packageName = "inir";
