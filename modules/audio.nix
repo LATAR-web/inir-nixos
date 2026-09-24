@@ -23,5 +23,8 @@ in
       alsa.support32Bit = lib.mkDefault true;
       pulse.enable = lib.mkDefault true;
     };
+
+    # Provides `pactl` for PipeWire/PulseAudio CLI control and screen recording audio capture (wf-recorder)
+    environment.systemPackages = [ pkgs.pulseaudio ];
   };
 }

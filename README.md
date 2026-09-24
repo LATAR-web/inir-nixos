@@ -22,6 +22,13 @@
 
 ---
 
+> [!CAUTION]
+> ### 🛑 RED WARNING: AUTOMATIC MIGRATION TO NIXOS UNSTABLE
+> **Running `install.sh` switches your system from NixOS Stable to NixOS Unstable (`nixos-unstable`).**
+> - **Why unstable?** iNiR, modern Niri Wayland compositor releases, and recent Qt6/QML modules require packages only available on the `nixos-unstable` channel.
+> - **Smart Detection:** `install.sh` automatically checks if your system is already running `nixos-unstable` (via flake inputs, channels, or system version). If you are already on unstable, your channels are preserved without changes.
+> - **Automatic Switch:** If your system is running a stable release (e.g., `24.11`, `25.05`, `26.05`), the script will automatically update your channels and `flake.nix` input to `nixos-unstable`.
+
 > [!WARNING]
 > ### ⚠️ EXPERIMENTAL STATUS NOTICE
 > This project and its automated installer (`install.sh`) are in an **experimental stage**.
@@ -327,6 +334,9 @@ Key shortcuts pre-configured in `niri/config.kdl`:
 | <kbd>Mod</kbd> + <kbd>Shift</kbd> + <kbd>W</kbd> | Cycle panel style family |
 | <kbd>Mod</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd> | Region screenshot |
 | <kbd>Mod</kbd> + <kbd>Shift</kbd> + <kbd>X</kbd> | Region OCR recognition |
+| <kbd>Mod</kbd> + <kbd>Alt</kbd> + <kbd>R</kbd> | Toggle region screen recording (with audio) |
+| <kbd>Mod</kbd> + <kbd>Alt</kbd> + <kbd>F</kbd> | Toggle fullscreen recording (with audio) |
+| <kbd>Mod</kbd> + <kbd>Alt</kbd> + <kbd>S</kbd> | Stop active screen recording |
 | <kbd>Mod</kbd> + <kbd>E</kbd> | File manager |
 | <kbd>Mod</kbd> + <kbd>B</kbd> | Web browser |
 | <kbd>Mod</kbd> + <kbd>Alt</kbd> + <kbd>Space</kbd> | Switch keyboard layout |
@@ -335,6 +345,26 @@ Key shortcuts pre-configured in `niri/config.kdl`:
 | <kbd>Mod</kbd> + <kbd>F</kbd> | Toggle fullscreen |
 | <kbd>Mod</kbd> + <kbd>1</kbd>–<kbd>5</kbd> | Focus workspace 1–5 |
 | <kbd>Mod</kbd> + <kbd>Shift</kbd> + <kbd>1</kbd>–<kbd>5</kbd> | Move column to workspace 1–5 |
+
+---
+
+## 🎥 Screen Recording with Permanent Audio
+
+Screen recording on Wayland/Niri has first-class audio capture pre-configured across the stack:
+- **Audio Routing Engine:** `pulseaudio` (providing `pactl`) is declaratively enabled in `modules/audio.nix` and `modules/inir-deps.nix` to talk to PipeWire's PulseAudio server, ensuring audio sinks and loopback monitors can always be queried.
+- **Dedicated CLI Utility:** `scripts/record-screen` (installed to `~/.local/bin/record-screen`) records with desktop audio by default.
+- **Shell Aliases:** Pre-configured in `~/.bashrc` and `~/.zshrc`:
+  ```bash
+  record             # Toggle region recording (with audio)
+  record-fullscreen  # Toggle fullscreen recording (with audio)
+  record-stop        # Stop any active recording
+  ```
+- **Audio Modes:**
+  - Default: System/desktop audio (`system`)
+  - Microphone: `record-screen --mic`
+  - System + Microphone mix: `record-screen --both`
+  - Video only: `record-screen --no-audio`
+- Recordings are saved to `~/Videos/Grabaciones/` (or `~/Vídeos/Grabaciones/`).
 
 ---
 

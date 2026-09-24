@@ -37,6 +37,11 @@ binds {
     Print { screenshot; }
     Ctrl+Print { screenshot-screen; }
     Alt+Print { screenshot-window; }
+
+    // --- Grabación de pantalla (con audio permanente) ---
+    Mod+Alt+R { spawn "record-screen"; }
+    Mod+Alt+F { spawn "record-screen" "--fullscreen"; }
+    Mod+Alt+S { spawn "record-screen" "--stop"; }
     // --- Apps / Launcher (iNiR) ---
     Mod+Return { spawn "alacritty"; }
     Mod+Space  { spawn "inir" "overview" "toggle"; }

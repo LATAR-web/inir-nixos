@@ -600,6 +600,67 @@ else
     fi
 fi
 
+# ------------------------------------------------------------
+# Check NixOS version/channel and upgrade to nixos-unstable
+# ------------------------------------------------------------
+info "Checking NixOS version and channel status..."
+IS_UNSTABLE=0
+STATUS_REASON=""
+DETECTED_VER="$(nixos-version 2>/dev/null || echo "unknown")"
+ROOT_CHANNELS="$(sudo -n nix-channel --list 2>/dev/null || nix-channel --list 2>/dev/null || true)"
+CHANNEL_VERSION_FILE="/nix/var/nix/profiles/per-user/root/channels/nixos/.version"
+CHANNEL_VER=""
+if [[ -f "$CHANNEL_VERSION_FILE" ]]; then
+    CHANNEL_VER="$(cat "$CHANNEL_VERSION_FILE" 2>/dev/null || true)"
+fi
+
+FLAKE_NIXPKGS_URL=""
+if [[ -f /etc/nixos/flake.nix ]]; then
+    FLAKE_NIXPKGS_URL="$(grep -E 'nixpkgs\.url\s*=' /etc/nixos/flake.nix 2>/dev/null || true)"
+fi
+
+if [[ "$FLAKE_NIXPKGS_URL" =~ (nixos-unstable|nixpkgs-unstable) ]]; then
+    IS_UNSTABLE=1
+    STATUS_REASON="flake input points to nixos-unstable"
+elif [[ "$ROOT_CHANNELS" =~ nixos-unstable ]]; then
+    IS_UNSTABLE=1
+    STATUS_REASON="nix-channel is set to nixos-unstable"
+elif [[ "$CHANNEL_VER" =~ (unstable|\.11) ]]; then
+    IS_UNSTABLE=1
+    STATUS_REASON="root channel version ($CHANNEL_VER) is on unstable branch"
+elif [[ "$DETECTED_VER" =~ (unstable|pre|\.11\.) ]]; then
+    IS_UNSTABLE=1
+    STATUS_REASON="system version $DETECTED_VER is on unstable branch"
+fi
+
+if [[ "$IS_UNSTABLE" -eq 1 ]]; then
+    success "System is already running NixOS unstable ($STATUS_REASON)"
+    info "No channel upgrade needed."
+else
+    warning "Detected stable NixOS version ($DETECTED_VER)."
+    warning "iNiR and modern Niri components require NixOS Unstable (nixos-unstable)."
+    info "Switching system configuration from stable to nixos-unstable..."
+
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        dry_run_msg "Would switch nix-channel to nixos-unstable and update flake.nix"
+    else
+        # Update nix-channel if present
+        if [[ -n "$ROOT_CHANNELS" ]]; then
+            run "Update nix-channel to nixos-unstable" \
+                sudo nix-channel --add https://nixos.org/channels/nixos-unstable nixos
+            run "Update nix-channel index" \
+                sudo nix-channel --update nixos || true
+        fi
+
+        # Update flake.nix if present
+        if [[ -f /etc/nixos/flake.nix ]]; then
+            sudo sed -i -E 's|github:nixos/nixpkgs/nixos-[0-9]{2}\.[0-9]{2}|github:nixos/nixpkgs/nixos-unstable|g' /etc/nixos/flake.nix
+            sudo sed -i -E 's|channel:nixos-[0-9]{2}\.[0-9]{2}|channel:nixos-unstable|g' /etc/nixos/flake.nix
+        fi
+        success "Switched NixOS configuration to nixos-unstable"
+    fi
+fi
+
 if [[ -f /etc/nixos/flake.nix ]]; then
     info "Existing /etc/nixos/flake.nix detected."
     if grep -q "snowarch/inir" /etc/nixos/flake.nix; then
@@ -710,6 +771,33 @@ if [[ -f "$REPO_DIR/systemd/niri-sync-colors.service" ]]; then
 
     run "Enable color synchronization" \
         systemctl --user enable --now niri-sync-colors.service
+fi
+
+if [[ -f "$REPO_DIR/scripts/record-screen" ]]; then
+    run "Install record-screen script (screen recording with permanent audio)" \
+        cp "$REPO_DIR/scripts/record-screen" \
+        "$TARGET_HOME/.local/bin/record-screen"
+
+    run "Make record-screen executable" \
+        chmod +x "$TARGET_HOME/.local/bin/record-screen"
+
+    # Configure shell aliases in ~/.bashrc and ~/.zshrc
+    if [[ "$DRY_RUN" -eq 0 ]]; then
+        for rc_file in "$TARGET_HOME/.bashrc" "$TARGET_HOME/.zshrc"; do
+            if [[ -f "$rc_file" ]] && ! grep -q "record-screen" "$rc_file" 2>/dev/null; then
+                cat >> "$rc_file" <<'EOF'
+
+# Grabación de pantalla con audio permanente
+alias record='record-screen'
+alias record-fullscreen='record-screen --fullscreen'
+alias record-stop='record-screen --stop'
+EOF
+                debug "Added recording aliases to $rc_file"
+            fi
+        done
+    else
+        dry_run_msg "Would add record aliases to ~/.bashrc and ~/.zshrc"
+    fi
 fi
 
 # ============================================================

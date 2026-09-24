@@ -35,10 +35,16 @@
   #     package = pkgs.qemu_kvm;
   #     runAsRoot = true;
   #     swtpm.enable = true;
+  #     verbatimConfig = ''
+  #       max_core = 0
+  #     '';
   #   };
   # };
   # virtualisation.spiceUSBRedirection.enable = true;
   # programs.virt-manager.enable = true;
+  # security.pam.loginLimits = [
+  #   { domain = "*"; item = "core"; type = "-"; value = "unlimited"; }
+  # ];
   # environment.systemPackages = with pkgs; [
   #   gnome-boxes # Simple & modern VM manager
   #   qemu        # QEMU utilities

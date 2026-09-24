@@ -38,6 +38,19 @@ check_command jq "jq"
 check_command inotifywait "inotifywait"
 check_command wl-paste "wl-paste"
 check_command cliphist "cliphist"
+check_command wf-recorder "wf-recorder"
+check_command pactl "pactl (PulseAudio CLI)"
+
+if command -v pactl >/dev/null 2>&1; then
+    _def_sink="$(pactl get-default-sink 2>/dev/null || true)"
+    if [[ -n "$_def_sink" ]]; then
+        ok "Default audio sink detected ($_def_sink)"
+    else
+        warn "pactl found but no default audio sink active yet"
+    fi
+else
+    fail "pactl not found (screen recording will not capture audio)"
+fi
 
 if python3 -c "import materialyoucolor" 2>/dev/null; then
     ok "materialyoucolor importable"
@@ -92,6 +105,12 @@ if [[ -x "$HOME/.local/bin/niri-sync-colors" ]]; then
     ok "niri-sync-colors is executable"
 else
     fail "~/.local/bin/niri-sync-colors missing or not executable"
+fi
+
+if [[ -x "$HOME/.local/bin/record-screen" ]]; then
+    ok "record-screen is executable"
+else
+    warn "~/.local/bin/record-screen missing or not executable"
 fi
 
 if [[ -f "$HOME/.config/systemd/user/niri-sync-colors.service" ]]; then

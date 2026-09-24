@@ -22,6 +22,13 @@
 
 ---
 
+> [!CAUTION]
+> ### 🛑 ADVERTENCIA ROJA: MIGRACIÓN AUTOMÁTICA A NIXOS UNSTABLE
+> **La ejecución de `install.sh` cambiará automáticamente la versión de tu sistema de NixOS Estable a NixOS Inestable (`nixos-unstable`).**
+> - **¿Por qué a unstable?** iNiR, las versiones recientes del compositor Wayland Niri y los módulos gráficos Qt6/QML dependen de paquetes de vanguardia que únicamente están disponibles en la rama `nixos-unstable`.
+> - **Detección inteligente:** `install.sh` detecta si tu sistema ya se encuentra en `nixos-unstable` (a través de las entradas del flake, canales o versión actual). Si ya estás en unstable, tus canales se conservan intactos.
+> - **Cambio automático:** Si tu instalación proviene de una versión estable (ej. `24.11`, `25.05`, `26.05`), el script actualizará tus canales del sistema y la entrada de `flake.nix` a `nixos-unstable`.
+
 > [!WARNING]
 > ### ⚠️ AVISO DE ESTADO EXPERIMENTAL
 > Este proyecto y su script de instalación automatizado (`install.sh`) se encuentran en **fase experimental**.
@@ -324,6 +331,9 @@ python3 ~/.config/quickshell/inir/scripts/niri-config.py set layout focus-ring.a
 | <kbd>Mod</kbd> + <kbd>Shift</kbd> + <kbd>W</kbd> | Alternar estilo de barra/paneles |
 | <kbd>Mod</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd> | Captura de pantalla de región |
 | <kbd>Mod</kbd> + <kbd>Shift</kbd> + <kbd>X</kbd> | Reconocimiento OCR de texto en pantalla |
+| <kbd>Mod</kbd> + <kbd>Alt</kbd> + <kbd>R</kbd> | Alternar grabación de región (con audio) |
+| <kbd>Mod</kbd> + <kbd>Alt</kbd> + <kbd>F</kbd> | Alternar grabación de pantalla completa (con audio) |
+| <kbd>Mod</kbd> + <kbd>Alt</kbd> + <kbd>S</kbd> | Detener grabación de pantalla activa |
 | <kbd>Mod</kbd> + <kbd>E</kbd> | Gestor de archivos |
 | <kbd>Mod</kbd> + <kbd>B</kbd> | Navegador web |
 | <kbd>Mod</kbd> + <kbd>Alt</kbd> + <kbd>Espacio</kbd> | Cambiar idioma de teclado |
@@ -332,6 +342,26 @@ python3 ~/.config/quickshell/inir/scripts/niri-config.py set layout focus-ring.a
 | <kbd>Mod</kbd> + <kbd>F</kbd> | Pantalla completa |
 | <kbd>Mod</kbd> + <kbd>1</kbd>–<kbd>5</kbd> | Ir al espacio de trabajo 1–5 |
 | <kbd>Mod</kbd> + <kbd>Shift</kbd> + <kbd>1</kbd>–<kbd>5</kbd> | Mover ventana al espacio de trabajo 1–5 |
+
+---
+
+## 🎥 Grabación de Pantalla con Audio Permanente
+
+La grabación de pantalla bajo Wayland/Niri cuenta con soporte de audio preconfigurado en todo el stack:
+- **Enrutamiento de audio:** `pulseaudio` (proporciona la CLI `pactl`) está integrado declarativamente en `modules/audio.nix` y `modules/inir-deps.nix` para consultar el servidor PulseAudio de PipeWire y enrutar las fuentes monitor sin fallos.
+- **Herramienta dedicada para la shell:** `scripts/record-screen` (instalada en `~/.local/bin/record-screen`) graba con audio de sistema por defecto.
+- **Alias para la terminal:** Configurados automáticamente en `~/.bashrc` y `~/.zshrc`:
+  ```bash
+  record             # Inicia o detiene grabación de región con audio
+  record-fullscreen  # Inicia o detiene grabación completa con audio
+  record-stop        # Detiene inmediatamente la grabación activa
+  ```
+- **Modos de Audio:**
+  - Por defecto: Audio del sistema/escritorio (`system`)
+  - Micrófono: `record-screen --mic`
+  - Mezcla Sistema + Micrófono: `record-screen --both`
+  - Solo vídeo (sin audio): `record-screen --no-audio`
+- Los vídeos se guardan automáticamente en `~/Vídeos/Grabaciones/` o `~/Videos/Grabaciones/`.
 
 ---
 
