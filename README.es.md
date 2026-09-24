@@ -144,7 +144,14 @@ Basado en `lib.mkDefault`, así que nunca choca con tu configuración existente.
 
 ## 🎨 Sincronización de Color (Niri ↔ Fondo de Pantalla)
 
-iNiR genera colores Material You desde tu fondo de pantalla (`matugen`). Al elegir un fondo (<kbd>Mod</kbd> + <kbd>W</kbd>), `niri-sync-colors` actualiza los colores del `focus-ring` en `~/.config/niri/config.kdl` en tiempo real. Ejecútalo manual con `niri-sync-colors`.
+iNiR genera colores Material You desde tu fondo de pantalla usando `matugen` y una cadena de Python (`materialyoucolor`, `pillow`, `numpy`, `evdev`). Al elegir un fondo (<kbd>Mod</kbd> + <kbd>W</kbd>), el daemon `niri-sync-colors` detecta la nueva paleta y ejecuta `niri-config.py` para actualizar los colores activo/inactivo del `focus-ring` en `~/.config/niri/config.kdl` en tiempo real.
+
+Ejecútalo manual, o prueba el script de Python directamente:
+```bash
+niri-sync-colors
+
+python3 ~/.config/quickshell/inir/scripts/niri-config.py set layout focus-ring.active-color "#a8c7fa"
+```
 
 ---
 
@@ -175,7 +182,12 @@ iNiR genera colores Material You desde tu fondo de pantalla (`matugen`). Al eleg
 bash scripts/verify-setup.sh
 ```
 
-Comprueba herramientas CLI, el módulo Python `materialyoucolor`, y el estado de los servicios.
+También puedes probar el módulo `materialyoucolor` de Python directamente:
+```bash
+python3 -c "import materialyoucolor; print('materialyoucolor funciona correctamente!')"
+```
+
+Comprueba herramientas CLI, la importación del módulo Python `materialyoucolor`, y el estado de los servicios.
 
 ---
 

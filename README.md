@@ -144,7 +144,14 @@ Built on `lib.mkDefault`, so it never fights your existing config.
 
 ## 🎨 Color Sync — Niri ↔ Wallpaper
 
-iNiR generates Material You colors from your wallpaper (`matugen`). Pick a wallpaper (<kbd>Mod</kbd> + <kbd>W</kbd>) and `niri-sync-colors` updates the `focus-ring` colors in `~/.config/niri/config.kdl` live. Run it manually with `niri-sync-colors`.
+iNiR generates Material You colors from your wallpaper using `matugen` and a Python pipeline (`materialyoucolor`, `pillow`, `numpy`, `evdev`). Pick a wallpaper (<kbd>Mod</kbd> + <kbd>W</kbd>) and the `niri-sync-colors` daemon detects the new palette and runs `niri-config.py` to update the active/inactive `focus-ring` colors in `~/.config/niri/config.kdl` live.
+
+Run it manually, or test the Python script directly:
+```bash
+niri-sync-colors
+
+python3 ~/.config/quickshell/inir/scripts/niri-config.py set layout focus-ring.active-color "#a8c7fa"
+```
 
 ---
 
@@ -175,7 +182,12 @@ iNiR generates Material You colors from your wallpaper (`matugen`). Pick a wallp
 bash scripts/verify-setup.sh
 ```
 
-Checks CLI tools, the `materialyoucolor` Python module, and service status.
+You can also test the `materialyoucolor` Python module directly:
+```bash
+python3 -c "import materialyoucolor; print('materialyoucolor is working!')"
+```
+
+Checks CLI tools, the `materialyoucolor` Python module import, and service status.
 
 ---
 
