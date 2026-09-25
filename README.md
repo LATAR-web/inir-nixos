@@ -174,6 +174,43 @@ python3 ~/.config/quickshell/inir/scripts/niri-config.py set layout focus-ring.a
 | <kbd>Mod</kbd> + <kbd>F</kbd> | Toggle fullscreen |
 | <kbd>Mod</kbd> + <kbd>1</kbd>–<kbd>5</kbd> | Focus / move to workspace 1–5 |
 
+### 🔑 niri missing from the login screen (GDM)
+
+GDM can **hide Wayland sessions** (including niri) in three known cases: VMs without 3D acceleration, some NVIDIA driver combos, or stale AccountsService state that remembers an old session. The installer detects VMs/NVIDIA and recommends **greetd** for exactly this reason.
+
+If niri does not appear after a reboot, either:
+
+- Switch display manager: set in `/etc/nixos/configuration.nix`
+  ```nix
+  programs.inir.desktop.displayManager = "greetd";   # or "gdm"
+  ```
+  then `sudo nixos-rebuild switch --flake /etc/nixos#nixos`. tuigreet always lists every installed session (pick niri with F3).
+- Or clear stale AccountsService state: `sudo rm -f /var/lib/AccountsService/users/*` and reboot.
+
+### 🤖 AI configuration review (optional)
+
+The installer offers an optional, read-only configuration review through an AI CLI if one is installed (`claude` from claude-code, or `gemini`). It checks the resulting config for conflicts and machine-specific pitfalls (GPU, VM, display manager) and only *prints suggestions* — it never edits files. Skip it with `--no-ai`.
+
+### 🧩 Non-destructive modules
+
+`modules/default.nix` **auto-imports every `.nix` file** in `/etc/nixos/modules` (except `inir-deps.nix`, which is a function). The installer only overwrites the iNiR-owned files (`audio.nix`, `desktop.nix`, `fonts.nix`, `inir-deps.nix`, `inir.nix`, `runtime.nix`, `default.nix`) — your own modules (`packages.nix`, `printing.nix`, …) are preserved and imported automatically, no imports-list editing needed.
+
+### 🖼️ Wallpaper renderer notice
+
+Settings → Wallpaper renderer shows *"awww is the default backend, but the 'awww' / 'awww-daemon' binaries were not found in PATH"* if `awww` is missing. It is included in [`modules/inir-deps.nix`](modules/inir-deps.nix); after a `nixos-rebuild switch` the notice disappears and iNiR uses hardware-accelerated wallpaper transitions. Until then it silently falls back to the internal renderer — nothing breaks.
+
+### 📸 Screenshots troubleshooting
+
+- Region screenshots are saved to the **XDG Pictures directory** (`~/Imágenes/Screenshots` on a Spanish locale, `~/Pictures/Screenshots` on English) — not a hardcoded path. The snip toolbar's *Copy* action writes there and copies the image to the clipboard.
+- The snip toolbar **remembers your last action** (`rememberSnipChoice` in `~/.config/illogical-impulse/config.json`). If the menu opens but "nothing happens", you probably left *Image search* (action `2`) selected — it uploads the crop to an image host instead of saving locally. Reset it with:
+  ```bash
+  jq '.regionSelector.lastAction = 0 | .regionSelector.lastMode = 0' \
+    ~/.config/illogical-impulse/config.json > /tmp/c.json && mv /tmp/c.json \
+    ~/.config/illogical-impulse/config.json
+  ```
+- `magick` (ImageMagick) is required to crop the grim capture; it is included in [`modules/inir-deps.nix`](modules/inir-deps.nix). If you trimmed your deps, add `imagemagick` back or cropping will silently fail.
+- <kbd>Print</kbd> / <kbd>Ctrl</kbd>+<kbd>Print</kbd> / <kbd>Alt</kbd>+<kbd>Print</kbd> use niri's built-in screenshot UI and always save to `$XDG_PICTURES_DIR/Screenshots`.
+
 ---
 
 ## ✅ Post-Install Verification

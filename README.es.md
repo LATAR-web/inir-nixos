@@ -174,6 +174,43 @@ python3 ~/.config/quickshell/inir/scripts/niri-config.py set layout focus-ring.a
 | <kbd>Mod</kbd> + <kbd>F</kbd> | Pantalla completa |
 | <kbd>Mod</kbd> + <kbd>1</kbd>–<kbd>5</kbd> | Ir / mover a espacio de trabajo 1–5 |
 
+### 🔑 niri no aparece en la pantalla de login (GDM)
+
+GDM puede **ocultar sesiones Wayland** (incluida niri) en tres casos conocidos: VMs sin aceleración 3D, algunas combinaciones de driver NVIDIA, o estado obsoleto de AccountsService que recuerda una sesión vieja. El instalador detecta VM/NVIDIA y recomienda **greetd** precisamente por esto.
+
+Si niri no aparece tras reiniciar, haz una de estas dos cosas:
+
+- Cambia el display manager en `/etc/nixos/configuration.nix`:
+  ```nix
+  programs.inir.desktop.displayManager = "greetd";   # o "gdm"
+  ```
+  y luego `sudo nixos-rebuild switch --flake /etc/nixos#nixos`. tuigreet siempre lista todas las sesiones instaladas (elige niri con F3).
+- O limpia el estado obsoleto de AccountsService: `sudo rm -f /var/lib/AccountsService/users/*` y reinicia.
+
+### 🤖 Revisión de configuración con IA (opcional)
+
+El instalador ofrece una revisión opcional y de solo lectura mediante un CLI de IA si tienes uno instalado (`claude` de claude-code, o `gemini`). Revisa la configuración resultante en busca de conflictos y problemas de tu máquina (GPU, VM, display manager) y solo *imprime sugerencias* — nunca edita archivos. Sáltalo con `--no-ai`.
+
+### 🧩 Módulos no destructivos
+
+`modules/default.nix` **auto-importa cada archivo `.nix`** en `/etc/nixos/modules` (excepto `inir-deps.nix`, que es una función). El instalador solo sobreescribe los archivos de iNiR (`audio.nix`, `desktop.nix`, `fonts.nix`, `inir-deps.nix`, `inir.nix`, `runtime.nix`, `default.nix`) — tus módulos propios (`packages.nix`, `printing.nix`, …) se conservan y se importan automáticamente, sin editar listas de imports.
+
+### 🖼️ Aviso del renderizador de fondos
+
+En Ajustes → Renderizador de fondos aparece *"awww is the default backend, but the 'awww' / 'awww-daemon' binaries were not found in PATH"* si falta `awww`. Viene incluido en [`modules/inir-deps.nix`](modules/inir-deps.nix); tras un `nixos-rebuild switch` el aviso desaparece y iNiR usa transiciones de fondo aceleradas por hardware. Hasta entonces usa silenciosamente el renderizador interno — nada se rompe.
+
+### 📸 Solución de problemas con capturas
+
+- Las capturas de región se guardan en el **directorio XDG de imágenes** (`~/Imágenes/Screenshots` con locale en español, `~/Pictures/Screenshots` en inglés) — no en una ruta fija. La acción *Copiar* de la barra escribe ahí y también copia la imagen al portapapeles.
+- La barra de captura **recuerda la última acción** (`rememberSnipChoice` en `~/.config/illogical-impulse/config.json`). Si el menú abre pero "no pasa nada", probablemente quedó seleccionada *Búsqueda de imagen* (acción `2`), que sube el recorte a un servicio externo en lugar de guardarlo localmente. Se reinicia con:
+  ```bash
+  jq '.regionSelector.lastAction = 0 | .regionSelector.lastMode = 0' \
+    ~/.config/illogical-impulse/config.json > /tmp/c.json && mv /tmp/c.json \
+    ~/.config/illogical-impulse/config.json
+  ```
+- `magick` (ImageMagick) es necesario para recortar la captura de grim; está incluido en [`modules/inir-deps.nix`](modules/inir-deps.nix). Si recortaste tus dependencias, vuelve a añadir `imagemagick` o el recorte fallará silenciosamente.
+- <kbd>Print</kbd> / <kbd>Ctrl</kbd>+<kbd>Print</kbd> / <kbd>Alt</kbd>+<kbd>Print</kbd> usan la UI de capturas integrada de niri y siempre guardan en `$XDG_PICTURES_DIR/Screenshots`.
+
 ---
 
 ## ✅ Verificación Post-Instalación

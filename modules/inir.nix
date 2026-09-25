@@ -59,6 +59,7 @@ in
   systemd.user.tmpfiles.rules = [
     "L+ %h/.local/state/quickshell/.venv - - - - %h/.local/share/inir/venv"
     "L+ %h/.local/bin/inir - - - - /run/current-system/sw/bin/inir"
+    "L+ %h/.local/bin/pactl - - - - ${pkgs.pulseaudio}/bin/pactl"
     "d %h/.config/inir 0755 - - -"
     "L+ %h/.config/inir/version.json - - - - ${versionJsonFile}"
     "d %h/.config/illogical-impulse 0755 - - -"
