@@ -61,13 +61,13 @@ chmod +x install.sh
 
 Corre 7 fases, de forma reproducible y segura:
 
-1. **Pre-flight** — verifica NixOS, `git`, `nix`, `sudo`, y corre `nix flake check`.
-2. **Detección del entorno** — resuelve el usuario/home real (incluso con `sudo`); lee hostname, zona horaria, locale y teclado.
-3. **Limpieza de systemd** — elimina el archivo `~/.config/systemd/user/inir.service` creado por `inir doctor` (que sobreescribe el servicio de NixOS) y otros obsoletos.
-4. **Adaptación de `/etc/nixos`** — respalda e instala `/modules`; conserva tu `configuration.nix`; inyecta `./modules` en `imports`.
-5. **Despliegue de Niri** — respalda e instala `~/.config/niri/config.kdl`, adaptando el teclado.
-6. **Pipeline Material You** — instala y activa `niri-sync-colors`.
-7. **Rebuild** — `nixos-rebuild switch --flake`, log en `/tmp/inir-nixos-install-<fecha>.log`.
+1. **Pre-flight** — verifica NixOS, `git`, `nix`, `sudo`, espacio libre en `/nix` (el primer rebuild necesita ~10GB), y corre `nix flake check`.
+2. **Detección del entorno** — resuelve el usuario/home real (incluso con `sudo`); lee hostname, zona horaria, locale, teclado, GPU y tipo de VM.
+3. **Elección de display manager** — recomienda `greetd` en VMs/NVIDIA (GDM puede ocultar la sesión niri); elección interactiva.
+4. **Limpieza de systemd** — elimina el archivo `~/.config/systemd/user/inir.service` creado por `inir doctor` (que sobreescribe el servicio de NixOS) y otros obsoletos.
+5. **Adaptación de `/etc/nixos`** — respalda e instala `/modules`; conserva tu `configuration.nix`; inyecta `./modules` en `imports`; asegura `allowUnfree` (ver abajo); **adapta la config a tu máquina** (ver abajo).
+6. **Despliegue de Niri + Pipeline Material You** — instala `~/.config/niri/config.kdl` (adaptando el teclado) y activa `niri-sync-colors`.
+7. **Rebuild** — `nixos-rebuild switch --flake`, log en `/tmp/inir-nixos-install-<fecha>.log`; si falla, muestra instrucciones de rollback.
 
 ### Opciones del instalador
 
@@ -77,6 +77,7 @@ Corre 7 fases, de forma reproducible y segura:
 | `./install.sh --yes` (`-y`) | No interactivo: responde "sí" a todo. |
 | `./install.sh --dry-run` | Simula todo, no cambia nada. **Recomendado en la primera corrida.** |
 | `./install.sh --skip-rebuild` | Instala archivos/servicios pero omite `nixos-rebuild switch`. |
+| `./install.sh --no-ai` | Omite la revisión opcional de configuración con IA. |
 | `./install.sh --check` | Corre `scripts/verify-setup.sh` y termina. |
 | `./install.sh --help` (`-h`) | Muestra la ayuda. |
 
@@ -124,6 +125,25 @@ Basado en `lib.mkDefault`, así que nunca choca con tu configuración existente.
   users.users.your_user.extraGroups = [ "wheel" "networkmanager" "video" "i2c" ]; # para brillo DDC/CI
 }
 ```
+
+### 🔓 Software privativo (unfree)
+
+El instalador busca `allowUnfree` en `configuration.nix`, `flake.nix` y `modules/*.nix`. Si falta (o está en `false` explícito), ofrece activarlo — sin eso, los drivers NVIDIA, Steam, VS Code y demás fallan al evaluarse. Si lo rechazas, solo avisa y continúa.
+
+### 🖥️ Adaptación automática a tu máquina
+
+Tras instalar los módulos, el instalador **escribe ajustes específicos de tu hardware en `/etc/nixos/configuration.nix`** — cada bloque se salta si el ajuste ya existe, se confirma individualmente y se respalda antes:
+
+| Detectado | Inyectado en `configuration.nix` |
+|---|---|
+| Display manager elegido (paso 3) | `programs.inir.desktop.displayManager = "greetd";` cuando eliges greetd |
+| Teclado no-US | `services.xserver.xkb.layout` + `console.keyMap` |
+| GPU NVIDIA | `services.xserver.videoDrivers`, `hardware.nvidia` (modesetting, módulo open) y variables de sesión Wayland (`GBM_BACKEND`, `__GLX_VENDOR_LIBRARY_NAME`, …) |
+| CPU Intel/AMD | `hardware.cpu.{intel,amd}.updateMicrocode` + `hardware.enableRedistributableFirmware` |
+| VM (KVM/QEMU, VirtualBox, VMware) | Guest agent: `services.qemuGuest.enable`, `virtualisation.{virtualbox,vmware}.guest.enable` |
+| Usuario sin grupos `i2c`/`video` | Declara al usuario con grupos listos para brillo (se salta con un aviso si ya está declarado en tu config) |
+
+Los ajustes que ya defines tú nunca se duplican ni se sobreescriben.
 
 ---
 
@@ -189,7 +209,9 @@ Si niri no aparece tras reiniciar, haz una de estas dos cosas:
 
 ### 🤖 Revisión de configuración con IA (opcional)
 
-El instalador ofrece una revisión opcional y de solo lectura mediante un CLI de IA si tienes uno instalado (`claude` de claude-code, o `gemini`). Revisa la configuración resultante en busca de conflictos y problemas de tu máquina (GPU, VM, display manager) y solo *imprime sugerencias* — nunca edita archivos. Sáltalo con `--no-ai`.
+El instalador ofrece una revisión opcional y de solo lectura mediante un CLI de IA. Revisa la configuración resultante en busca de conflictos y problemas de tu máquina (GPU, VM, display manager) y solo *imprime sugerencias* — nunca edita archivos. Sáltalo con `--no-ai`.
+
+¿No tienes ningún CLI de IA instalado? **No pasa nada:** descarga `@anthropic-ai/claude-code` al vuelo con `npx` (solo queda en caché — nada se instala permanentemente). En un NixOS puro sin npm, usa un `nix shell nixpkgs#nodejs` efímero. Reutiliza tu login/API key de Claude si ya lo tienes; si nunca se autenticó, la revisión se salta sin drama.
 
 ### 🧩 Módulos no destructivos
 
@@ -224,7 +246,7 @@ También puedes probar el módulo `materialyoucolor` de Python directamente:
 python3 -c "import materialyoucolor; print('materialyoucolor funciona correctamente!')"
 ```
 
-Comprueba herramientas CLI, la importación del módulo Python `materialyoucolor`, y el estado de los servicios.
+Comprueba herramientas CLI, la importación del módulo Python `materialyoucolor`, el estado de los servicios, y además: `allowUnfree` activado, la sesión Wayland de niri registrada, y espacio libre en `/nix`.
 
 ---
 
@@ -237,6 +259,12 @@ systemctl --user restart inir.service
 ```
 
 Rollback: `sudo nixos-rebuild switch --rollback`
+
+> [!NOTE]
+> Los respaldos del instalador viven en `/tmp/inir-nixos-backups-<fecha>/` y se **borran al reiniciar**. Cópialos a un sitio permanente si quieres conservarlos:
+> ```bash
+> cp -r /tmp/inir-nixos-backups-<fecha> ~/inir-nixos-backups
+> ```
 
 ---
 
