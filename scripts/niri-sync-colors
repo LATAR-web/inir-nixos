@@ -21,7 +21,7 @@ sync_once() {
     [[ -f "$COLORS_JSON" ]] || return 0
 
     command -v "$PYTHON" >/dev/null 2>&1 || {
-        echo "niri-sync-colors: python3 not found" >&2
+        echo "niri-sync-colors: python3 not found (skipping sync)" >&2
         return 1
     }
 
@@ -29,7 +29,7 @@ sync_once() {
     niri_config_py="$(find_niri_config_py)"
 
     [[ -n "$niri_config_py" ]] || {
-        echo "niri-sync-colors: niri-config.py not found" >&2
+        echo "niri-sync-colors: niri-config.py not found (skipping sync)" >&2
         return 1
     }
 
@@ -95,22 +95,42 @@ except Exception:
     fi
 }
 
+poll_loop() {
+    # Fallback watcher for systems without inotify-tools: cheap polling,
+    # keeps the service alive until iNiR is (re)installed.
+    local last_mts=""
+    local cur_mts=""
+    while true; do
+        if [[ -d "$GENERATED_DIR" ]]; then
+            cur_mts="$(stat -c '%Y:%n' "$GENERATED_DIR"/* 2>/dev/null | sort | sha256sum | cut -d' ' -f1 || true)"
+            if [[ -n "$cur_mts" && "$cur_mts" != "$last_mts" ]]; then
+                sync_once || true
+                last_mts="$cur_mts"
+            fi
+        fi
+        sleep 5
+    done
+}
+
 case "${1:-}" in
     "")
-        sync_once
+        sync_once || true
         ;;
 
     --watch)
-        command -v inotifywait >/dev/null 2>&1 || {
-            echo "niri-sync-colors: inotifywait not found" >&2
-            exit 1
-        }
+        # NEVER exit on missing prerequisites: this service runs from login
+        # and iNiR may not be installed yet (first boot before the rebuild).
+        # Wait and pick things up as soon as they appear.
+        if ! command -v inotifywait >/dev/null 2>&1; then
+            echo "niri-sync-colors: inotifywait not found yet — using polling fallback (install inir to get inotify-tools)" >&2
+            poll_loop
+        fi
 
         while [[ ! -d "$GENERATED_DIR" ]]; do
             sleep 2
         done
 
-        sync_once
+        sync_once || true
 
         inotifywait -m \
             -e close_write,moved_to \

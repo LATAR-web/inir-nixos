@@ -548,6 +548,12 @@ if [[ -f /etc/nixos/configuration.nix ]]; then
     else
         dry_run_msg "Would ensure ./modules is imported in configuration.nix"
     fi
+    # Hard guarantee: without this import the whole installer is a no-op.
+    if ! grep -Eq '^[^#]*\./modules' /etc/nixos/configuration.nix; then
+        err "./modules is NOT imported in /etc/nixos/configuration.nix — the rebuild would apply NOTHING."
+        err "Add it inside the imports list and re-run this installer."
+        exit 1
+    fi
 else
     info "No configuration.nix — installing reference configuration..."
     backup_if_exists "/etc/nixos/configuration.nix"
@@ -658,7 +664,9 @@ if [[ -f "$REPO_DIR/systemd/niri-sync-colors.service" ]]; then
         cp "$REPO_DIR/systemd/niri-sync-colors.service" \
            "$TARGET_HOME/.config/systemd/user/niri-sync-colors.service"
     run "Reload systemd user manager" systemctl --user daemon-reload
-    run "Enable color synchronization" systemctl --user enable --now niri-sync-colors.service
+    # Do NOT start it here: before the rebuild the prerequisites (inir,
+    # inotifywait) do not exist yet and the service would crash-loop.
+    info "Color-sync service installed — it activates after the rebuild."
 fi
 
 if [[ -f "$REPO_DIR/scripts/record-screen" ]]; then
@@ -827,13 +835,35 @@ if [[ "$DRY_RUN" -eq 0 && "$SKIP_REBUILD" -eq 0 ]]; then
         ok "niri-sync-colors.service is active"
     fi
 
-    # Verify the chosen display manager + niri session file
-    if command -v ls /run/current-system/sw/share/wayland-sessions/niri.desktop >/dev/null 2>&1 \
-       || [[ -f /run/current-system/sw/share/wayland-sessions/niri.desktop ]]; then
-        ok "niri Wayland session registered"
+    # Verify the rebuild actually produced a system with iNiR + niri session
+    local_missing=()
+    if ! systemctl list-unit-files 2>/dev/null | grep -q "inir.service"; then
+        local_missing+=("inir.service (the rebuild did not apply the iNiR modules)")
+    fi
+    if [[ ! -f /run/current-system/sw/share/wayland-sessions/niri.desktop ]]; then
+        local_missing+=("niri Wayland session (programs.niri.enable did not take effect)")
+    fi
+    if [[ ${#local_missing[@]} -gt 0 ]]; then
+        err "Rebuild finished but required pieces are MISSING:"
+        for m in "${local_missing[@]}"; do
+            printf '      %s%s%s\n' "$RED" "$m" "$RESET"
+        done
+        warn "Most common cause: /etc/nixos/configuration.nix does not import ./modules,"
+        warn "or /etc/nixos is not the flake that was rebuilt."
+        info "Verify with: ls /run/current-system/sw/share/wayland-sessions/ && systemctl list-unit-files | grep inir"
     else
-        err "niri Wayland session NOT found after rebuild!"
-        info "Check that modules/inir.nix sets programs.niri.enable = true."
+        ok "iNiR service and niri session present after rebuild"
+    fi
+
+    # Verify the chosen display manager + niri session file
+    if [[ -f /run/current-system/sw/share/wayland-sessions/niri.desktop ]]; then
+        ok "niri Wayland session registered"
+    fi
+
+    # Now that iNiR exists, activate the color-sync service
+    if systemctl list-unit-files 2>/dev/null | grep -q "inir.service"; then
+        run "Enable color synchronization (post-rebuild)" \
+            systemctl --user enable --now niri-sync-colors.service
     fi
 
     if [[ "$CHOSEN_DM" == "greetd" ]]; then

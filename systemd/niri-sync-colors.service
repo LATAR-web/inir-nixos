@@ -5,8 +5,11 @@ After=inir.service
 [Service]
 Type=simple
 ExecStart=%h/.local/bin/niri-sync-colors --watch
-Restart=always
-RestartSec=2
+Restart=on-failure
+RestartSec=5
+# Survive an iNiR-less system (e.g. before the first rebuild): never trip
+# the start rate limit — the script waits internally for its prerequisites.
+StartLimitIntervalSec=0
 
 [Install]
 WantedBy=default.target
