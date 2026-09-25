@@ -45,7 +45,8 @@ with pkgs; [
   kdePackages.kconfig
   darkly
 
-  # --- Color theming pipeline ---
+  # --- Wallpapers / color pipeline ---
+  awww                      # default hardware-accelerated wallpaper backend ('awww'/'awww-daemon'); without it iNiR falls back to the internal renderer
   matugen                          # the actual engine that generates the Material You palette
   (python3.withPackages (ps: with ps; [
     pip
@@ -59,6 +60,7 @@ with pkgs; [
   grim
   slurp
   swappy
+  imagemagick             # provides `magick`; regionSelector crops the grim capture with it
   tesseract
   wf-recorder
   ffmpeg
