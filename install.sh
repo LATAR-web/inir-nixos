@@ -587,6 +587,80 @@ else
     fi
 fi
 
+# ------------------------------------------------------------
+# Unfree / proprietary software permission (NVIDIA, Steam, ...)
+# ------------------------------------------------------------
+info "Checking proprietary (unfree) software permission..."
+UNFREE_STATUS="absent"
+for unfree_file in /etc/nixos/configuration.nix /etc/nixos/flake.nix /etc/nixos/modules/*.nix; do
+    [[ -f "$unfree_file" ]] || continue
+    if grep -Eq 'allowUnfree[[:space:]]*=[[:space:]]*true|allowUnfreePredicate' "$unfree_file" 2>/dev/null; then
+        UNFREE_STATUS="true"
+        ok "Proprietary software allowed (allowUnfree = true in $unfree_file)"
+        break
+    fi
+done
+if [[ "$UNFREE_STATUS" != "true" ]]; then
+    # Explicitly set to false somewhere?
+    UNFREE_FALSE_FILE=""
+    for unfree_file in /etc/nixos/configuration.nix /etc/nixos/flake.nix /etc/nixos/modules/*.nix; do
+        if [[ -f "$unfree_file" ]] && grep -Eq 'allowUnfree[[:space:]]*=[[:space:]]*false' "$unfree_file" 2>/dev/null; then
+            UNFREE_FALSE_FILE="$unfree_file"
+            break
+        fi
+    done
+    warn "Proprietary software is NOT enabled (nixpkgs.config.allowUnfree)."
+    warn "Without it, unfree packages (NVIDIA drivers, Steam, VS Code, ...) fail to build."
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        if [[ -n "$UNFREE_FALSE_FILE" ]]; then
+            dry_run_msg "Would set allowUnfree = true in $UNFREE_FALSE_FILE"
+        else
+            dry_run_msg "Would add nixpkgs.config.allowUnfree = true to /etc/nixos/configuration.nix"
+        fi
+    elif confirm "Enable proprietary (unfree) software now?"; then
+        if [[ -n "$UNFREE_FALSE_FILE" ]]; then
+            backup_if_exists "$UNFREE_FALSE_FILE"
+            sudo sed -i -E 's/allowUnfree[[:space:]]*=[[:space:]]*false/allowUnfree = true/g' "$UNFREE_FALSE_FILE"
+            if grep -Eq 'allowUnfree[[:space:]]*=[[:space:]]*true' "$UNFREE_FALSE_FILE"; then
+                ok "Unfree software enabled in $UNFREE_FALSE_FILE"
+            else
+                err "Could not flip allowUnfree to true in $UNFREE_FALSE_FILE."
+                info "Set it manually: nixpkgs.config.allowUnfree = true;"
+            fi
+        else
+            backup_if_exists "/etc/nixos/configuration.nix"
+            TMP_CONF="$(mktemp)"
+            # Insert before the last top-level closing brace of configuration.nix
+            sudo cat /etc/nixos/configuration.nix | awk '
+                { lines[NR] = $0 }
+                END {
+                    ins = NR + 1
+                    for (i = NR; i >= 1; i--) { if (lines[i] ~ /^[ \t]*\}/) { ins = i; break } }
+                    for (i = 1; i <= NR; i++) {
+                        if (i == ins) {
+                            print ""
+                            print "  # Allow proprietary (unfree) software: NVIDIA, Steam, VS Code, etc."
+                            print "  nixpkgs.config.allowUnfree = true;"
+                        }
+                        print lines[i]
+                    }
+                }
+            ' > "$TMP_CONF"
+            if grep -Eq 'allowUnfree[[:space:]]*=[[:space:]]*true' "$TMP_CONF"; then
+                sudo cp "$TMP_CONF" /etc/nixos/configuration.nix
+                ok "Unfree software enabled: nixpkgs.config.allowUnfree = true added to configuration.nix"
+            else
+                warn "Could not inject allowUnfree automatically."
+                info "Add this inside the main { ... } block of /etc/nixos/configuration.nix:"
+                printf '      %s\n' 'nixpkgs.config.allowUnfree = true;'
+            fi
+            rm -f "$TMP_CONF"
+        fi
+    else
+        warn "Unfree software left disabled — proprietary packages will fail to evaluate."
+    fi
+fi
+
 # Niri session file must exist for display managers to list it
 if [[ "$DRY_RUN" -eq 0 ]]; then
     if ! grep -q "programs.niri.enable" /etc/nixos/configuration.nix /etc/nixos/modules/inir.nix 2>/dev/null; then
