@@ -119,6 +119,18 @@ else
     fail "color-sync systemd service missing"
 fi
 
+# allowUnfree: without it, NVIDIA drivers / Steam / VS Code fail to evaluate
+if grep -rqE 'allowUnfree[[:space:]]*=[[:space:]]*true|allowUnfreePredicate' /etc/nixos/configuration.nix /etc/nixos/flake.nix /etc/nixos/modules/*.nix 2>/dev/null; then
+    ok "allowUnfree enabled (proprietary packages available)"
+else
+    fail "allowUnfree NOT enabled — NVIDIA/Steam/etc. will fail to build (set nixpkgs.config.allowUnfree = true;)"
+fi
+
+# greetd option consistency: if greetd was chosen, it must be written in the config
+if grep -q 'programs.inir.desktop.displayManager = "greetd"' /etc/nixos/configuration.nix 2>/dev/null; then
+    ok "greetd configured as display manager"
+fi
+
 if [[ -f "$HOME/.config/quickshell/inir/scripts/niri-config.py" || -f "/run/current-system/sw/share/quickshell/inir/scripts/niri-config.py" ]]; then
     ok "iNiR niri-config.py exists"
 else
@@ -129,6 +141,23 @@ if [[ -w "$HOME/.local/bin" ]]; then
     ok "~/.local/bin is writable"
 else
     fail "~/.local/bin is NOT writable"
+fi
+
+# niri Wayland session registered system-wide (requires programs.niri.enable)
+if [[ -f /run/current-system/sw/share/wayland-sessions/niri.desktop ]]; then
+    ok "niri Wayland session registered"
+else
+    fail "niri Wayland session NOT registered (did the rebuild apply modules/inir.nix?)"
+fi
+
+# Disk space under /nix (a full store breaks every future rebuild)
+_nix_free="$(df -BG --output=avail /nix 2>/dev/null | tail -n1 | tr -dc '0-9' || echo 0)"
+if (( _nix_free > 0 && _nix_free < 5 )); then
+    fail "Only ${_nix_free}GB free in /nix — run 'sudo nix-collect-garbage -d'"
+elif (( _nix_free > 0 && _nix_free < 10 )); then
+    warn "${_nix_free}GB free in /nix — consider 'sudo nix-collect-garbage -d'"
+else
+    ok "Disk space OK (${_nix_free}GB free in /nix)"
 fi
 
 echo "── Done ──"

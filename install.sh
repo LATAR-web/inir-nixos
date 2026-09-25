@@ -224,6 +224,59 @@ backup_if_exists() {
     fi
 }
 
+# Insert a block of Nix code into /etc/nixos/configuration.nix before the
+# last top-level closing brace. $1: path to a file containing the block.
+inject_into_configuration_nix() {
+    local block_file="$1"
+    backup_if_exists "/etc/nixos/configuration.nix" || return 1
+    local tmp_in tmp_out
+    tmp_in="$(mktemp)"; tmp_out="$(mktemp)"
+    sudo cat /etc/nixos/configuration.nix > "$tmp_in"
+    awk -v block_file="$block_file" '
+        { lines[NR] = $0 }
+        END {
+            ins = NR + 1
+            for (i = NR; i >= 1; i--) { if (lines[i] ~ /^[ \t]*\}/) { ins = i; break } }
+            for (i = 1; i <= NR; i++) {
+                if (i == ins) {
+                    print ""
+                    while ((getline line < block_file) > 0) print line
+                    close(block_file)
+                }
+                print lines[i]
+            }
+        }
+    ' "$tmp_in" > "$tmp_out"
+    if sudo cp "$tmp_out" /etc/nixos/configuration.nix; then
+        rm -f "$tmp_in" "$tmp_out"
+        return 0
+    fi
+    rm -f "$tmp_in" "$tmp_out"
+    return 1
+}
+
+# Offer to inject a Nix block into configuration.nix (respects --dry-run/--yes).
+# $1: feature name for messages; $2: file containing the Nix block.
+offer_nix_injection() {
+    local feature="$1" block_file="$2"
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        dry_run_msg "Would inject into configuration.nix ($feature):"
+        local line
+        while IFS= read -r line; do printf '      %s\n' "$line"; done < "$block_file"
+        return 0
+    fi
+    if ! confirm "Add $feature to configuration.nix?"; then
+        warn "$feature not added — you can add it manually later."
+        return 0
+    fi
+    if inject_into_configuration_nix "$block_file"; then
+        ok "$feature added to configuration.nix"
+    else
+        warn "Could not inject $feature automatically."
+    fi
+    return 0
+}
+
 require_command() {
     local command="$1"
     local package_hint="${2:-}"
@@ -274,6 +327,20 @@ if [[ ! -d /etc/nixos ]]; then
     exit 1
 fi
 ok "NixOS detected"
+
+# Disk space: the first rebuild fills /nix/store with Qt, KDE libs, etc.
+NIX_FREE_GB="$(df -BG --output=avail /nix 2>/dev/null | tail -n1 | tr -dc '0-9' || echo 0)"
+if [[ "$NIX_FREE_GB" -gt 0 && "$NIX_FREE_GB" -lt 5 ]]; then
+    err "Only ${NIX_FREE_GB}GB free in /nix — the first rebuild needs roughly 10GB."
+    if [[ "$DRY_RUN" -eq 0 ]] && ! confirm "Continue anyway?"; then
+        exit 1
+    fi
+    warn "Continuing with low disk space."
+elif [[ "$NIX_FREE_GB" -gt 0 && "$NIX_FREE_GB" -lt 10 ]]; then
+    warn "Low disk space in /nix (${NIX_FREE_GB}GB free); the first rebuild may need ~10GB."
+else
+    ok "Disk space OK (${NIX_FREE_GB}GB free in /nix)"
+fi
 
 require_command git "git"
 require_command nix "nix"
@@ -559,10 +626,7 @@ if [[ -f /etc/nixos/configuration.nix ]]; then
             fi
             rm -f "$TMP_CONF"
         fi
-        # Required groups for brightness (DDC/CI)
-        if ! grep -q '"i2c"' /etc/nixos/configuration.nix 2>/dev/null; then
-            warn "Add 'i2c' to your user's extraGroups for external-monitor brightness (ddcutil)."
-        fi
+
     else
         dry_run_msg "Would ensure ./modules is imported in configuration.nix"
     fi
@@ -668,6 +732,13 @@ if [[ "$DRY_RUN" -eq 0 ]]; then
     fi
 fi
 
+# i2c udev rule: ddcutil needs i2c-dev character devices accessible to the user.
+if [[ "$DRY_RUN" -eq 0 ]]; then
+    if ! grep -q 'i2c-dev' /etc/nixos/modules/inir.nix /etc/nixos/modules/runtime.nix /etc/nixos/configuration.nix 2>/dev/null; then
+        info "Tip: 'hardware.i2c.enable = true;' in configuration.nix enables external-monitor brightness."
+    fi
+fi
+
 # ------------------------------------------------------------
 # Unstable channel check (iNiR/Niri need it)
 # ------------------------------------------------------------
@@ -724,6 +795,161 @@ if [[ ! -f /etc/nixos/hardware-configuration.nix ]]; then
     fi
 else
     ok "Existing hardware-configuration.nix preserved"
+fi
+
+# ------------------------------------------------------------
+# Machine-specific adaptation: make the config fit THIS machine.
+# The display manager chosen in step 2, GPU drivers, CPU microcode,
+# VM guest agents, keyboard layout and user groups are written into
+# configuration.nix. Every change is guarded (settings already present
+# in the user's config are never duplicated) and backed up.
+# ------------------------------------------------------------
+MAIN_CONF="/etc/nixos/configuration.nix"
+
+if [[ -f "$MAIN_CONF" ]]; then
+    info "Adapting configuration to this machine (GPU, CPU, VM, keyboard)..."
+
+    # 1) Display manager chosen in step 2 (greetd is never the module default)
+    if [[ "$CHOSEN_DM" == "greetd" ]] && ! grep -q "displayManager" "$MAIN_CONF" 2>/dev/null; then
+        DM_BLOCK="$(mktemp)"
+        {
+            echo "  # greetd was chosen during install: it always lists the niri session."
+            echo '  programs.inir.desktop.displayManager = "greetd";'
+        } > "$DM_BLOCK"
+        offer_nix_injection "greetd as display manager" "$DM_BLOCK"
+        rm -f "$DM_BLOCK"
+    fi
+
+    # 2) Keyboard layout (modules default to "us"; only inject non-US layouts)
+    if [[ -n "$DETECTED_LAYOUT" && "$DETECTED_LAYOUT" != "us" ]]; then
+        KB_LINES=()
+        if ! grep -Eq 'xserver\.xkb\.layout|services\.xserver\.layout' "$MAIN_CONF" 2>/dev/null; then
+            KB_LINES+=("  services.xserver.xkb.layout = \"$DETECTED_LAYOUT\";")
+        fi
+        if ! grep -q "console.keyMap" "$MAIN_CONF" 2>/dev/null; then
+            KB_LINES+=("  console.keyMap = \"$DETECTED_LAYOUT\";")
+        fi
+        if [[ ${#KB_LINES[@]} -gt 0 ]]; then
+            KB_BLOCK="$(mktemp)"
+            {
+                echo "  # Keyboard layout detected by install.sh"
+                printf '%s\n' "${KB_LINES[@]}"
+            } > "$KB_BLOCK"
+            offer_nix_injection "keyboard layout ($DETECTED_LAYOUT)" "$KB_BLOCK"
+            rm -f "$KB_BLOCK"
+        fi
+    fi
+
+    # 3) NVIDIA GPU: driver + Wayland-safe environment
+    if [[ "$DETECTED_GPU" == "nvidia" ]]; then
+        if grep -Eq 'hardware\.nvidia' "$MAIN_CONF" 2>/dev/null; then
+            ok "NVIDIA configuration already present"
+        elif grep -Eq 'services\.xserver\.videoDrivers' "$MAIN_CONF" 2>/dev/null; then
+            warn "GPU is NVIDIA but videoDrivers is already set in your config — left untouched."
+        else
+            NV_BLOCK="$(mktemp)"
+            cat > "$NV_BLOCK" <<'EOF'
+  # NVIDIA GPU detected by install.sh
+  services.xserver.videoDrivers = [ "nvidia" ];
+  boot.kernelParams = [ "nvidia_drm.modeset=1" ];
+  hardware.nvidia = {
+    modesetting.enable = true;
+    # open = true works on Turing+ (GTX 16xx/RTX and newer); set false for older GPUs.
+    open = true;
+    nvidiaSettings = true;
+    package = config.boot.kernelPackages.nvidiaPackages.stable;
+  };
+  environment.sessionVariables = {
+    GBM_BACKEND = "nvidia-drm";
+    __GLX_VENDOR_LIBRARY_NAME = "nvidia";
+    LIBVA_DRIVER_NAME = "nvidia";
+  };
+EOF
+            offer_nix_injection "NVIDIA driver configuration" "$NV_BLOCK"
+            rm -f "$NV_BLOCK"
+        fi
+    fi
+
+    # 4) CPU microcode + redistributable firmware
+    CPU_VENDOR="$(awk -F': *' '/^vendor_id/ { print $2; exit }' /proc/cpuinfo 2>/dev/null || true)"
+    MC_LINE=""
+    if ! grep -q "updateMicrocode" "$MAIN_CONF" 2>/dev/null; then
+        case "$CPU_VENDOR" in
+            *GenuineIntel*) MC_LINE="  hardware.cpu.intel.updateMicrocode = true;" ;;
+            *AuthenticAMD*) MC_LINE="  hardware.cpu.amd.updateMicrocode = true;" ;;
+        esac
+    fi
+    FW_NEEDED=0
+    grep -q "enableRedistributableFirmware" "$MAIN_CONF" 2>/dev/null || FW_NEEDED=1
+    if [[ -n "$MC_LINE" || "$FW_NEEDED" -eq 1 ]]; then
+        FW_BLOCK="$(mktemp)"
+        {
+            echo "  # CPU microcode + firmware (detected vendor: ${CPU_VENDOR:-unknown})"
+            if [[ -n "$MC_LINE" ]]; then echo "$MC_LINE"; fi
+            if [[ "$FW_NEEDED" -eq 1 ]]; then echo "  hardware.enableRedistributableFirmware = true;"; fi
+        } > "$FW_BLOCK"
+        offer_nix_injection "CPU microcode/firmware updates" "$FW_BLOCK"
+        rm -f "$FW_BLOCK"
+    fi
+
+    # 5) VM guest agents (only inside an actual VM)
+    case "$VIRT_TYPE" in
+        kvm|qemu)
+            if ! grep -q "qemuGuest" "$MAIN_CONF" 2>/dev/null; then
+                VM_BLOCK="$(mktemp)"
+                {
+                    echo "  # QEMU/KVM guest agent (VM detected by install.sh)"
+                    echo "  services.qemuGuest.enable = true;"
+                } > "$VM_BLOCK"
+                offer_nix_injection "QEMU guest agent" "$VM_BLOCK"
+                rm -f "$VM_BLOCK"
+            fi
+            ;;
+        virtualbox)
+            if ! grep -q "virtualbox.guest" "$MAIN_CONF" 2>/dev/null; then
+                VM_BLOCK="$(mktemp)"
+                {
+                    echo "  # VirtualBox guest additions (VM detected by install.sh)"
+                    echo "  virtualisation.virtualbox.guest.enable = true;"
+                } > "$VM_BLOCK"
+                offer_nix_injection "VirtualBox guest additions" "$VM_BLOCK"
+                rm -f "$VM_BLOCK"
+            fi
+            ;;
+        vmware)
+            if ! grep -q "vmware.guest" "$MAIN_CONF" 2>/dev/null; then
+                VM_BLOCK="$(mktemp)"
+                {
+                    echo "  # VMware guest tools (VM detected by install.sh)"
+                    echo "  virtualisation.vmware.guest.enable = true;"
+                } > "$VM_BLOCK"
+                offer_nix_injection "VMware guest tools" "$VM_BLOCK"
+                rm -f "$VM_BLOCK"
+            fi
+            ;;
+    esac
+
+    # 6) i2c/video groups for external-monitor brightness (ddcutil)
+    # NOTE: extraGroups is a list — injecting a second definition for a user
+    # already declared in configuration.nix would break Nix evaluation.
+    if id -nG "$DETECTED_USER" 2>/dev/null | grep -qw i2c; then
+        ok "User $DETECTED_USER is already in the i2c group"
+    elif grep -q "users\.users\"?\.?\"$DETECTED_USER\"" "$MAIN_CONF" 2>/dev/null \
+        || grep -q "users\.users\.$DETECTED_USER" "$MAIN_CONF" 2>/dev/null; then
+        warn "User $DETECTED_USER is declared in your configuration but not in the i2c group."
+        info "Add \"i2c\" to their extraGroups for external-monitor brightness (ddcutil)."
+    else
+        GRP_BLOCK="$(mktemp)"
+        cat > "$GRP_BLOCK" <<EOF
+  # User declared by install.sh — 'video' and 'i2c' enable monitor brightness (ddcutil)
+  users.users."$DETECTED_USER" = {
+    isNormalUser = true;
+    extraGroups = [ "networkmanager" "wheel" "video" "i2c" ];
+  };
+EOF
+        offer_nix_injection "user $DETECTED_USER (with brightness groups)" "$GRP_BLOCK"
+        rm -f "$GRP_BLOCK"
+    fi
 fi
 
 # ============================================================
@@ -818,22 +1044,33 @@ step "6/7 · AI configuration review (optional)"
 # It runs ONLY with user consent and NEVER modifies files without a diff
 # shown in the log. Everything it prints is appended to the log file.
 
-AI_BIN=""
+AI_KIND=""      # installed | temp | ""
+AI_RUNNER=()    # command + prefix args used to invoke the AI CLI
 if [[ "$NO_AI" -eq 0 ]]; then
     if command -v claude >/dev/null 2>&1; then
-        AI_BIN="claude"
+        AI_KIND="installed"; AI_RUNNER=(claude)
     elif command -v gemini >/dev/null 2>&1; then
-        AI_BIN="gemini"
+        AI_KIND="installed"; AI_RUNNER=(gemini)
+    elif command -v npx >/dev/null 2>&1; then
+        # Downloaded on the fly into the npx cache — nothing installed permanently.
+        AI_KIND="temp"; AI_RUNNER=(npx -y @anthropic-ai/claude-code)
+    elif command -v nix >/dev/null 2>&1; then
+        # Pure NixOS fallback: node+npx come from an ephemeral nix shell.
+        AI_KIND="temp"; AI_RUNNER=(nix --extra-experimental-features "nix-command flakes" shell nixpkgs#nodejs -c npx -y @anthropic-ai/claude-code)
     fi
 fi
 
 if [[ "$NO_AI" -eq 1 ]]; then
     info "AI review skipped (--no-ai)."
-elif [[ -z "$AI_BIN" ]]; then
-    info "No AI CLI available (claude/gemini). Skipping — this is optional."
-    info "Install claude-code (npm i -g @anthropic-ai/claude-code) to enable it."
+elif [[ -z "$AI_KIND" ]]; then
+    info "No AI CLI available and none can be fetched (npx/nix missing). Skipping — optional."
 else
-    section_note "An AI CLI ($AI_BIN) is available. It will REVIEW the resulting"
+    if [[ "$AI_KIND" == "installed" ]]; then
+        section_note "AI CLI found: ${AI_RUNNER[0]}. It will REVIEW the resulting"
+    else
+        section_note "No AI CLI installed: it will be downloaded TEMPORARILY (npx/nix cache;"
+        section_note "nothing installed permanently). It reuses your existing claude login/API key."
+    fi
     section_note "configuration for conflicts and machine-specific pitfalls."
     section_note "It is read-only: suggestions are printed and logged, nothing is changed."
 
@@ -848,15 +1085,15 @@ usuario: $DETECTED_USER). Responde en máximo 15 líneas, con viñetas concisas:
 Archivos clave: /etc/nixos/configuration.nix, /etc/nixos/flake.nix,
 /etc/nixos/modules/*.nix, ~/.config/niri/config.kdl"
 
-        info "Running $AI_BIN review (this may take a minute)..."
+        info "Running AI review via ${AI_RUNNER[0]} (this may take a minute; the first npx run downloads the CLI)..."
         echo
-        if [[ "$AI_BIN" == "claude" ]]; then
-            # -p: non-interactive print mode; --allowedTools "" = read-only, no edits, no commands
-            claude -p "$AI_PROMPT" \
-                --allowedTools "" --max-turns 1 2>&1 | tee -a "$LOG_FILE" || \
+        if [[ "${AI_RUNNER[0]}" == "gemini" ]]; then
+            gemini -p "$AI_PROMPT" 2>&1 | tee -a "$LOG_FILE" || \
                 warn "AI review failed (non-fatal). Continuing."
         else
-            gemini -p "$AI_PROMPT" 2>&1 | tee -a "$LOG_FILE" || \
+            # -p: non-interactive print mode; --allowedTools "" = read-only, no edits, no commands
+            "${AI_RUNNER[@]}" -p "$AI_PROMPT" \
+                --allowedTools "" --max-turns 1 2>&1 | tee -a "$LOG_FILE" || \
                 warn "AI review failed (non-fatal). Continuing."
         fi
         echo
@@ -895,8 +1132,9 @@ elif confirm "Run nixos-rebuild switch now?"; then
         ok "NixOS rebuild completed successfully"
     else
         err "NixOS rebuild failed."
-        warn "The previous NixOS generation remains active."
-        echo "  Check the log: $LOG_FILE"
+        warn "The previous NixOS generation remains active — your system still boots as before."
+        echo "  Check the log:   $LOG_FILE"
+        echo "  Roll back:       sudo nixos-rebuild switch --rollback"
         exit 1
     fi
 else
@@ -1002,7 +1240,15 @@ printf '  %sUseful commands:%s\n' "$BOLD" "$RESET"
 printf '    systemctl --user status inir.service\n'
 printf '    systemctl --user status niri-sync-colors.service\n'
 printf '    sudo nixos-rebuild switch --flake %s\n' "$REBUILD_TARGET"
+printf '    sudo nixos-rebuild switch --rollback        # if the new session misbehaves\n'
+printf '    sudo nix-collect-garbage -d                 # free space once everything works\n'
 echo
+if [[ -d "$BACKUPS_DIR" ]]; then
+    printf '  %sNote: backups live in /tmp and are erased on reboot. Copy them somewhere\n' "$YELLOW"
+    printf '  permanent first if you want to keep them:%s\n' "$RESET"
+    printf '    cp -r %s ~/inir-nixos-backups\n' "$BACKUPS_DIR"
+    echo
+fi
 printf '  %sNext step:%s reboot and pick %sNiri%s at the login screen.\n' \
     "$BOLD" "$RESET" "$BOLD" "$RESET"
 echo
