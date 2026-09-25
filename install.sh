@@ -502,7 +502,8 @@ if [[ "$DRY_RUN" -eq 0 ]]; then
     mkdir -p /etc/nixos/modules
     # 1) Update only the iNiR-owned module files (never touch user files)
     for f in audio.nix desktop.nix fonts.nix inir-deps.nix inir.nix runtime.nix default.nix; do
-        if [[ -f "/etc/nixos/modules/$f" ]]; then
+        # Backup only when the installed file actually differs from the repo one
+        if [[ -f "/etc/nixos/modules/$f" ]] && ! cmp -s "$REPO_DIR/modules/$f" "/etc/nixos/modules/$f"; then
             backup_if_exists "/etc/nixos/modules/$f"
         fi
         sudo cp -a "$REPO_DIR/modules/$f" /etc/nixos/modules/"$f"
@@ -532,14 +533,31 @@ fi
 if [[ -f /etc/nixos/configuration.nix ]]; then
     info "Existing configuration.nix detected — adapting instead of replacing."
     if [[ "$DRY_RUN" -eq 0 ]]; then
-        if grep -Eq '(\./modules|modules/default)' /etc/nixos/configuration.nix; then
+        if grep -Eq '^[^#]*\./modules' /etc/nixos/configuration.nix; then
             ok "./modules already imported in configuration.nix"
-        elif grep -Eq 'imports\s*=\s*\[' /etc/nixos/configuration.nix; then
-            sudo sed -i -E 's|(imports\s*=\s*\[)|\1\n    ./modules|' /etc/nixos/configuration.nix
-            ok "Added ./modules to imports in configuration.nix"
         else
-            warn "Could not inject ./modules into imports automatically."
-            info "Add './modules' to the imports list in /etc/nixos/configuration.nix manually."
+            # Robust injection: handles the three common import spellings
+            #   imports = [ ./hw.nix ];          (inline closed list)
+            #   imports = [                      (multi-line list)
+            #   imports =\n[ ./hw.nix ];         (bracket on next line)
+            TMP_CONF="$(mktemp)"
+            sudo cat /etc/nixos/configuration.nix | awk '
+                /^\s*imports\s*=\s*\[.*\];/ { sub(/\[/, "[ ./modules"); print; next }
+                /^\s*imports\s*=\s*\[/       { print; print "  ./modules"; next }
+                /^\s*imports\s*=\s*$/         { span=1; print; next }
+                span && /^\s*\[/              { print; print "  ./modules"; span=0; next }
+                { print }
+            ' > "$TMP_CONF"
+            if grep -Eq '^[^#]*\./modules' "$TMP_CONF"; then
+                sudo cp "$TMP_CONF" /etc/nixos/configuration.nix
+                ok "Added ./modules to imports in configuration.nix"
+            else
+                warn "Could not inject ./modules into imports automatically."
+                info "This is the start of your /etc/nixos/configuration.nix:"
+                sudo sed -n '1,30p' /etc/nixos/configuration.nix | sed 's/^/      /'
+                info "Add './modules' inside the imports list, then re-run this installer."
+            fi
+            rm -f "$TMP_CONF"
         fi
         # Required groups for brightness (DDC/CI)
         if ! grep -q '"i2c"' /etc/nixos/configuration.nix 2>/dev/null; then
