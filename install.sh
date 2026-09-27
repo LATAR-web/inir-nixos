@@ -634,7 +634,7 @@ section_note "iNiR modules are updated, your own files in modules/ are kept."
 section_note "modules/default.nix auto-imports every .nix in that directory."
 
 if [[ "$DRY_RUN" -eq 0 ]]; then
-    mkdir -p /etc/nixos/modules
+    sudo mkdir -p /etc/nixos/modules
     # 1) Update only the iNiR-owned module files (never touch user files)
     for f in audio.nix desktop.nix fonts.nix inir-deps.nix inir.nix runtime.nix default.nix; do
         # Backup only when the installed file actually differs from the repo one
