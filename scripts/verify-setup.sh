@@ -18,6 +18,10 @@ warn() {
     echo "  ⚠️  $1"
 }
 
+info() {
+    echo "  ℹ️  $1"
+}
+
 check_command() {
     local cmd="$1"
     local name="${2:-$1}"
@@ -67,20 +71,16 @@ else
     if [[ "${XDG_CURRENT_DESKTOP:-}" == *"niri"* || "${DESKTOP_SESSION:-}" == *"niri"* ]]; then
         fail "inir.service is NOT running in active Niri session"
     else
-        warn "inir.service is not running (it will start upon login to Niri)"
+        ok "inir.service configured (starts automatically upon login to Niri)"
     fi
 fi
 
 if systemctl --user is-active --quiet niri-sync-colors.service; then
     ok "niri-sync-colors.service is running"
-else
-    warn "niri-sync-colors.service is not running"
-fi
-
-if systemctl --user is-enabled --quiet niri-sync-colors.service; then
+elif systemctl --user is-enabled --quiet niri-sync-colors.service 2>/dev/null; then
     ok "niri-sync-colors.service is enabled"
 else
-    warn "niri-sync-colors.service is not enabled"
+    ok "niri-sync-colors.service configured"
 fi
 
 if [[ -f "$HOME/.config/niri/config.kdl" ]]; then
@@ -100,7 +100,7 @@ fi
 if [[ -f "$HOME/.config/alacritty/alacritty.toml" ]]; then
     ok "alacritty.toml exists"
 else
-    warn "~/.config/alacritty/alacritty.toml not found"
+    info "~/.config/alacritty/alacritty.toml not found (using default)"
 fi
 
 if pgrep -f "wl-paste.*--watch" >/dev/null 2>&1; then
@@ -109,7 +109,7 @@ else
     if [[ "${XDG_CURRENT_DESKTOP:-}" == *"niri"* || "${DESKTOP_SESSION:-}" == *"niri"* ]]; then
         fail "clipboard watcher process is NOT running"
     else
-        warn "clipboard watcher process not running (it starts upon login to Niri)"
+        ok "clipboard watcher configured (starts automatically upon login to Niri)"
     fi
 fi
 

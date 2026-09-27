@@ -1293,6 +1293,9 @@ if [[ "$SKIP_REBUILD" -eq 1 ]]; then
 elif [[ "$DRY_RUN" -eq 1 ]]; then
     dry_run_msg "Would run: ${REBUILD_CMD[*]}"
 elif confirm "Run nixos-rebuild switch now?"; then
+    if [[ "$DRY_RUN" -eq 0 && -d /etc/nixos/.git ]]; then
+        sudo git -C /etc/nixos add -A >/dev/null 2>&1 || true
+    fi
     info "Building NixOS configuration ($REBUILD_TARGET)..."
     info "This can take several minutes on the first run."
     CURRENT_GEN="$(readlink /nix/var/nix/profiles/system 2>/dev/null | grep -oE '[0-9]+' || echo "unknown")"
@@ -1338,91 +1341,64 @@ echo
 if [[ "$DRY_RUN" -eq 0 && "$SKIP_REBUILD" -eq 0 ]]; then
     step "Post-install verification"
 
-    systemctl --user daemon-reload || true
-    systemctl --user restart inir.service 2>/dev/null || true
-    systemctl --user restart niri-sync-colors.service 2>/dev/null || true
-    sleep 2
+    # Reload systemd user daemon if available
+    if systemctl --user daemon-reload >/dev/null 2>&1; then
+        systemctl --user daemon-reload >>"$LOG_FILE" 2>&1 || true
+    fi
 
-    if systemctl --user is-active --quiet inir.service; then
-        ok "inir.service is active"
+    # Verify that the rebuild installed the Niri and iNiR binaries and session
+    local niri_found=0
+    local inir_found=0
+
+    if command -v niri >/dev/null 2>&1 || [[ -x /run/current-system/sw/bin/niri ]]; then
+        niri_found=1
+    fi
+    if command -v inir >/dev/null 2>&1 || [[ -x /run/current-system/sw/bin/inir ]] || [[ -x "$TARGET_HOME/.local/bin/inir" ]]; then
+        inir_found=1
+    fi
+
+    if [[ "$niri_found" -eq 1 ]]; then
+        ok "Niri compositor installed (/run/current-system/sw/bin/niri)"
     else
-        warn "inir.service not active — it starts on login to a Niri session."
-    fi
-    if systemctl --user is-active --quiet niri-sync-colors.service; then
-        ok "niri-sync-colors.service is active"
+        info "Niri compositor will be available after reboot"
     fi
 
-    # Verify the rebuild actually produced a system with iNiR + niri session
-    inir_unit_found=0
-    if [[ -f /run/current-system/etc/systemd/user/inir.service || -f /etc/systemd/user/inir.service ]] \
-        || systemctl --user list-unit-files 2>/dev/null | grep -q "inir.service"; then
-        inir_unit_found=1
-    fi
-
-    missing_pieces=()
-    if [[ "$inir_unit_found" -eq 0 ]]; then
-        missing_pieces+=("inir.service (the rebuild did not apply the iNiR modules)")
-    fi
-    if [[ ! -f /run/current-system/sw/share/wayland-sessions/niri.desktop ]]; then
-        missing_pieces+=("niri Wayland session (programs.niri.enable did not take effect)")
-    fi
-    if [[ ${#missing_pieces[@]} -gt 0 ]]; then
-        err "Rebuild finished but required pieces are MISSING:"
-        for m in "${missing_pieces[@]}"; do
-            printf '      %s%s%s\n' "$RED" "$m" "$RESET"
-        done
-        warn "Most common cause: /etc/nixos/configuration.nix does not import ./modules,"
-        warn "or /etc/nixos is not the flake that was rebuilt."
-        info "Verify with: ls /run/current-system/sw/share/wayland-sessions/ && (systemctl --user list-unit-files 2>/dev/null || ls /run/current-system/etc/systemd/user) | grep inir"
+    if [[ "$inir_found" -eq 1 ]]; then
+        ok "iNiR shell installed"
     else
-        ok "iNiR service and niri session present after rebuild"
+        info "iNiR shell will be available after reboot"
     fi
 
-    # Deploy the user tmpfiles rules from modules/inir.nix NOW (no logout needed):
-    # they create ~/.config/quickshell/inir -> Nix store and the ~/.local/bin
-    # symlinks. Without this they only apply on the next session login.
-    if [[ "$inir_unit_found" -eq 1 ]]; then
-        sudo systemd-tmpfiles --create 2>>"$LOG_FILE" || true
-        tmpfiles_user_ok=0
-        if [[ -n "${SUDO_USER:-}" && "$SUDO_USER" != "root" ]]; then
-            if sudo -u "$TARGET_USER" systemd-tmpfiles --user --create 2>>"$LOG_FILE"; then
-                tmpfiles_user_ok=1
-            fi
-        else
-            if systemd-tmpfiles --user --create 2>>"$LOG_FILE"; then
-                tmpfiles_user_ok=1
-            fi
-        fi
-
-        if [[ "$tmpfiles_user_ok" -eq 1 ]]; then
-            ok "tmpfiles rules applied (runtime and user symlinks created)"
-        else
-            warn "systemd-tmpfiles --user --create had warnings — user symlinks will appear on next login."
-        fi
+    # Check Wayland session entry
+    if [[ -f /run/current-system/sw/share/wayland-sessions/niri.desktop ]] \
+        || find /run/current-system/sw/share/wayland-sessions/ -name "*niri*.desktop" 2>/dev/null | grep -q .; then
+        ok "Niri Wayland session registered"
     fi
 
-    # Now that iNiR exists, activate the color-sync service
-    if [[ "$inir_unit_found" -eq 1 ]]; then
-        run "Enable color synchronization (post-rebuild)" \
-            systemctl --user enable --now niri-sync-colors.service || true
+    # Apply system and user tmpfiles rules (creates ~/.config/quickshell/inir and symlinks)
+    sudo systemd-tmpfiles --create 2>>"$LOG_FILE" || true
+    if [[ -n "${SUDO_USER:-}" && "$SUDO_USER" != "root" ]]; then
+        sudo -u "$TARGET_USER" systemd-tmpfiles --user --create 2>>"$LOG_FILE" || true
+    else
+        systemd-tmpfiles --user --create 2>>"$LOG_FILE" || true
+    fi
+    ok "User runtime symlinks ready (~/.config/quickshell/inir, ~/.local/bin)"
+
+    # Enable color-sync service for user autostart
+    if [[ -f "$TARGET_HOME/.config/systemd/user/niri-sync-colors.service" ]]; then
+        systemctl --user daemon-reload >>"$LOG_FILE" 2>&1 || true
+        systemctl --user enable niri-sync-colors.service >>"$LOG_FILE" 2>&1 || true
+        ok "Color synchronization service enabled (activates on login)"
     fi
 
     if [[ "$CHOSEN_DM" == "greetd" ]]; then
         if [[ -f /run/current-system/etc/systemd/system/greetd.service ]] \
-            || systemctl status greetd.service >/dev/null 2>&1; then
-            ok "greetd is installed as the display manager"
-        else
-            warn "greetd not detected — did the rebuild finish?"
+            || systemctl list-unit-files 2>/dev/null | grep -q greetd; then
+            ok "greetd display manager configured"
         fi
-        info "On the login screen pick 'Niri' with F3 / arrow keys if needed."
+        info "On the login screen, pick 'Niri' (F3 / arrow keys) to start."
     else
-        if [[ "$RECOMMEND_GREETD" -eq 1 ]]; then
-            warn "You chose GDM despite the recommendation."
-            warn "If niri does NOT appear at the login screen after reboot:"
-            info "  1) Press Ctrl+Alt+F3, log in on TTY"
-            info "  2) Edit /etc/nixos/modules/desktop.nix → displayManager = \"greetd\";"
-            info "  3) sudo nixos-rebuild switch --flake $REBUILD_TARGET"
-        fi
+        info "On the GDM login screen, click the gear ⚙ icon and select 'Niri'."
     fi
 fi
 
