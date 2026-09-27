@@ -56,6 +56,15 @@ stop_recording() {
         stopped=1
     fi
 
+    # Esperar hasta 3 segundos a que wf-recorder termine de cerrar el contenedor MP4
+    if [[ "$stopped" -eq 1 ]]; then
+        local wait_ticks=0
+        while pgrep -x wf-recorder >/dev/null 2>&1 && (( wait_ticks < 30 )); do
+            sleep 0.1
+            wait_ticks=$((wait_ticks + 1))
+        done
+    fi
+
     if [[ "$stopped" -eq 1 ]]; then
         local saved_file=""
         if [[ -f "$INFO_FILE" ]]; then
@@ -192,9 +201,16 @@ fi
 
 # Detectar monitor activo en Niri
 get_active_monitor() {
+    local mon=""
     if command -v niri >/dev/null 2>&1; then
-        niri msg focused-output 2>/dev/null | head -n 1 | sed -n 's/.*(\(.*\))/\1/p' || true
+        if command -v jq >/dev/null 2>&1; then
+            mon="$(niri msg --json focused-output 2>/dev/null | jq -r '.name // empty' 2>/dev/null || true)"
+        fi
+        if [[ -z "$mon" ]]; then
+            mon="$(niri msg focused-output 2>/dev/null | head -n 1 | sed -n 's/.*"\([^"]*\)".*/\1/p' || true)"
+        fi
     fi
+    echo "$mon"
 }
 
 # Resolver dispositivo de audio
@@ -207,7 +223,11 @@ if [[ "$AUDIO_MODE" != "none" ]]; then
             system)
                 DEF_SINK="$(pactl get-default-sink 2>/dev/null || true)"
                 if [[ -n "$DEF_SINK" ]]; then
-                    AUDIO_DEVICE="${DEF_SINK}.monitor"
+                    if [[ "$DEF_SINK" == *.monitor ]]; then
+                        AUDIO_DEVICE="$DEF_SINK"
+                    else
+                        AUDIO_DEVICE="${DEF_SINK}.monitor"
+                    fi
                     AUDIO_LABEL="Audio del sistema"
                 fi
                 ;;
@@ -220,8 +240,14 @@ if [[ "$AUDIO_MODE" != "none" ]]; then
                 ;;
             both)
                 # Si se solicita ambos y existe record.sh de iNiR, delegar para usar su mix automático
-                INIR_RECORDER="/run/current-system/sw/share/quickshell/inir/scripts/videos/record.sh"
-                if [[ -x "$INIR_RECORDER" ]]; then
+                INIR_RECORDER=""
+                if [[ -x "$HOME/.config/quickshell/inir/scripts/videos/record.sh" ]]; then
+                    INIR_RECORDER="$HOME/.config/quickshell/inir/scripts/videos/record.sh"
+                elif [[ -x "/run/current-system/sw/share/quickshell/inir/scripts/videos/record.sh" ]]; then
+                    INIR_RECORDER="/run/current-system/sw/share/quickshell/inir/scripts/videos/record.sh"
+                fi
+
+                if [[ -n "$INIR_RECORDER" ]]; then
                     ARGS=("--sound")
                     [[ "$MODE" == "fullscreen" ]] && ARGS+=("--fullscreen")
                     exec bash "$INIR_RECORDER" "${ARGS[@]}"
@@ -229,17 +255,24 @@ if [[ "$AUDIO_MODE" != "none" ]]; then
                 # Fallback al sistema
                 DEF_SINK="$(pactl get-default-sink 2>/dev/null || true)"
                 if [[ -n "$DEF_SINK" ]]; then
-                    AUDIO_DEVICE="${DEF_SINK}.monitor"
+                    if [[ "$DEF_SINK" == *.monitor ]]; then
+                        AUDIO_DEVICE="$DEF_SINK"
+                    else
+                        AUDIO_DEVICE="${DEF_SINK}.monitor"
+                    fi
                     AUDIO_LABEL="Audio del sistema (mix fallback)"
                 fi
                 ;;
         esac
     fi
 
-    # Fallback si pactl no resolvió pero tenemos wpctl
+    # Fallback si pactl no resolvió pero tenemos wpctl: extraer el node.name real para libpulse
     if [[ -z "$AUDIO_DEVICE" ]] && command -v wpctl >/dev/null 2>&1; then
-        AUDIO_DEVICE="@DEFAULT_AUDIO_SINK@"
-        AUDIO_LABEL="Audio por defecto"
+        wp_node="$(wpctl inspect @DEFAULT_AUDIO_SINK@ 2>/dev/null | grep 'node\.name' | head -n1 | sed -n 's/.*"\(.*\)".*/\1/p' || true)"
+        if [[ -n "$wp_node" ]]; then
+            AUDIO_DEVICE="${wp_node}.monitor"
+            AUDIO_LABEL="Audio del sistema (wpctl)"
+        fi
     fi
 fi
 
@@ -284,9 +317,20 @@ else
 fi
 
 # Ejecutar en segundo plano
-"${CMD[@]}" >/dev/null 2>&1 &
+"${CMD[@]}" >"$STATE_DIR/wf-recorder.log" 2>&1 &
 RECORDER_PID=$!
 echo "$RECORDER_PID" > "$PID_FILE"
+
+sleep 0.4
+if ! kill -0 "$RECORDER_PID" 2>/dev/null; then
+    rm -f "$PID_FILE" "$INFO_FILE"
+    notify "Error al iniciar grabación" "wf-recorder falló. Revisa: $STATE_DIR/wf-recorder.log" "critical"
+    echo "Error: wf-recorder falló al iniciar. Revisa el log: $STATE_DIR/wf-recorder.log" >&2
+    if [[ -f "$STATE_DIR/wf-recorder.log" ]]; then
+        tail -n 5 "$STATE_DIR/wf-recorder.log" | sed 's/^/  /' >&2
+    fi
+    exit 1
+fi
 
 echo "Grabando pantalla en $OUTPUT_FILE (PID: $RECORDER_PID, Audio: $AUDIO_LABEL)"
 echo "Para detener la grabación ejecute: $(basename "$0") --stop"

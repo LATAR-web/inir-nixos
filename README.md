@@ -77,6 +77,7 @@ Runs 7 phases, reproducibly and safely:
 | `./install.sh --yes` (`-y`) | Non-interactive: assumes "yes" to all prompts. |
 | `./install.sh --dry-run` | Simulates everything, changes nothing. **Recommended first run.** |
 | `./install.sh --skip-rebuild` | Deploys files/services but skips `nixos-rebuild switch`. |
+| `./install.sh --update` | Non-interactive sync: updates iNiR modules and rebuilds system. |
 | `./install.sh --no-ai` | Skips the optional AI configuration review. |
 | `./install.sh --check` | Runs `scripts/verify-setup.sh` and exits. |
 | `./install.sh --help` (`-h`) | Shows CLI help. |
@@ -272,6 +273,7 @@ Rollback: `sudo nixos-rebuild switch --rollback`
 
 | Issue | Fix |
 |---|---|
+| `inir run` → "Unable to locate config-path helper" | A real `~/.config/quickshell/inir` directory is shadowing the packaged runtime. Back it up, remove it, then run `systemd-tmpfiles --user --create` (the installer offers this automatically). |
 | Stray `~/.config/systemd/user/inir.service` | Overrides the NixOS service. Remove it — the installer does this automatically. |
 | Missing `/bin/cat` | Fixed via `systemd.tmpfiles.rules` in `modules/inir.nix`. |
 | Missing icons in QuickShell | Fixed by `modules/patches/inir-icon-theme.patch`. |

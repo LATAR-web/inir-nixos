@@ -23,6 +23,7 @@ set -Eeuo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
+SCRIPT_START_SEC="$(date +%s)"
 LOG_FILE="/tmp/inir-nixos-install-${TIMESTAMP}.log"
 BACKUPS_DIR="/tmp/inir-nixos-backups-${TIMESTAMP}"
 
@@ -31,6 +32,7 @@ DRY_RUN=0
 SKIP_REBUILD=0
 CHECK_ONLY=0
 NO_AI=0
+UPDATE_ONLY=0
 
 # ============================================================
 # Options
@@ -51,6 +53,9 @@ Options:
   --skip-rebuild
       Install files and services but do not run nixos-rebuild.
 
+  --update
+      Non-interactive sync: updates iNiR modules and rebuilds system.
+
   --no-ai
       Skip the optional AI configuration review (if available).
 
@@ -65,6 +70,7 @@ Examples:
   ./install.sh
   ./install.sh --yes
   ./install.sh --dry-run
+  ./install.sh --update
   ./install.sh --skip-rebuild
 HELP
 }
@@ -74,6 +80,7 @@ for arg in "$@"; do
         --yes|-y)         ASSUME_YES=1 ;;
         --dry-run)        DRY_RUN=1 ;;
         --skip-rebuild)   SKIP_REBUILD=1 ;;
+        --update)         UPDATE_ONLY=1; ASSUME_YES=1 ;;
         --no-ai)          NO_AI=1 ;;
         --check)          CHECK_ONLY=1 ;;
         --help|-h)        usage; exit 0 ;;
@@ -206,6 +213,8 @@ backup_if_exists() {
     local target="$1"
     [[ -e "$target" || -L "$target" ]] || return 0
     local backup="${BACKUPS_DIR}/$(echo "$target" | sed 's|^/||; s|/|_|g').bak"
+    # Never overwrite a backup created earlier in the same run (preserves original pristine file)
+    [[ -e "$backup" ]] && return 0
     if [[ "$DRY_RUN" -eq 1 ]]; then
         dry_run_msg "Would backup: $target"
         return 0
@@ -342,6 +351,25 @@ else
     ok "Disk space OK (${NIX_FREE_GB}GB free in /nix)"
 fi
 
+# Network connectivity check
+if ping -c 1 -W 2 1.1.1.1 >/dev/null 2>&1 || curl -s --connect-timeout 2 -I https://cache.nixos.org >/dev/null 2>&1; then
+    ok "Network connectivity OK (Nix binary cache reachable)"
+else
+    warn "No network connectivity detected. Downloading dependencies might fail."
+fi
+
+# Battery power check on laptops
+if [[ -d /sys/class/power_supply ]]; then
+    for bat in /sys/class/power_supply/BAT*; do
+        [[ -e "$bat" ]] || continue
+        bat_status="$(cat "$bat/status" 2>/dev/null || echo "Unknown")"
+        bat_cap="$(cat "$bat/capacity" 2>/dev/null || echo "100")"
+        if [[ "$bat_status" == "Discharging" ]] && (( bat_cap < 30 )); then
+            warn "Laptop is on battery (${bat_cap}%). Connecting AC power is strongly recommended for NixOS builds."
+        fi
+    done
+fi
+
 require_command git "git"
 require_command nix "nix"
 require_command sudo "sudo"
@@ -386,10 +414,29 @@ DETECTED_HOSTNAME="$(hostname 2>/dev/null || cat /etc/hostname 2>/dev/null || ec
 DETECTED_TZ="$(timedatectl show --property=Timezone --value 2>/dev/null || echo "")"
 DETECTED_LAYOUT="$(localectl status 2>/dev/null | grep 'X11 Layout' | awk -F': ' '{print $2}' | tr -d ' ')"
 DETECTED_LOCALE="$(localectl status 2>/dev/null | grep 'System Locale' | awk -F'LANG=' '{print $2}' | tr -d ' ')"
-DETECTED_SESSION="$(echo "${XDG_CURRENT_DESKTOP:-}" | cut -d: -f2)"
 DETECTED_GPU="unknown"
-GPU_MODULES="$(lsmod 2>/dev/null | awk 'BEGIN{r=""} $1=="nvidia"||$1=="nouveau"{r="nvidia"} $1=="i915"||$1=="xe"{r="intel"} $1=="amdgpu"{r="amd"} END{print r}')" || true
-if [[ -n "$GPU_MODULES" ]]; then DETECTED_GPU="$GPU_MODULES"; fi
+HAS_NVIDIA=0; HAS_INTEL=0; HAS_AMD=0
+if command -v lspci >/dev/null 2>&1; then
+    PCI_VGA="$(lspci 2>/dev/null | grep -iE 'vga|3d|display' || true)"
+    if echo "$PCI_VGA" | grep -qi "nvidia"; then HAS_NVIDIA=1; fi
+    if echo "$PCI_VGA" | grep -qi "intel"; then HAS_INTEL=1; fi
+    if echo "$PCI_VGA" | grep -qiE "amd|advanced micro|ati"; then HAS_AMD=1; fi
+elif [[ -d /sys/bus/pci/devices ]]; then
+    if grep -qs "0x10de" /sys/bus/pci/devices/*/vendor 2>/dev/null; then HAS_NVIDIA=1; fi
+    if grep -qs "0x8086" /sys/bus/pci/devices/*/vendor 2>/dev/null; then HAS_INTEL=1; fi
+    if grep -qs "0x1002" /sys/bus/pci/devices/*/vendor 2>/dev/null; then HAS_AMD=1; fi
+fi
+if lsmod 2>/dev/null | grep -qE '^(nvidia|nouveau)'; then HAS_NVIDIA=1; fi
+if lsmod 2>/dev/null | grep -qE '^(i915|xe)'; then HAS_INTEL=1; fi
+if lsmod 2>/dev/null | grep -qE '^amdgpu'; then HAS_AMD=1; fi
+
+if [[ "$HAS_NVIDIA" -eq 1 ]]; then
+    DETECTED_GPU="nvidia"
+elif [[ "$HAS_AMD" -eq 1 ]]; then
+    DETECTED_GPU="amd"
+elif [[ "$HAS_INTEL" -eq 1 ]]; then
+    DETECTED_GPU="intel"
+fi
 IS_VM="no"
 VIRT_TYPE="$(systemd-detect-virt 2>/dev/null || true)"
 if [[ -z "$VIRT_TYPE" ]]; then VIRT_TYPE="none"; fi
@@ -518,14 +565,35 @@ else
     ok "No stray inir.service"
 fi
 
+# A REAL (non-symlink) ~/.config/quickshell/inir directory shadows the packaged
+# runtime: the `inir` launcher looks for scripts/lib/config-path.sh next to the
+# script first and finds none, failing with "Unable to locate config-path
+# helper". modules/inir.nix deploys a tmpfiles rule that symlinks this path to
+# the Nix store, but tmpfiles (and the NixOS activation) refuse to replace an
+# existing non-empty directory — so it must be cleared here.
+QS_REAL_DIR="$TARGET_HOME/.config/quickshell/inir"
+if [[ -d "$QS_REAL_DIR" && ! -L "$QS_REAL_DIR" ]]; then
+    warn "$QS_REAL_DIR is a real directory — it will shadow the packaged iNiR runtime."
+    warn "(Typical symptom: 'Unable to locate config-path helper' when running `inir run`.)"
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        dry_run_msg "Would back up and remove: $QS_REAL_DIR"
+    elif confirm "Back it up and remove it now? (recreate it with 'systemd-tmpfiles --user --create' after the rebuild)"; then
+        mkdir -p "$BACKUPS_DIR"
+        cp -a "$QS_REAL_DIR" "$BACKUPS_DIR/home_.config_quickshell_inir" || true
+        rm -rf "$QS_REAL_DIR"
+        ok "Real quickshell/inir directory backed up and removed (NixOS will symlink it after the rebuild)"
+    else
+        warn "Left in place — expect 'Unable to locate config-path helper' and a broken shell."
+    fi
+fi
+
 # Reset stale AccountsService session (fixes GDM not offering niri)
 if [[ "$STALE_ACCOUNTSSERVICE" -eq 1 ]]; then
     if [[ "$DRY_RUN" -eq 1 ]]; then
-        dry_run_msg "Would remove stale AccountsService user state"
+        dry_run_msg "Would remove stale AccountsService state for $TARGET_USER"
     else
-        sudo rm -f /var/lib/AccountsService/users/* 2>/dev/null || true
-        sudo rm -f /var/lib/AccountsService/icons/* 2>/dev/null || true
-        ok "Stale AccountsService state cleared (niri will be offered fresh)"
+        sudo rm -f "/var/lib/AccountsService/users/$TARGET_USER" 2>/dev/null || true
+        ok "Stale AccountsService state cleared for $TARGET_USER (niri will be offered fresh)"
     fi
 fi
 
@@ -631,7 +699,7 @@ if [[ -f /etc/nixos/configuration.nix ]]; then
         dry_run_msg "Would ensure ./modules is imported in configuration.nix"
     fi
     # Hard guarantee: without this import the whole installer is a no-op.
-    if ! grep -Eq '^[^#]*\./modules' /etc/nixos/configuration.nix; then
+    if [[ "$DRY_RUN" -eq 0 ]] && ! grep -Eq '^[^#]*\./modules' /etc/nixos/configuration.nix; then
         err "./modules is NOT imported in /etc/nixos/configuration.nix — the rebuild would apply NOTHING."
         err "Add it inside the imports list and re-run this installer."
         exit 1
@@ -757,12 +825,12 @@ else
         dry_run_msg "Would update flake.nix to nixos-unstable"
     elif [[ -f /etc/nixos/flake.nix ]]; then
         backup_if_exists "/etc/nixos/flake.nix"
-        sudo sed -i -E 's|github:nixos/nixpkgs/nixos-[0-9]{2}\.[0-9]{2}|github:nixos/nixpkgs/nixos-unstable|g' /etc/nixos/flake.nix
+        sudo sed -i -E 's|(github:)?[nN]ix[oO][sS]/nixpkgs/nixos-[0-9]{2}\.[0-9]{2}|github:nixos/nixpkgs/nixos-unstable|g' /etc/nixos/flake.nix
         ok "flake.nix switched to nixos-unstable"
     fi
 fi
 
-# iNiR flake input check
+# iNiR flake input check (or offer to install reference flake.nix)
 if [[ -f /etc/nixos/flake.nix ]]; then
     if grep -q "snowarch/inir" /etc/nixos/flake.nix; then
         ok "iNiR flake input present"
@@ -770,6 +838,20 @@ if [[ -f /etc/nixos/flake.nix ]]; then
         warn "iNiR input missing in /etc/nixos/flake.nix. Required:"
         printf '      %s\n' 'inputs.inir.url = "github:snowarch/inir";'
         printf '      %s\n' 'specialArgs = { inherit inir; };'
+    fi
+else
+    info "No flake.nix found in /etc/nixos (required for iNiR modules)."
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        dry_run_msg "Would install reference flake.nix to /etc/nixos/flake.nix"
+    elif confirm "Install reference flake.nix into /etc/nixos?"; then
+        backup_if_exists "/etc/nixos/flake.nix"
+        sudo cp "$REPO_DIR/flake.nix" /etc/nixos/flake.nix
+        if [[ "$DETECTED_HOSTNAME" != "nixos" ]]; then
+            sudo sed -i "s/nixosConfigurations\.nixos/nixosConfigurations.\"$DETECTED_HOSTNAME\"/g" /etc/nixos/flake.nix 2>/dev/null || true
+        fi
+        ok "Reference flake.nix installed in /etc/nixos (configured for $DETECTED_HOSTNAME)"
+    else
+        warn "flake.nix not installed — you will need to configure the iNiR flake input manually."
     fi
 fi
 
@@ -823,7 +905,7 @@ if [[ -f "$MAIN_CONF" ]]; then
     # 2) Keyboard layout (modules default to "us"; only inject non-US layouts)
     if [[ -n "$DETECTED_LAYOUT" && "$DETECTED_LAYOUT" != "us" ]]; then
         KB_LINES=()
-        if ! grep -Eq 'xserver\.xkb\.layout|services\.xserver\.layout' "$MAIN_CONF" 2>/dev/null; then
+        if ! grep -Eq 'services\.xserver(\.xkb)?\.layout|xserver\.xkb\.layout|services\.xserver\.layout|layout\s*=\s*"[^"]+"' "$MAIN_CONF" 2>/dev/null; then
             KB_LINES+=("  services.xserver.xkb.layout = \"$DETECTED_LAYOUT\";")
         fi
         if ! grep -q "console.keyMap" "$MAIN_CONF" 2>/dev/null; then
@@ -932,12 +1014,21 @@ EOF
     # 6) i2c/video groups for external-monitor brightness (ddcutil)
     # NOTE: extraGroups is a list — injecting a second definition for a user
     # already declared in configuration.nix would break Nix evaluation.
+    local user_declared=0
+    if grep -Eq "users\.users(\.$DETECTED_USER|\.\"$DETECTED_USER\"|[[:space:]]*=[[:space:]]*\{[^}]*\"?$DETECTED_USER\"?)" "$MAIN_CONF" 2>/dev/null; then
+        user_declared=1
+    fi
+
     if id -nG "$DETECTED_USER" 2>/dev/null | grep -qw i2c; then
         ok "User $DETECTED_USER is already in the i2c group"
-    elif grep -q "users\.users\"?\.?\"$DETECTED_USER\"" "$MAIN_CONF" 2>/dev/null \
-        || grep -q "users\.users\.$DETECTED_USER" "$MAIN_CONF" 2>/dev/null; then
-        warn "User $DETECTED_USER is declared in your configuration but not in the i2c group."
-        info "Add \"i2c\" to their extraGroups for external-monitor brightness (ddcutil)."
+    elif [[ "$user_declared" -eq 1 ]]; then
+        GRP_BLOCK="$(mktemp)"
+        cat > "$GRP_BLOCK" <<EOF
+  # Brightness groups (video, i2c) for $DETECTED_USER (ddcutil)
+  users.users."$DETECTED_USER".extraGroups = [ "video" "i2c" ];
+EOF
+        offer_nix_injection "video and i2c groups for $DETECTED_USER" "$GRP_BLOCK"
+        rm -f "$GRP_BLOCK"
     else
         GRP_BLOCK="$(mktemp)"
         cat > "$GRP_BLOCK" <<EOF
@@ -966,10 +1057,15 @@ backup_if_exists "$TARGET_HOME/.config/niri/config.kdl"
 run "Install Niri config" \
     cp "$REPO_DIR/niri/config.kdl" "$TARGET_HOME/.config/niri/config.kdl"
 
-if [[ "$DRY_RUN" -eq 0 && "$DETECTED_LAYOUT" != "latam" && -n "$DETECTED_LAYOUT" ]]; then
-    sed -i "s/layout \"latam,us\"/layout \"$DETECTED_LAYOUT,us\"/" \
-        "$TARGET_HOME/.config/niri/config.kdl" 2>/dev/null || true
-    debug "Adapted Niri keyboard layout to: $DETECTED_LAYOUT,us"
+if [[ "$DRY_RUN" -eq 0 && -n "$DETECTED_LAYOUT" ]]; then
+    if [[ "$DETECTED_LAYOUT" == "us" ]]; then
+        sed -i 's/layout "latam,us"/layout "us"/' "$TARGET_HOME/.config/niri/config.kdl" 2>/dev/null || true
+        debug "Adapted Niri keyboard layout to: us"
+    elif [[ "$DETECTED_LAYOUT" != "latam" ]]; then
+        sed -i "s/layout \"latam,us\"/layout \"$DETECTED_LAYOUT,us\"/" \
+            "$TARGET_HOME/.config/niri/config.kdl" 2>/dev/null || true
+        debug "Adapted Niri keyboard layout to: $DETECTED_LAYOUT,us"
+    fi
 fi
 
 run "Install niri-sync-colors" \
@@ -981,7 +1077,9 @@ if [[ -f "$REPO_DIR/systemd/niri-sync-colors.service" ]]; then
     run "Install color-sync systemd service" \
         cp "$REPO_DIR/systemd/niri-sync-colors.service" \
            "$TARGET_HOME/.config/systemd/user/niri-sync-colors.service"
-    run "Reload systemd user manager" systemctl --user daemon-reload
+    if [[ "$DRY_RUN" -eq 0 ]]; then
+        systemctl --user daemon-reload >>"$LOG_FILE" 2>&1 || true
+    fi
     # Do NOT start it here: before the rebuild the prerequisites (inir,
     # inotifywait) do not exist yet and the service would crash-loop.
     info "Color-sync service installed — it activates after the rebuild."
@@ -1031,6 +1129,15 @@ EOF
             fi
         fi
     fi
+fi
+
+# Ensure user files belong to the user if running with sudo
+if [[ "$DRY_RUN" -eq 0 && "$EUID" -eq 0 && -n "${SUDO_USER:-}" && "$SUDO_USER" != "root" ]]; then
+    local_gid="$(id -gn "$TARGET_USER" 2>/dev/null || echo "$TARGET_USER")"
+    chown -R "$TARGET_USER:$local_gid" \
+        "$TARGET_HOME/.config/niri" \
+        "$TARGET_HOME/.local/bin" \
+        "$TARGET_HOME/.config/systemd/user" 2>/dev/null || true
 fi
 
 # ============================================================
@@ -1128,11 +1235,28 @@ elif [[ "$DRY_RUN" -eq 1 ]]; then
 elif confirm "Run nixos-rebuild switch now?"; then
     info "Building NixOS configuration ($REBUILD_TARGET)..."
     info "This can take several minutes on the first run."
+    CURRENT_GEN="$(readlink /nix/var/nix/profiles/system 2>/dev/null | grep -oE '[0-9]+' || echo "unknown")"
+    REBUILD_START=$(date +%s)
     if "${REBUILD_CMD[@]}" 2>&1 | tee -a "$LOG_FILE"; then
-        ok "NixOS rebuild completed successfully"
+        REBUILD_END=$(date +%s)
+        REBUILD_DURATION=$((REBUILD_END - REBUILD_START))
+        NEW_GEN="$(readlink /nix/var/nix/profiles/system 2>/dev/null | grep -oE '[0-9]+' || echo "unknown")"
+        ok "NixOS rebuild completed successfully in ${REBUILD_DURATION}s (Generation #$CURRENT_GEN → #$NEW_GEN)"
     else
-        err "NixOS rebuild failed."
-        warn "The previous NixOS generation remains active — your system still boots as before."
+        REBUILD_END=$(date +%s)
+        REBUILD_DURATION=$((REBUILD_END - REBUILD_START))
+        err "NixOS rebuild failed after ${REBUILD_DURATION}s."
+        warn "The running generation (#$CURRENT_GEN) was NOT altered — your system boots safely as before."
+        if grep -qi "No space left on device" "$LOG_FILE" 2>/dev/null; then
+            err "Diagnostic: Disk space exhausted during build."
+            info "Fix: Free space with 'sudo nix-collect-garbage -d' and retry."
+        elif grep -qi "untracked files" "$LOG_FILE" 2>/dev/null; then
+            err "Diagnostic: Untracked git files in /etc/nixos."
+            info "Fix: Stage files with 'sudo git -C /etc/nixos add -A'"
+        elif grep -qi "cannot download" "$LOG_FILE" 2>/dev/null; then
+            err "Diagnostic: Network failure downloading packages or flake inputs."
+            info "Fix: Check internet connection and retry."
+        fi
         echo "  Check the log:   $LOG_FILE"
         echo "  Roll back:       sudo nixos-rebuild switch --rollback"
         exit 1
@@ -1166,8 +1290,14 @@ if [[ "$DRY_RUN" -eq 0 && "$SKIP_REBUILD" -eq 0 ]]; then
     fi
 
     # Verify the rebuild actually produced a system with iNiR + niri session
+    local inir_unit_found=0
+    if [[ -f /run/current-system/etc/systemd/user/inir.service || -f /etc/systemd/user/inir.service ]] \
+        || systemctl --user list-unit-files 2>/dev/null | grep -q "inir.service"; then
+        inir_unit_found=1
+    fi
+
     local_missing=()
-    if ! systemctl list-unit-files 2>/dev/null | grep -q "inir.service"; then
+    if [[ "$inir_unit_found" -eq 0 ]]; then
         local_missing+=("inir.service (the rebuild did not apply the iNiR modules)")
     fi
     if [[ ! -f /run/current-system/sw/share/wayland-sessions/niri.desktop ]]; then
@@ -1180,20 +1310,38 @@ if [[ "$DRY_RUN" -eq 0 && "$SKIP_REBUILD" -eq 0 ]]; then
         done
         warn "Most common cause: /etc/nixos/configuration.nix does not import ./modules,"
         warn "or /etc/nixos is not the flake that was rebuilt."
-        info "Verify with: ls /run/current-system/sw/share/wayland-sessions/ && systemctl list-unit-files | grep inir"
+        info "Verify with: ls /run/current-system/sw/share/wayland-sessions/ && (systemctl --user list-unit-files 2>/dev/null || ls /run/current-system/etc/systemd/user) | grep inir"
     else
         ok "iNiR service and niri session present after rebuild"
     fi
 
-    # Verify the chosen display manager + niri session file
-    if [[ -f /run/current-system/sw/share/wayland-sessions/niri.desktop ]]; then
-        ok "niri Wayland session registered"
+    # Deploy the user tmpfiles rules from modules/inir.nix NOW (no logout needed):
+    # they create ~/.config/quickshell/inir -> Nix store and the ~/.local/bin
+    # symlinks. Without this they only apply on the next session login.
+    if [[ "$inir_unit_found" -eq 1 ]]; then
+        sudo systemd-tmpfiles --create 2>>"$LOG_FILE" || true
+        local tmpfiles_user_ok=0
+        if [[ -n "${SUDO_USER:-}" && "$SUDO_USER" != "root" ]]; then
+            if sudo -u "$TARGET_USER" systemd-tmpfiles --user --create 2>>"$LOG_FILE"; then
+                tmpfiles_user_ok=1
+            fi
+        else
+            if systemd-tmpfiles --user --create 2>>"$LOG_FILE"; then
+                tmpfiles_user_ok=1
+            fi
+        fi
+
+        if [[ "$tmpfiles_user_ok" -eq 1 ]]; then
+            ok "tmpfiles rules applied (runtime and user symlinks created)"
+        else
+            warn "systemd-tmpfiles --user --create had warnings — user symlinks will appear on next login."
+        fi
     fi
 
     # Now that iNiR exists, activate the color-sync service
-    if systemctl list-unit-files 2>/dev/null | grep -q "inir.service"; then
+    if [[ "$inir_unit_found" -eq 1 ]]; then
         run "Enable color synchronization (post-rebuild)" \
-            systemctl --user enable --now niri-sync-colors.service
+            systemctl --user enable --now niri-sync-colors.service || true
     fi
 
     if [[ "$CHOSEN_DM" == "greetd" ]]; then
@@ -1230,6 +1378,14 @@ else
     printf '%s%s╚══════════════════════════════════════════════════════╝%s\n' "$BOLD" "$GREEN" "$RESET"
 fi
 echo
+SCRIPT_END_SEC=$(date +%s)
+TOTAL_SEC=$((SCRIPT_END_SEC - SCRIPT_START_SEC))
+if (( TOTAL_SEC >= 60 )); then
+    TIME_STR="$((TOTAL_SEC / 60))m $((TOTAL_SEC % 60))s"
+else
+    TIME_STR="${TOTAL_SEC}s"
+fi
+printf '  Time taken:   %s%s%s\n' "$CYAN" "$TIME_STR" "$RESET"
 printf '  Diagnostics:  %sbash %s/scripts/verify-setup.sh%s\n' "$BOLD" "$REPO_DIR" "$RESET"
 printf '  Log:          %s%s%s\n' "$DIM" "$LOG_FILE" "$RESET"
 if [[ -d "$BACKUPS_DIR" ]]; then

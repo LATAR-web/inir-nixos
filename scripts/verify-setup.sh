@@ -40,6 +40,7 @@ check_command wl-paste "wl-paste"
 check_command cliphist "cliphist"
 check_command wf-recorder "wf-recorder"
 check_command pactl "pactl (PulseAudio CLI)"
+check_command playerctl "playerctl (media key control)"
 
 if command -v pactl >/dev/null 2>&1; then
     _def_sink="$(pactl get-default-sink 2>/dev/null || true)"
@@ -61,7 +62,11 @@ fi
 if systemctl --user is-active --quiet inir.service; then
     ok "inir.service is running"
 else
-    fail "inir.service is NOT running"
+    if [[ "${XDG_CURRENT_DESKTOP:-}" == *"niri"* || "${DESKTOP_SESSION:-}" == *"niri"* ]]; then
+        fail "inir.service is NOT running in active Niri session"
+    else
+        warn "inir.service is not running (it will start upon login to Niri)"
+    fi
 fi
 
 if systemctl --user is-active --quiet niri-sync-colors.service; then
@@ -90,7 +95,11 @@ fi
 if pgrep -f "wl-paste.*--watch" >/dev/null 2>&1; then
     ok "clipboard watcher process is running"
 else
-    fail "clipboard watcher process is NOT running"
+    if [[ "${XDG_CURRENT_DESKTOP:-}" == *"niri"* || "${DESKTOP_SESSION:-}" == *"niri"* ]]; then
+        fail "clipboard watcher process is NOT running"
+    else
+        warn "clipboard watcher process not running (it starts upon login to Niri)"
+    fi
 fi
 
 if [[ -f "$HOME/.config/systemd/user/niri-color-sync.service" ]]; then
@@ -122,8 +131,10 @@ fi
 # allowUnfree: without it, NVIDIA drivers / Steam / VS Code fail to evaluate
 if grep -rqE 'allowUnfree[[:space:]]*=[[:space:]]*true|allowUnfreePredicate' /etc/nixos/configuration.nix /etc/nixos/flake.nix /etc/nixos/modules/*.nix 2>/dev/null; then
     ok "allowUnfree enabled (proprietary packages available)"
+elif grep -rqE 'nvidia|videoDrivers.*nvidia' /etc/nixos/configuration.nix /etc/nixos/flake.nix /etc/nixos/modules/*.nix 2>/dev/null; then
+    fail "allowUnfree NOT enabled with NVIDIA GPU present (set nixpkgs.config.allowUnfree = true;)"
 else
-    fail "allowUnfree NOT enabled — NVIDIA/Steam/etc. will fail to build (set nixpkgs.config.allowUnfree = true;)"
+    warn "allowUnfree not enabled (recommended if you need NVIDIA/Steam/VS Code)"
 fi
 
 # greetd option consistency: if greetd was chosen, it must be written in the config
@@ -135,6 +146,19 @@ if [[ -f "$HOME/.config/quickshell/inir/scripts/niri-config.py" || -f "/run/curr
     ok "iNiR niri-config.py exists"
 else
     warn "iNiR niri-config.py not found"
+fi
+
+# The `inir` launcher sources scripts/lib/config-path.sh from its runtime; a
+# real (non-symlink) ~/.config/quickshell/inir directory shadows the packaged
+# runtime and makes `inir run` fail with "Unable to locate config-path helper".
+if [[ -d "$HOME/.config/quickshell/inir" && ! -L "$HOME/.config/quickshell/inir" ]]; then
+    fail "~/.config/quickshell/inir is a REAL directory — it shadows the packaged runtime (back it up, remove it, then run: systemd-tmpfiles --user --create)"
+elif [[ ! -e "$HOME/.config/quickshell/inir" ]]; then
+    warn "~/.config/quickshell/inir symlink missing (apply user tmpfiles: systemd-tmpfiles --user --create)"
+elif [[ -f "$HOME/.config/quickshell/inir/scripts/lib/config-path.sh" || -f "/run/current-system/sw/share/quickshell/inir/scripts/lib/config-path.sh" ]]; then
+    ok "inir config-path helper resolvable"
+else
+    fail "inir config-path helper NOT found — 'inir run' will fail (did the rebuild apply modules/inir.nix?)"
 fi
 
 if [[ -w "$HOME/.local/bin" ]]; then
@@ -152,6 +176,7 @@ fi
 
 # Disk space under /nix (a full store breaks every future rebuild)
 _nix_free="$(df -BG --output=avail /nix 2>/dev/null | tail -n1 | tr -dc '0-9' || echo 0)"
+_nix_free="${_nix_free:-0}"
 if (( _nix_free > 0 && _nix_free < 5 )); then
     fail "Only ${_nix_free}GB free in /nix — run 'sudo nix-collect-garbage -d'"
 elif (( _nix_free > 0 && _nix_free < 10 )); then

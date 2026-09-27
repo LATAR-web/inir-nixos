@@ -22,9 +22,10 @@ in
       alsa.enable = lib.mkDefault true;
       alsa.support32Bit = lib.mkDefault true;
       pulse.enable = lib.mkDefault true;
+      wireplumber.enable = lib.mkDefault true;
     };
 
-    # Provides `pactl` for PipeWire/PulseAudio CLI control and screen recording audio capture (wf-recorder)
-    environment.systemPackages = [ pkgs.pulseaudio ];
+    # Provides `pactl` and `playerctl` for CLI audio and media controls
+    environment.systemPackages = with pkgs; [ pulseaudio playerctl ];
   };
 }

@@ -48,6 +48,39 @@ in
   programs.niri.enable = lib.mkDefault true;
   programs.dconf.enable = lib.mkDefault true;
 
+  # Elevación de privilegios gráfica (Polkit) para aplicaciones en Wayland
+  security.polkit.enable = lib.mkDefault true;
+  systemd.user.services.polkit-kde-authentication-agent-1 = {
+    description = "polkit-kde-authentication-agent-1";
+    wantedBy = [ "graphical-session.target" ];
+    wants = [ "graphical-session.target" ];
+    after = [ "graphical-session.target" ];
+    serviceConfig = {
+      Type = "simple";
+      ExecStart = "${pkgs.kdePackages.polkit-kde-agent-1}/libexec/polkit-kde-authentication-agent-1";
+      Restart = "on-failure";
+      RestartSec = 1;
+      TimeoutStopSec = 10;
+    };
+  };
+
+  # Integración XDG Desktop Portal para captura de pantalla / WebRTC / diálogos en Niri
+  xdg.portal = {
+    enable = lib.mkDefault true;
+    extraPortals = [
+      pkgs.xdg-desktop-portal-gnome
+      pkgs.xdg-desktop-portal-gtk
+    ];
+    config.niri.default = [ "gnome" "gtk" ];
+  };
+
+  # Soporte Bluetooth y daemon Blueman para el widget de iNiR
+  hardware.bluetooth.enable = lib.mkDefault true;
+  services.blueman.enable = lib.mkDefault true;
+
+  # Demonio UPower para widget de batería y suspensión
+  services.upower.enable = lib.mkDefault true;
+
   # Variables de entorno para el servicio user de systemd
   systemd.user.services.inir = {
     environment = {

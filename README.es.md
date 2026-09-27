@@ -77,6 +77,7 @@ Corre 7 fases, de forma reproducible y segura:
 | `./install.sh --yes` (`-y`) | No interactivo: responde "sí" a todo. |
 | `./install.sh --dry-run` | Simula todo, no cambia nada. **Recomendado en la primera corrida.** |
 | `./install.sh --skip-rebuild` | Instala archivos/servicios pero omite `nixos-rebuild switch`. |
+| `./install.sh --update` | Actualización desatendida: sincroniza módulos y reconstruye el sistema. |
 | `./install.sh --no-ai` | Omite la revisión opcional de configuración con IA. |
 | `./install.sh --check` | Corre `scripts/verify-setup.sh` y termina. |
 | `./install.sh --help` (`-h`) | Muestra la ayuda. |
@@ -272,6 +273,7 @@ Rollback: `sudo nixos-rebuild switch --rollback`
 
 | Problema | Solución |
 |---|---|
+| `inir run` → "Unable to locate config-path helper" | Un directorio real `~/.config/quickshell/inir` está tapando el runtime empaquetado. Hazle respaldo, elimínalo y ejecuta `systemd-tmpfiles --user --create` (el instalador lo ofrece automáticamente). |
 | Archivo huérfano `~/.config/systemd/user/inir.service` | Sobreescribe el servicio de NixOS. Elimínalo — el instalador lo hace automáticamente. |
 | Error por ruta ausente `/bin/cat` | Corregido vía `systemd.tmpfiles.rules` en `modules/inir.nix`. |
 | Iconos ausentes en QuickShell | Solucionado con el parche `modules/patches/inir-icon-theme.patch`. |

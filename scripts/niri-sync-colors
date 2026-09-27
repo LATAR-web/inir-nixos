@@ -126,22 +126,25 @@ case "${1:-}" in
             poll_loop
         fi
 
-        while [[ ! -d "$GENERATED_DIR" ]]; do
-            sleep 2
-        done
+        while true; do
+            while [[ ! -d "$GENERATED_DIR" ]]; do
+                sleep 2
+            done
 
-        sync_once || true
+            sync_once || true
 
-        inotifywait -m \
-            -e close_write,moved_to \
-            --format '%f' \
-            "$GENERATED_DIR" |
-        while read -r file; do
-            case "$file" in
-                colors.json|theme-meta.json)
-                    sync_once || echo "niri-sync-colors: sync failed, will retry on next event" >&2
-                    ;;
-            esac
+            inotifywait -m \
+                -e close_write,moved_to \
+                --format '%f' \
+                "$GENERATED_DIR" 2>/dev/null |
+            while read -r file; do
+                case "$file" in
+                    colors.json|theme-meta.json)
+                        sync_once || echo "niri-sync-colors: sync failed, will retry on next event" >&2
+                        ;;
+                esac
+            done
+            sleep 1
         done
         ;;
 

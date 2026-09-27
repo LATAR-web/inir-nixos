@@ -69,6 +69,8 @@ with pkgs; [
   # --- System controls the shell's widgets call ---
   brightnessctl
   ddcutil                  # external monitor brightness over DDC/CI
+  playerctl                # media keys / MPRIS control used in niri/config.kdl
+  hyprpicker               # color picker tool used by inir
   upower
   blueman
   networkmanagerapplet
@@ -79,6 +81,7 @@ with pkgs; [
   material-symbols          # the icon font used throughout iNiR's UI — do not remove
   papirus-icon-theme        # desktop icon theme
   alacritty                 # terminal used by niri/config.kdl's Mod+Return bind — required for the shared config to work out of the box
+  nautilus                  # default file manager bound to Mod+E in niri/config.kdl
 
   # ===========================================================================
   # OPTIONAL — features you may not use. Safe to delete any of these lines.

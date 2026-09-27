@@ -10,14 +10,18 @@
     };
   };
 
-  outputs = { self, nixpkgs, inir, ... }: {
-    nixosConfigurations.nixos = nixpkgs.lib.nixosSystem {
+  outputs = { self, nixpkgs, inir, ... }:
+    let
       system = "x86_64-linux";
-      specialArgs = { inherit inir; };
-      modules = [ ./configuration.nix ];
-    };
+      systemConfig = nixpkgs.lib.nixosSystem {
+        inherit system;
+        specialArgs = { inherit inir; };
+        modules = [ ./configuration.nix ];
+      };
+    in {
+      nixosConfigurations.nixos = systemConfig;
 
-    # Default configuration fallback
-    nixosConfigurations.default = self.nixosConfigurations.nixos;
-  };
+      # Default configuration fallback
+      nixosConfigurations.default = systemConfig;
+    };
 }
