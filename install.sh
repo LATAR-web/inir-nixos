@@ -839,6 +839,21 @@ if [[ -f /etc/nixos/flake.nix ]]; then
         printf '      %s\n' 'inputs.inir.url = "github:snowarch/inir";'
         printf '      %s\n' 'specialArgs = { inherit inir; };'
     fi
+
+    # Auto-repair: ensure flake.nix provides nixosConfigurations.nixos and default
+    if ! grep -q 'nixosConfigurations\.nixos' /etc/nixos/flake.nix 2>/dev/null; then
+        if grep -q 'systemConfig' /etc/nixos/flake.nix 2>/dev/null; then
+            backup_if_exists "/etc/nixos/flake.nix"
+            sudo sed -i -E '0,/(nixosConfigurations\.[^=]+=[^;]+;)/s//\1\n      nixosConfigurations.nixos = systemConfig;/' /etc/nixos/flake.nix 2>/dev/null || true
+            ok "Added nixosConfigurations.nixos fallback to /etc/nixos/flake.nix"
+        fi
+    fi
+    if ! grep -q 'nixosConfigurations\.default' /etc/nixos/flake.nix 2>/dev/null; then
+        if grep -q 'systemConfig' /etc/nixos/flake.nix 2>/dev/null; then
+            sudo sed -i -E '0,/(nixosConfigurations\.[^=]+=[^;]+;)/s//\1\n      nixosConfigurations.default = systemConfig;/' /etc/nixos/flake.nix 2>/dev/null || true
+            ok "Added nixosConfigurations.default fallback to /etc/nixos/flake.nix"
+        fi
+    fi
 else
     info "No flake.nix found in /etc/nixos (required for iNiR modules)."
     if [[ "$DRY_RUN" -eq 1 ]]; then
@@ -1265,6 +1280,8 @@ elif [[ "$FLAKE_SHOW" == *"default"* ]]; then
     REBUILD_TARGET="/etc/nixos#default"
 elif [[ -n "$DETECTED_HOSTNAME" ]]; then
     REBUILD_TARGET="/etc/nixos#$DETECTED_HOSTNAME"
+else
+    REBUILD_TARGET="/etc/nixos#default"
 fi
 
 REBUILD_CMD=(sudo nixos-rebuild switch --flake "$REBUILD_TARGET")
