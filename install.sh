@@ -1012,23 +1012,42 @@ EOF
     esac
 
     # 6) i2c/video groups for external-monitor brightness (ddcutil)
-    # NOTE: extraGroups is a list — injecting a second definition for a user
-    # already declared in configuration.nix would break Nix evaluation.
+    # NOTE: extraGroups is a list — never define it twice for the same user inside configuration.nix.
+    # Clean up duplicate injection from previous buggy runs if present:
+    if grep -Eq 'users\.users\."?'"$DETECTED_USER"'"?\.extraGroups[[:space:]]*=[[:space:]]*\[[[:space:]]*"video"[[:space:]]*"i2c"[[:space:]]*\];' "$MAIN_CONF" 2>/dev/null; then
+        if [[ $(grep -c "extraGroups" "$MAIN_CONF" 2>/dev/null || echo 0) -gt 1 ]]; then
+            sudo sed -i \
+                -e '/# Brightness groups (video, i2c) for/d' \
+                -e '/users\.users\..*\.extraGroups = \[ "video" "i2c" \];/d' \
+                "$MAIN_CONF" 2>/dev/null || true
+            ok "Cleaned up duplicate extraGroups definition from $MAIN_CONF"
+        fi
+    fi
+
     user_declared=0
     if grep -Eq "users\.users(\.$DETECTED_USER|\.\"$DETECTED_USER\"|[[:space:]]*=[[:space:]]*\{[^}]*\"?$DETECTED_USER\"?)" "$MAIN_CONF" 2>/dev/null; then
         user_declared=1
     fi
 
-    if id -nG "$DETECTED_USER" 2>/dev/null | grep -qw i2c; then
-        ok "User $DETECTED_USER is already in the i2c group"
+    if id -nG "$DETECTED_USER" 2>/dev/null | grep -qw i2c || grep -q '"i2c"' "$MAIN_CONF" 2>/dev/null; then
+        ok "User $DETECTED_USER brightness groups (video, i2c) already configured"
     elif [[ "$user_declared" -eq 1 ]]; then
-        GRP_BLOCK="$(mktemp)"
-        cat > "$GRP_BLOCK" <<EOF
-  # Brightness groups (video, i2c) for $DETECTED_USER (ddcutil)
-  users.users."$DETECTED_USER".extraGroups = [ "video" "i2c" ];
-EOF
-        offer_nix_injection "video and i2c groups for $DETECTED_USER" "$GRP_BLOCK"
-        rm -f "$GRP_BLOCK"
+        to_add=""
+        if ! grep -q '"video"' "$MAIN_CONF" 2>/dev/null; then to_add="$to_add \"video\""; fi
+        if ! grep -q '"i2c"' "$MAIN_CONF" 2>/dev/null; then to_add="$to_add \"i2c\""; fi
+
+        if [[ -n "$to_add" ]] && grep -Eq 'extraGroups[[:space:]]*=[[:space:]]*\[' "$MAIN_CONF" 2>/dev/null; then
+            if confirm "Add brightness groups ($to_add) to $DETECTED_USER's extraGroups in configuration.nix?"; then
+                backup_if_exists "$MAIN_CONF"
+                sudo sed -i -E "s/(extraGroups[[:space:]]*=[[:space:]]*\[)/\1$to_add/" "$MAIN_CONF"
+                ok "Added$to_add to extraGroups in $MAIN_CONF"
+            else
+                warn "Brightness groups not added — you can add them manually to extraGroups."
+            fi
+        else
+            warn "User $DETECTED_USER is declared in your configuration but not in the i2c group."
+            info "Add \"video\" and \"i2c\" to their extraGroups for external-monitor brightness (ddcutil)."
+        fi
     else
         GRP_BLOCK="$(mktemp)"
         cat > "$GRP_BLOCK" <<EOF
@@ -1276,6 +1295,9 @@ elif confirm "Run nixos-rebuild switch now?"; then
         elif grep -qi "cannot download" "$LOG_FILE" 2>/dev/null; then
             err "Diagnostic: Network failure downloading packages or flake inputs."
             info "Fix: Check internet connection and retry."
+        elif grep -qi "already defined" "$LOG_FILE" 2>/dev/null; then
+            err "Diagnostic: Duplicate attribute defined in Nix configuration."
+            info "Fix: Check /etc/nixos/configuration.nix for duplicate option assignments."
         fi
         echo "  Check the log:   $LOG_FILE"
         echo "  Roll back:       sudo nixos-rebuild switch --rollback"
