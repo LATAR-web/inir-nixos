@@ -846,10 +846,10 @@ else
     elif confirm "Install reference flake.nix into /etc/nixos?"; then
         backup_if_exists "/etc/nixos/flake.nix"
         sudo cp "$REPO_DIR/flake.nix" /etc/nixos/flake.nix
-        if [[ "$DETECTED_HOSTNAME" != "nixos" ]]; then
-            sudo sed -i "s/nixosConfigurations\.nixos/nixosConfigurations.\"$DETECTED_HOSTNAME\"/g" /etc/nixos/flake.nix 2>/dev/null || true
+        if [[ "$DETECTED_HOSTNAME" != "nixos" && -n "$DETECTED_HOSTNAME" ]]; then
+            sudo sed -i -E "s/nixosConfigurations\.nixos[[:space:]]*=/nixosConfigurations.\"$DETECTED_HOSTNAME\" = systemConfig;\n      nixosConfigurations.nixos =/g" /etc/nixos/flake.nix 2>/dev/null || true
         fi
-        ok "Reference flake.nix installed in /etc/nixos (configured for $DETECTED_HOSTNAME)"
+        ok "Reference flake.nix installed in /etc/nixos (configured for $DETECTED_HOSTNAME + nixos/default)"
     else
         warn "flake.nix not installed — you will need to configure the iNiR flake input manually."
     fi
@@ -1256,11 +1256,15 @@ fi
 step "7/7 · Apply NixOS configuration"
 
 REBUILD_TARGET="/etc/nixos"
-FLAKE_SHOW="$(nix flake show /etc/nixos 2>/dev/null || true)"
-if [[ "$FLAKE_SHOW" == *"$DETECTED_HOSTNAME"* ]]; then
+FLAKE_SHOW="$(nix --extra-experimental-features "nix-command flakes" flake show /etc/nixos 2>/dev/null || true)"
+if [[ -n "$DETECTED_HOSTNAME" && "$FLAKE_SHOW" == *"$DETECTED_HOSTNAME"* ]]; then
     REBUILD_TARGET="/etc/nixos#$DETECTED_HOSTNAME"
 elif [[ "$FLAKE_SHOW" == *"nixos"* ]]; then
     REBUILD_TARGET="/etc/nixos#nixos"
+elif [[ "$FLAKE_SHOW" == *"default"* ]]; then
+    REBUILD_TARGET="/etc/nixos#default"
+elif [[ -n "$DETECTED_HOSTNAME" ]]; then
+    REBUILD_TARGET="/etc/nixos#$DETECTED_HOSTNAME"
 fi
 
 REBUILD_CMD=(sudo nixos-rebuild switch --flake "$REBUILD_TARGET")
