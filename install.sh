@@ -374,7 +374,7 @@ require_command git "git"
 require_command nix "nix"
 require_command sudo "sudo"
 
-for required in configuration.nix flake.nix niri/config.kdl scripts/niri-sync-colors; do
+for required in configuration.nix flake.nix niri/config.kdl scripts/niri-sync-colors alacritty/alacritty.toml; do
     if [[ ! -f "$REPO_DIR/$required" ]]; then
         err "Missing $required in repository."
         exit 1
@@ -1014,7 +1014,7 @@ EOF
     # 6) i2c/video groups for external-monitor brightness (ddcutil)
     # NOTE: extraGroups is a list — injecting a second definition for a user
     # already declared in configuration.nix would break Nix evaluation.
-    local user_declared=0
+    user_declared=0
     if grep -Eq "users\.users(\.$DETECTED_USER|\.\"$DETECTED_USER\"|[[:space:]]*=[[:space:]]*\{[^}]*\"?$DETECTED_USER\"?)" "$MAIN_CONF" 2>/dev/null; then
         user_declared=1
     fi
@@ -1050,7 +1050,12 @@ fi
 step "5/7 · Niri configuration and user scripts"
 
 if [[ "$DRY_RUN" -eq 0 ]]; then
-    mkdir -p "$TARGET_HOME/.config/niri" "$TARGET_HOME/.local/bin" "$TARGET_HOME/.config/systemd/user"
+    mkdir -p "$TARGET_HOME/.config/niri" \
+             "$TARGET_HOME/.config/alacritty" \
+             "$TARGET_HOME/.local/bin" \
+             "$TARGET_HOME/.config/systemd/user" \
+             "$TARGET_HOME/Pictures/Wallpapers" \
+             "$TARGET_HOME/.local/state/quickshell/user/generated"
 fi
 
 backup_if_exists "$TARGET_HOME/.config/niri/config.kdl"
@@ -1068,10 +1073,25 @@ if [[ "$DRY_RUN" -eq 0 && -n "$DETECTED_LAYOUT" ]]; then
     fi
 fi
 
+if [[ -f "$REPO_DIR/alacritty/alacritty.toml" ]]; then
+    if [[ ! -f "$TARGET_HOME/.config/alacritty/alacritty.toml" ]]; then
+        run "Install default Alacritty configuration" \
+            cp "$REPO_DIR/alacritty/alacritty.toml" "$TARGET_HOME/.config/alacritty/alacritty.toml"
+    else
+        debug "Preserving existing ~/.config/alacritty/alacritty.toml"
+    fi
+fi
+
 run "Install niri-sync-colors" \
     cp "$REPO_DIR/scripts/niri-sync-colors" "$TARGET_HOME/.local/bin/niri-sync-colors"
 run "Make niri-sync-colors executable" \
     chmod +x "$TARGET_HOME/.local/bin/niri-sync-colors"
+
+# Seed initial colors into Niri and Alacritty immediately so the desktop is ready
+if [[ "$DRY_RUN" -eq 0 ]]; then
+    "$TARGET_HOME/.local/bin/niri-sync-colors" >>"$LOG_FILE" 2>&1 || true
+    ok "Initial color theme seeded (Niri + Alacritty + GTK)"
+fi
 
 if [[ -f "$REPO_DIR/systemd/niri-sync-colors.service" ]]; then
     run "Install color-sync systemd service" \
@@ -1290,22 +1310,22 @@ if [[ "$DRY_RUN" -eq 0 && "$SKIP_REBUILD" -eq 0 ]]; then
     fi
 
     # Verify the rebuild actually produced a system with iNiR + niri session
-    local inir_unit_found=0
+    inir_unit_found=0
     if [[ -f /run/current-system/etc/systemd/user/inir.service || -f /etc/systemd/user/inir.service ]] \
         || systemctl --user list-unit-files 2>/dev/null | grep -q "inir.service"; then
         inir_unit_found=1
     fi
 
-    local_missing=()
+    missing_pieces=()
     if [[ "$inir_unit_found" -eq 0 ]]; then
-        local_missing+=("inir.service (the rebuild did not apply the iNiR modules)")
+        missing_pieces+=("inir.service (the rebuild did not apply the iNiR modules)")
     fi
     if [[ ! -f /run/current-system/sw/share/wayland-sessions/niri.desktop ]]; then
-        local_missing+=("niri Wayland session (programs.niri.enable did not take effect)")
+        missing_pieces+=("niri Wayland session (programs.niri.enable did not take effect)")
     fi
-    if [[ ${#local_missing[@]} -gt 0 ]]; then
+    if [[ ${#missing_pieces[@]} -gt 0 ]]; then
         err "Rebuild finished but required pieces are MISSING:"
-        for m in "${local_missing[@]}"; do
+        for m in "${missing_pieces[@]}"; do
             printf '      %s%s%s\n' "$RED" "$m" "$RESET"
         done
         warn "Most common cause: /etc/nixos/configuration.nix does not import ./modules,"
@@ -1320,7 +1340,7 @@ if [[ "$DRY_RUN" -eq 0 && "$SKIP_REBUILD" -eq 0 ]]; then
     # symlinks. Without this they only apply on the next session login.
     if [[ "$inir_unit_found" -eq 1 ]]; then
         sudo systemd-tmpfiles --create 2>>"$LOG_FILE" || true
-        local tmpfiles_user_ok=0
+        tmpfiles_user_ok=0
         if [[ -n "${SUDO_USER:-}" && "$SUDO_USER" != "root" ]]; then
             if sudo -u "$TARGET_USER" systemd-tmpfiles --user --create 2>>"$LOG_FILE"; then
                 tmpfiles_user_ok=1

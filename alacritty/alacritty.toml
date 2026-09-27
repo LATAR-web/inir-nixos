@@ -1,0 +1,65 @@
+# Alacritty configuration for iNiR + Niri on NixOS
+# Dynamic theme colors are managed live by niri-sync-colors from Material You wallpaper palettes.
+
+[general]
+import = [
+    "~/.config/alacritty/theme.toml"
+]
+
+[window]
+padding = { x = 14, y = 14 }
+dynamic_padding = true
+decorations = "None"
+opacity = 0.92
+blur = true
+
+[font]
+size = 11.0
+
+[font.normal]
+family = "JetBrainsMono Nerd Font"
+style = "Regular"
+
+[font.bold]
+family = "JetBrainsMono Nerd Font"
+style = "Bold"
+
+[font.italic]
+family = "JetBrainsMono Nerd Font"
+style = "Italic"
+
+[cursor]
+style = { shape = "Beam", blinking = "On" }
+
+# Fallback default colors if theme.toml has not been generated yet
+[colors.primary]
+background = "#1a1b26"
+foreground = "#c0caf5"
+
+[colors.cursor]
+text = "#1a1b26"
+cursor = "#7aa2f7"
+
+[colors.selection]
+text = "#c0caf5"
+background = "#33467c"
+
+[colors.normal]
+black = "#15161e"
+red = "#f7768e"
+green = "#9ece6a"
+yellow = "#e0af68"
+blue = "#7aa2f7"
+magenta = "#bb9af7"
+cyan = "#7dcfff"
+white = "#a9b1d6"
+
+[colors.bright]
+black = "#414868"
+red = "#f7768e"
+green = "#9ece6a"
+yellow = "#e0af68"
+blue = "#7aa2f7"
+magenta = "#bb9af7"
+cyan = "#7dcfff"
+white = "#c0caf5"

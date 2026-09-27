@@ -170,6 +170,7 @@ environment {
 
 spawn-at-startup "bash" "-c" "exec wl-paste --no-newline --type text --watch ~/.config/quickshell/inir/scripts/clipboard-store.py"
 spawn-at-startup "bash" "-c" "exec wl-paste --type image --watch ~/.config/quickshell/inir/scripts/clipboard-image-store.sh"
+spawn-at-startup "niri-sync-colors" "--watch"
 
 layer-rule {
     match namespace="^quickshell:(iiBackdrop|wBackdrop)$"

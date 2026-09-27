@@ -41,6 +41,8 @@ check_command cliphist "cliphist"
 check_command wf-recorder "wf-recorder"
 check_command pactl "pactl (PulseAudio CLI)"
 check_command playerctl "playerctl (media key control)"
+check_command alacritty "alacritty (terminal emulator)"
+check_command nautilus "nautilus (file manager)"
 
 if command -v pactl >/dev/null 2>&1; then
     _def_sink="$(pactl get-default-sink 2>/dev/null || true)"
@@ -88,8 +90,17 @@ if [[ -f "$HOME/.config/niri/config.kdl" ]]; then
     else
         fail "clipboard watcher missing in config.kdl"
     fi
+    if grep -Eq 'niri-sync-colors' "$HOME/.config/niri/config.kdl" 2>/dev/null; then
+        ok "color sync autostart configured in config.kdl"
+    fi
 else
     fail "~/.config/niri/config.kdl missing"
+fi
+
+if [[ -f "$HOME/.config/alacritty/alacritty.toml" ]]; then
+    ok "alacritty.toml exists"
+else
+    warn "~/.config/alacritty/alacritty.toml not found"
 fi
 
 if pgrep -f "wl-paste.*--watch" >/dev/null 2>&1; then

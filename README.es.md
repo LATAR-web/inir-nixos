@@ -66,7 +66,7 @@ Corre 7 fases, de forma reproducible y segura:
 3. **Elección de display manager** — recomienda `greetd` en VMs/NVIDIA (GDM puede ocultar la sesión niri); elección interactiva.
 4. **Limpieza de systemd** — elimina el archivo `~/.config/systemd/user/inir.service` creado por `inir doctor` (que sobreescribe el servicio de NixOS) y otros obsoletos.
 5. **Adaptación de `/etc/nixos`** — respalda e instala `/modules`; conserva tu `configuration.nix`; inyecta `./modules` en `imports`; asegura `allowUnfree` (ver abajo); **adapta la config a tu máquina** (ver abajo).
-6. **Despliegue de Niri + Pipeline Material You** — instala `~/.config/niri/config.kdl` (adaptando el teclado) y activa `niri-sync-colors`.
+6. **Despliegue de Niri, Alacritty y Pipeline de Color** — instala `~/.config/niri/config.kdl` (adaptando teclado), `~/.config/alacritty/alacritty.toml`, precarga la paleta inicial y activa `niri-sync-colors`.
 7. **Rebuild** — `nixos-rebuild switch --flake`, log en `/tmp/inir-nixos-install-<fecha>.log`; si falla, muestra instrucciones de rollback.
 
 ### Opciones del instalador
@@ -100,12 +100,14 @@ Corre 7 fases, de forma reproducible y segura:
    };
    ```
 4. `sudo nixos-rebuild switch --flake /etc/nixos`
-5. Instala config de Niri y daemon de colores:
+5. Instala configs de usuario (Niri, Alacritty, script de color):
    ```bash
-   mkdir -p ~/.config/niri ~/.local/bin ~/.config/systemd/user
+   mkdir -p ~/.config/niri ~/.config/alacritty ~/.local/bin ~/.config/systemd/user ~/Pictures/Wallpapers
    cp niri/config.kdl ~/.config/niri/config.kdl
+   cp alacritty/alacritty.toml ~/.config/alacritty/alacritty.toml
    cp scripts/niri-sync-colors ~/.local/bin/ && chmod +x ~/.local/bin/niri-sync-colors
    cp systemd/niri-sync-colors.service ~/.config/systemd/user/
+   ~/.local/bin/niri-sync-colors # siembra el tema inicial
    systemctl --user daemon-reload && systemctl --user enable --now niri-sync-colors.service
    ```
 
@@ -156,22 +158,28 @@ Los ajustes que ya defines tú nunca se duplican ni se sobreescriben.
 | `flake.nix` | `/etc/nixos/flake.nix` | Flake que fija nixpkgs y la entrada de iNiR |
 | `modules/` | `/etc/nixos/modules/` | Paquete iNiR, deps, fuentes, audio, escritorio, parches |
 | `niri/config.kdl` | `~/.config/niri/config.kdl` | Atajos, layout y focus-ring de Niri |
-| `scripts/niri-sync-colors` | `~/.local/bin/` | Actualiza el focus-ring de Niri en vivo |
-| `systemd/niri-sync-colors.service` | `~/.config/systemd/user/` | Ejecuta `niri-sync-colors --watch` |
-| `scripts/verify-setup.sh` | Ejecución local | Script de diagnóstico |
-| `install.sh` | Ejecución local | Instalador automatizado |
+| `alacritty/alacritty.toml` | `~/.config/alacritty/alacritty.toml` | Terminal configurada out-of-the-box con fuente JetBrains Mono y transparencia |
+| `scripts/niri-sync-colors` | `~/.local/bin/` | Sincroniza focus-ring de Niri, tema de Alacritty y acento GTK |
+| `systemd/niri-sync-colors.service` | `~/.config/systemd/user/` | Ejecuta `niri-sync-colors --watch` en segundo plano |
+| `scripts/record-screen` | `~/.local/bin/` | Graba pantalla con audio permanente de micrófono/escritorio |
+| `scripts/verify-setup.sh` | Ejecución local | Script de diagnóstico y verificación completa |
+| `install.sh` | Ejecución local | Instalador automatizado interactivo o desatendido |
 
 ---
 
-## 🎨 Sincronización de Color (Niri ↔ Fondo de Pantalla)
+## 🎨 Sincronización Automática de Colores (Material You ↔ Niri + Alacritty + GTK)
 
-iNiR genera colores Material You desde tu fondo de pantalla usando `matugen` y una cadena de Python (`materialyoucolor`, `pillow`, `numpy`, `evdev`). Al elegir un fondo (<kbd>Mod</kbd> + <kbd>W</kbd>), el daemon `niri-sync-colors` detecta la nueva paleta y ejecuta `niri-config.py` para actualizar los colores activo/inactivo del `focus-ring` en `~/.config/niri/config.kdl` en tiempo real.
+iNiR extrae la paleta Material You directamente de tu fondo de pantalla mediante `matugen` y Python (`materialyoucolor`, `pillow`, `numpy`, `evdev`). Al seleccionar un nuevo fondo con <kbd>Mod</kbd> + <kbd>W</kbd>, el servicio `niri-sync-colors` detecta los cambios y sincroniza todo el entorno de forma instantánea:
 
-Ejecútalo manual, o prueba el script de Python directamente:
+1. **Niri Compositor (`~/.config/niri/config.kdl`)**: Actualiza los colores activo e inactivo del `focus-ring` (con fallback de edición directa si no existe `niri-config.py`) y recarga la configuración en vivo con `niri msg action reload-config`.
+2. **Terminal Alacritty (`~/.config/alacritty/theme.toml`)**: Genera la paleta de 16 colores ANSI y fondo/primer plano dinámicamente; Alacritty recarga los colores al instante sin reiniciar.
+3. **Escritorio GTK / GNOME**: Mapea el tono primario al acento de libadwaita/GNOME (`org.gnome.desktop.interface accent-color`) y ajusta el esquema de color a `prefer-dark` o `prefer-light`.
+4. **Fondo de iNiR (`~/.config/illogical-impulse/config.json`)**: Mantiene el archivo de fondo de pantalla persistente en la configuración de la barra.
+5. **Bloqueo Singleton**: Protegido contra duplicados con `flock`; se inicia automáticamente tanto por servicio systemd de usuario como desde `spawn-at-startup` en Niri.
+
+Para probar la sincronización manualmente en cualquier momento:
 ```bash
 niri-sync-colors
-
-python3 ~/.config/quickshell/inir/scripts/niri-config.py set layout focus-ring.active-color "#a8c7fa"
 ```
 
 ---
