@@ -276,29 +276,14 @@ if [[ "$AUDIO_MODE" != "none" ]]; then
     fi
 fi
 
-# Generar nombre de archivo
-TIMESTAMP="$(date +%Y-%m-%d_%H.%M.%S)"
-OUTPUT_FILE="$SAVE_DIR/grabacion_${TIMESTAMP}.mp4"
-echo "$OUTPUT_FILE" > "$INFO_FILE"
-
-# Configurar argumentos de wf-recorder
-CMD=(wf-recorder -f "$OUTPUT_FILE" -c libx264 -p preset=veryfast -p crf=23 --pixel-format yuv420p)
-
-# Configurar audio
-if [[ "$AUDIO_MODE" != "none" && -n "$AUDIO_DEVICE" ]]; then
-    CMD+=(--audio="$AUDIO_DEVICE" -C aac -R 48000 -P b=192k)
-elif [[ "$AUDIO_MODE" != "none" ]]; then
-    CMD+=(--audio -C aac -R 48000 -P b=192k)
-    AUDIO_LABEL="Audio por defecto"
-fi
-
 # Configurar geometría
+GEO_ARGS=()
 if [[ "$MODE" == "fullscreen" ]]; then
     MONITOR="$(get_active_monitor)"
     if [[ -n "$MONITOR" ]]; then
-        CMD+=(-o "$MONITOR")
+        GEO_ARGS+=(-o "$MONITOR")
     fi
-    notify "Iniciando grabación de pantalla" "Modo: Completa | $AUDIO_LABEL"
+    GEO_LABEL="Modo: Completa"
 else
     if ! command -v slurp >/dev/null 2>&1; then
         notify "Error" "slurp no está disponible para selección de región" "critical"
@@ -309,12 +294,29 @@ else
     GEOMETRY="$(slurp 2>/dev/null || true)"
     if [[ -z "$GEOMETRY" ]]; then
         echo "Selección cancelada por el usuario."
-        rm -f "$INFO_FILE"
         exit 0
     fi
-    CMD+=(--geometry "$GEOMETRY")
-    notify "Iniciando grabación de región" "Área: $GEOMETRY | $AUDIO_LABEL"
+    GEO_ARGS+=(--geometry "$GEOMETRY")
+    GEO_LABEL="Área: $GEOMETRY"
 fi
+
+# Generar nombre de archivo y registrar info justo antes de grabar
+TIMESTAMP="$(date +%Y-%m-%d_%H.%M.%S)"
+OUTPUT_FILE="$SAVE_DIR/grabacion_${TIMESTAMP}.mp4"
+echo "$OUTPUT_FILE" > "$INFO_FILE"
+
+# Configurar argumentos de wf-recorder
+CMD=(wf-recorder -f "$OUTPUT_FILE" -c libx264 -p preset=veryfast -p crf=23 --pixel-format yuv420p "${GEO_ARGS[@]}")
+
+# Configurar audio
+if [[ "$AUDIO_MODE" != "none" && -n "$AUDIO_DEVICE" ]]; then
+    CMD+=(--audio="$AUDIO_DEVICE" -C aac -R 48000 -P b=192k)
+elif [[ "$AUDIO_MODE" != "none" ]]; then
+    CMD+=(--audio -C aac -R 48000 -P b=192k)
+    AUDIO_LABEL="Audio por defecto"
+fi
+
+notify "Iniciando grabación de pantalla" "$GEO_LABEL | $AUDIO_LABEL"
 
 # Ejecutar en segundo plano
 "${CMD[@]}" >"$STATE_DIR/wf-recorder.log" 2>&1 &

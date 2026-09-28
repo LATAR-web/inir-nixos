@@ -47,8 +47,8 @@ in
     };
   };
 
-  config = lib.mkIf cfg.enable {
-    # Expone el paquete de la mascota en el sistema
+  config = lib.mkIf (cfg.enable && !(config.programs.inir.enable or false)) {
+    # Expone el paquete únicamente si programs.inir no está activo (en caso activo, inir.nix lo fusiona en inirPackage)
     environment.systemPackages = [
       cfg.package
     ];

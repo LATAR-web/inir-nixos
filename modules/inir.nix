@@ -111,6 +111,8 @@ in
 
   # Reglas de usuario para asegurar symlinks correctos y compatibilidad permanente de iconos
   systemd.user.tmpfiles.rules = [
+    "d %h/.local/bin 0755 - - -"
+    "d %h/.local/state/quickshell 0755 - - -"
     "L+ %h/.local/state/quickshell/.venv - - - - %h/.local/share/inir/venv"
     "L+ %h/.local/bin/inir - - - - /run/current-system/sw/bin/inir"
     "L+ %h/.local/bin/pactl - - - - ${pkgs.pulseaudio}/bin/pactl"
@@ -118,7 +120,9 @@ in
     "L+ %h/.config/inir/version.json - - - - ${versionJsonFile}"
     "d %h/.config/illogical-impulse 0755 - - -"
     "L+ %h/.config/illogical-impulse/version.json - - - - ${versionJsonFile}"
+    "d %h/.local/share/icons 0755 - - -"
     "L+ %h/.icons - - - - %h/.local/share/icons"
+    "d %h/.config/quickshell 0755 - - -"
     "L+ %h/.config/quickshell/inir - - - - /run/current-system/sw/share/quickshell/inir"
   ];
 }

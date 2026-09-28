@@ -133,7 +133,7 @@ else
     warn "~/.local/bin/record-screen missing or not executable"
 fi
 
-if [[ -f "$HOME/.config/systemd/user/niri-sync-colors.service" ]]; then
+if [[ -f "$HOME/.config/systemd/user/niri-sync-colors.service" || -f "/etc/systemd/user/niri-sync-colors.service" ]] || systemctl --user list-unit-files niri-sync-colors.service 2>/dev/null | grep -q 'niri-sync-colors'; then
     ok "color-sync systemd service exists"
 else
     fail "color-sync systemd service missing"

@@ -812,7 +812,7 @@ fi
 
 # i2c udev rule: ddcutil needs i2c-dev character devices accessible to the user.
 if [[ "$DRY_RUN" -eq 0 ]]; then
-    if ! grep -q 'i2c-dev' /etc/nixos/modules/inir.nix /etc/nixos/modules/runtime.nix /etc/nixos/configuration.nix 2>/dev/null; then
+    if ! grep -Eq 'hardware\.i2c\.enable|i2c-dev' /etc/nixos/modules/*.nix /etc/nixos/configuration.nix 2>/dev/null; then
         info "Tip: 'hardware.i2c.enable = true;' in configuration.nix enables external-monitor brightness."
     fi
 fi
