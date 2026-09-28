@@ -7,343 +7,208 @@
   <b><a href="README.es.md">Español</a></b>
 </p>
 
-[![Experimental](https://img.shields.io/badge/Status-Experimental-orange?style=for-the-badge&logo=flattr&logoColor=white)](#-quick-start)
-[![NixOS](https://img.shields.io/badge/NixOS-unstable-5277C3?style=for-the-badge&logo=nixos&logoColor=white)](https://nixos.org)
-[![Niri](https://img.shields.io/badge/Niri-wayland-88C0D0?style=for-the-badge&logo=wayland&logoColor=white)](https://github.com/YaLTeR/niri)
-[![Flakes](https://img.shields.io/badge/Flakes-enabled-7EBAE4?style=for-the-badge)](https://nixos.wiki/wiki/Flakes)
-[![iNiR](https://img.shields.io/badge/iNiR-shell-orange?style=for-the-badge)](https://github.com/snowarch/iNiR)
-[![Material You](https://img.shields.io/badge/Theming-Material_You-green?style=for-the-badge)](https://github.com/snowarch/iNiR)
+[![NixOS](https://img.shields.io/badge/NixOS-unstable-5277C3?style=flat-square&logo=nixos&logoColor=white)](https://nixos.org)
+[![Niri](https://img.shields.io/badge/Niri-wayland-88C0D0?style=flat-square&logo=wayland&logoColor=white)](https://github.com/YaLTeR/niri)
+[![Flakes](https://img.shields.io/badge/Flakes-enabled-7EBAE4?style=flat-square)](https://nixos.wiki/wiki/Flakes)
+[![iNiR](https://img.shields.io/badge/iNiR-shell-orange?style=flat-square)](https://github.com/snowarch/iNiR)
+[![Material You](https://img.shields.io/badge/Theming-Material_You-green?style=flat-square)](https://github.com/snowarch/iNiR)
 
 <img width="1920" height="1080" alt="iNiR on NixOS" src="https://github.com/user-attachments/assets/56163c9d-20f7-417b-a4a9-c5e9ee86c26e" />
 
-### A reproducible, modular NixOS guide and automated installer for running [iNiR](https://github.com/snowarch/iNiR) on the Niri Wayland compositor with Nix Flakes.
+### Reproducible modules to run [iNiR](https://github.com/snowarch/iNiR) on top of the Niri Wayland compositor on NixOS with Flakes.
 
 </div>
 
 ---
 
-## 🚀 Quick Start
+## 📑 Table of Contents
+
+- [📦 Manual Installation (Recommended)](#-manual-installation-recommended)
+- [⚡ Automated Installation (`install.sh`)](#-automated-installation-installsh)
+- [⌨️ Keyboard Shortcuts](#️-keyboard-shortcuts)
+- [🎨 Color Synchronization](#-color-synchronization-material-you)
+- [🗺️ Repository Structure](#️-repository-structure)
+- [🐛 Troubleshooting](#-troubleshooting)
+
+---
+
+## 📦 Manual Installation (Recommended)
+
+This is the **preferred** method if you already have an existing NixOS setup and want to integrate iNiR cleanly under your direct control.
+
+### 1. Copy modules to `/etc/nixos`
+```bash
+sudo cp -a modules/ /etc/nixos/modules/
+
+# If /etc/nixos is tracked with git, you must stage the directory (or Flakes will ignore it):
+sudo git -C /etc/nixos add -A modules/
+```
+
+### 2. Configure `/etc/nixos/flake.nix`
+Add the `inir` input and pass it via `specialArgs`:
+
+```nix
+{
+  inputs = {
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+    inir = {
+      url = "github:snowarch/inir";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+  };
+
+  outputs = { self, nixpkgs, inir, ... }: {
+    nixosConfigurations.<your_hostname> = nixpkgs.lib.nixosSystem {
+      system = "x86_64-linux";
+      specialArgs = { inherit inir; };
+      modules = [ ./configuration.nix ];
+    };
+  };
+}
+```
+
+### 3. Integrate into `/etc/nixos/configuration.nix`
+Import `./modules`, enable proprietary software, and grant brightness/hardware permissions:
+
+```nix
+{
+  imports = [
+    ./hardware-configuration.nix
+    ./modules # Loads iNiR, Niri, fonts, audio and system services
+  ];
+
+  nixpkgs.config.allowUnfree = true;
+  users.users.<your_user>.extraGroups = [ "wheel" "networkmanager" "video" "i2c" ];
+}
+```
+
+### 4. Remove any residual directories
+If you previously cloned or created `~/.config/quickshell/inir` manually, it will shadow the packaged runtime:
+```bash
+[[ -d ~/.config/quickshell/inir && ! -L ~/.config/quickshell/inir ]] && rm -rf ~/.config/quickshell/inir
+```
+
+### 5. Rebuild your system
+```bash
+sudo nixos-rebuild switch --flake /etc/nixos#<your_hostname>
+```
+
+### 6. Initialize user symlinks and dotfiles
+> [!IMPORTANT]
+> `nixos-rebuild` only applies system-level (`root`) tmpfiles rules. To create the iNiR user runtime symlinks (`~/.config/quickshell/inir` and `~/.local/bin/inir`), **you must run `systemd-tmpfiles --user --create`**:
+
+```bash
+# 1. Create runtime symlinks for your user
+systemd-tmpfiles --user --create
+
+# 2. Deploy Niri, Alacritty, and color synchronizer configs
+mkdir -p ~/.config/niri ~/.config/alacritty ~/.local/bin ~/.config/systemd/user
+cp niri/config.kdl ~/.config/niri/config.kdl
+cp alacritty/alacritty.toml ~/.config/alacritty/alacritty.toml
+cp scripts/niri-sync-colors ~/.local/bin/ && chmod +x ~/.local/bin/niri-sync-colors
+cp scripts/record-screen ~/.local/bin/ && chmod +x ~/.local/bin/record-screen
+cp systemd/niri-sync-colors.service ~/.config/systemd/user/
+
+# 3. Seed initial theme & enable background color sync
+~/.local/bin/niri-sync-colors
+systemctl --user daemon-reload && systemctl --user enable --now niri-sync-colors.service
+```
+
+### 7. Start your session
+Log out and select **Niri** from your display manager (GDM or greetd). `inir.service` will start automatically.
+
+To verify that your installation is complete:
+```bash
+bash scripts/verify-setup.sh
+```
+
+---
+
+## ⚡ Automated Installation (`install.sh`)
 
 > [!CAUTION]
-> **`install.sh` switches your system from NixOS Stable to Unstable (`nixos-unstable`)** — required because iNiR/Niri/Qt6 need packages only on that channel. If you're already on unstable, nothing changes.
+> ### ⚠️ WARNING: ONLY FOR FRESH / CLEAN INSTALLATIONS
+> `install.sh` **rebuilds your entire NixOS system**:
+> - Migrates your channel to `nixos-unstable`.
+> - Modifies or injects configuration in `/etc/nixos/configuration.nix` (GPU drivers, microcode, display manager).
+> - May overwrite dotfiles in `~/.config/`.
+> 
+> **DO NOT run this on an established system with custom configurations you want to preserve.** For existing systems, always use [Manual Installation](#-manual-installation-recommended).
 
-> [!WARNING]
-> This project is **experimental**. The installer is non-destructive (timestamped backups before any change), but it's **recommended** to run `--dry-run` first, especially on production systems.
+If you are on a fresh NixOS install and want full automation:
 
 ```bash
 git clone https://github.com/LATAR-web/inir-nixos.git
 cd inir-nixos
 chmod +x install.sh
-./install.sh --dry-run   # recommended first: simulates everything, changes nothing
-./install.sh             # then run for real
+
+./install.sh --dry-run   # Mandatory dry-run: checks everything without modifying
+./install.sh             # Interactive run
 ```
 
-Prefer to do it by hand? See [Option B — Manual Step-by-Step](#option-b--manual-step-by-step) below.
-
----
-
-## 📑 Table of Contents
-
-- [How Does the Installer Script Work?](#-how-does-the-installer-script-work-installsh)
-  - [Installer CLI Options](#installer-cli-options)
-  - [Manual Step-by-Step](#option-b--manual-step-by-step)
-- [Adapting to User Configuration](#-adapting-to-user-configuration)
-- [Repository Structure](#-repository-structure--what-goes-where)
-- [Color Sync (Material You ↔ Niri)](#-color-sync--niri--wallpaper)
-- [Niri Keybinds](#-niri-configuration--keybinds)
-- [Post-Install Verification](#-post-install-verification)
-- [Updating & Rollbacks](#-updating)
-- [Troubleshooting](#-troubleshooting--known-gotchas)
-
----
-
-## 🛠️ How Does the Installer Script Work? (`install.sh`)
-
-Runs 7 phases, reproducibly and safely:
-
-1. **Pre-flight** — checks NixOS, `git`, `nix`, `sudo`, free disk space under `/nix` (the first rebuild needs ~10GB), and runs `nix flake check`.
-2. **Environment detection** — resolves real user/home (even under `sudo`); reads hostname, timezone, locale, keyboard, GPU, VM type.
-3. **Display manager choice** — recommends `greetd` on VMs/NVIDIA (GDM can hide the niri session); interactive pick.
-4. **Systemd cleanup** — removes stray `~/.config/systemd/user/inir.service` (created by `inir doctor`, overrides the NixOS-managed one) and other legacy services.
-5. **Adapt `/etc/nixos`** — backs up and installs `/modules`; preserves your `configuration.nix`; injects `./modules` into `imports`; ensures `allowUnfree` (see below); **adapts the config to your machine** (see below).
-6. **Deploy Niri, Alacritty & Color Pipeline** — installs `~/.config/niri/config.kdl` (adapting keyboard layout), `~/.config/alacritty/alacritty.toml`, seeds the initial palette, and enables `niri-sync-colors`.
-7. **Rebuild** — `nixos-rebuild switch --flake`, logs to `/tmp/inir-nixos-install-<timestamp>.log`; on failure prints rollback instructions.
-
-### Installer CLI Options
-
+### Script CLI Flags:
 | Flag | Description |
 |---|---|
-| `./install.sh` | Interactive mode with confirmation prompts. |
-| `./install.sh --yes` (`-y`) | Non-interactive: assumes "yes" to all prompts. |
-| `./install.sh --dry-run` | Simulates everything, changes nothing. **Recommended first run.** |
-| `./install.sh --skip-rebuild` | Deploys files/services but skips `nixos-rebuild switch`. |
-| `./install.sh --update` | Non-interactive sync: updates iNiR modules and rebuilds system. |
-| `./install.sh --no-ai` | Skips the optional AI configuration review. |
-| `./install.sh --check` | Runs `scripts/verify-setup.sh` and exits. |
-| `./install.sh --help` (`-h`) | Shows CLI help. |
-
-### Option B — Manual Step-by-Step
-
-If you prefer to integrate iNiR manually without running `install.sh`:
-
-1. **Copy modules to `/etc/nixos`**:
-   ```bash
-   sudo cp -a modules/ /etc/nixos/modules/
-   # If /etc/nixos is a git repository, you must stage the files (otherwise Nix Flakes will ignore them):
-   sudo git -C /etc/nixos add -A modules/
-   ```
-
-2. **Configure `/etc/nixos/configuration.nix`**:
-   - Add `./modules` to `imports`.
-   - Ensure `nixpkgs.config.allowUnfree = true;` is set (needed for NVIDIA drivers, proprietary fonts, etc.).
-   - Add `"video"` and `"i2c"` groups to your user for DDC/CI monitor brightness control:
-   ```nix
-   imports = [
-     ./hardware-configuration.nix
-     ./modules
-   ];
-
-   nixpkgs.config.allowUnfree = true;
-   users.users.<your_user>.extraGroups = [ "wheel" "networkmanager" "video" "i2c" ];
-   ```
-
-3. **Configure `/etc/nixos/flake.nix`**:
-   Add the `inir` input and pass it via `specialArgs`:
-   ```nix
-   inputs = {
-     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
-     inir = {
-       url = "github:snowarch/inir";
-       inputs.nixpkgs.follows = "nixpkgs";
-     };
-   };
-
-   outputs = { self, nixpkgs, inir, ... }: {
-     nixosConfigurations.<your_hostname> = nixpkgs.lib.nixosSystem {
-       specialArgs = { inherit inir; };
-       modules = [ ./configuration.nix ];
-     };
-     # Recommended fallbacks
-     nixosConfigurations.nixos = self.nixosConfigurations.<your_hostname>;
-     nixosConfigurations.default = self.nixosConfigurations.<your_hostname>;
-   };
-   ```
-   *(If `/etc/nixos` is tracked by git, run `sudo git -C /etc/nixos add flake.nix flake.lock configuration.nix`)*
-
-4. **Clean up any existing local iNiR directory** (avoids the `Unable to locate config-path helper` error):
-   > [!IMPORTANT]
-   > If you previously cloned or created `~/.config/quickshell/inir` as a real directory, it will shadow the Nix-packaged runtime. Back it up if you have custom changes and remove it:
-   ```bash
-   [[ -d ~/.config/quickshell/inir && ! -L ~/.config/quickshell/inir ]] && rm -rf ~/.config/quickshell/inir
-   ```
-
-5. **Build and switch configuration**:
-   ```bash
-   sudo nixos-rebuild switch --flake /etc/nixos#<your_hostname>
-   # Or using the fallback alias:
-   sudo nixos-rebuild switch --flake /etc/nixos#nixos
-   ```
-
-6. **Activate user symlinks and deploy dotfiles**:
-   > [!IMPORTANT]
-   > `nixos-rebuild` only applies system-level (`root`) tmpfiles rules. To create user runtime symlinks (`~/.config/quickshell/inir` and `~/.local/bin/inir`), you **must** run `systemd-tmpfiles --user --create`:
-   ```bash
-   # Generates user runtime symlinks (~/.config/quickshell/inir, ~/.local/bin/inir, version.json)
-   systemd-tmpfiles --user --create
-
-   # Deploy Niri, Alacritty, and user service configurations
-   mkdir -p ~/.config/niri ~/.config/alacritty ~/.local/bin ~/.config/systemd/user ~/Pictures/Wallpapers
-   cp niri/config.kdl ~/.config/niri/config.kdl
-   cp alacritty/alacritty.toml ~/.config/alacritty/alacritty.toml
-   cp scripts/niri-sync-colors ~/.local/bin/ && chmod +x ~/.local/bin/niri-sync-colors
-   cp scripts/record-screen ~/.local/bin/ && chmod +x ~/.local/bin/record-screen
-   cp systemd/niri-sync-colors.service ~/.config/systemd/user/
-   ~/.local/bin/niri-sync-colors # seeds initial theme
-   systemctl --user daemon-reload && systemctl --user enable --now niri-sync-colors.service
-   ```
-
-7. **Verify setup**:
-   ```bash
-   bash scripts/verify-setup.sh
-   ```
-   *Note:* To start the full graphical shell, log into **Niri** from your display manager (GDM or greetd). `inir.service` starts automatically upon Niri session startup. If you test `inir run` from a terminal, it will resolve the packaged runtime without path errors.
+| `--dry-run` | Simulates installation without modifying files or rebuilding. |
+| `-y`, `--yes` | Non-interactive: assumes "yes" to all prompts. |
+| `--skip-rebuild` | Deploys files and dotfiles but skips `nixos-rebuild switch`. |
+| `--check` | Runs `scripts/verify-setup.sh` and exits. |
 
 ---
 
-## 🧩 Adapting to User Configuration
+## ⌨️ Keyboard Shortcuts
 
-Built on `lib.mkDefault`, so it never fights your existing config.
-
-```nix
-{
-  imports = [ ./hardware-configuration.nix ./modules ];
-
-  programs.inir.audio.enable = true;                  # PipeWire audio (default: on)
-  programs.inir.desktop.enable = true;                 # GDM login manager
-  programs.inir.desktop.enableGnomeFallback = false;   # GNOME fallback (default: off)
-
-  users.users.your_user.extraGroups = [ "wheel" "networkmanager" "video" "i2c" ]; # for DDC/CI brightness
-}
-```
-
-### 🔓 Proprietary (unfree) software
-
-The installer checks `configuration.nix`, `flake.nix` and `modules/*.nix` for `allowUnfree`. If it is missing (or explicitly `false`), it offers to enable it — without it, NVIDIA drivers, Steam, VS Code and friends fail to evaluate. Declined? It just warns and continues.
-
-### 🖥️ Machine adaptation
-
-After installing the modules, the installer **writes machine-specific settings into `/etc/nixos/configuration.nix`** — every block is guarded (skipped if the setting already exists), confirmed per-change, and backed up:
-
-| Detected | Injected into `configuration.nix` |
+| Shortcut | Action |
 |---|---|
-| Display manager choice (step 3) | `programs.inir.desktop.displayManager = "greetd";` when greetd is picked |
-| Non-US keyboard layout | `services.xserver.xkb.layout` + `console.keyMap` |
-| NVIDIA GPU | `services.xserver.videoDrivers`, `hardware.nvidia` (modesetting, open module) and Wayland-safe session variables (`GBM_BACKEND`, `__GLX_VENDOR_LIBRARY_NAME`, …) |
-| Intel/AMD CPU | `hardware.cpu.{intel,amd}.updateMicrocode` + `hardware.enableRedistributableFirmware` |
-| VM (KVM/QEMU, VirtualBox, VMware) | Guest agent: `services.qemuGuest.enable`, `virtualisation.{virtualbox,vmware}.guest.enable` |
-| User missing `i2c`/`video` groups | Declares the user with brightness-ready groups (skipped with a hint if the user is already declared elsewhere) |
-
-Settings you already define yourself are never duplicated or overridden.
-
----
-
-## 🗺️ Repository Structure — What Goes Where
-
-| In this repository | System Destination | Purpose |
-|---|---|---|
-| `configuration.nix` | `/etc/nixos/configuration.nix` | Base system config |
-| `flake.nix` | `/etc/nixos/flake.nix` | Flake pinning nixpkgs and iNiR input |
-| `modules/` | `/etc/nixos/modules/` | iNiR package, deps, fonts, audio, desktop, patches |
-| `niri/config.kdl` | `~/.config/niri/config.kdl` | Niri keybinds, layout, focus-ring |
-| `alacritty/alacritty.toml` | `~/.config/alacritty/alacritty.toml` | Out-of-the-box Alacritty config with JetBrains Mono & blur |
-| `scripts/niri-sync-colors` | `~/.local/bin/` | Synchronizes Niri focus-ring, Alacritty theme, and GTK accents |
-| `systemd/niri-sync-colors.service` | `~/.config/systemd/user/` | Runs `niri-sync-colors --watch` in user session |
-| `scripts/record-screen` | `~/.local/bin/` | Screen recording with permanent mic & desktop audio capture |
-| `scripts/verify-setup.sh` | Run locally | Comprehensive system diagnostic and validation script |
-| `install.sh` | Run locally | Automated installer (interactive or unattended) |
-
----
-
-## 🎨 Automatic Color Sync (Material You ↔ Niri + Alacritty + GTK)
-
-iNiR generates Material You colors from your wallpaper using `matugen` and Python (`materialyoucolor`, `pillow`, `numpy`, `evdev`). When picking a wallpaper (<kbd>Mod</kbd> + <kbd>W</kbd>), `niri-sync-colors` detects the new palette and immediately updates the entire desktop:
-
-1. **Niri Compositor (`~/.config/niri/config.kdl`)**: Updates `focus-ring.active-color` and `inactive-color` (with direct regex fallback if `niri-config.py` is absent) and triggers an instant reload with `niri msg action reload-config`.
-2. **Alacritty Terminal (`~/.config/alacritty/theme.toml`)**: Dynamically writes 16 ANSI colors and background/foreground matching the wallpaper palette; Alacritty reloads live without restarting.
-3. **GTK / GNOME Desktop**: Maps primary hue to libadwaita/GNOME accent color (`org.gnome.desktop.interface accent-color`) and adjusts dark/light mode preference.
-4. **iNiR Wallpaper (`~/.config/illogical-impulse/config.json`)**: Keeps wallpaper metadata synced with the status bar.
-5. **Singleton Lock**: Protected against duplicate processes via `flock`; runs reliably via systemd user service or `spawn-at-startup` in Niri.
-
-Run manual sync at any time with:
-```bash
-niri-sync-colors
-```
-
----
-
-## ⌨️ Niri Configuration & Keybinds
-
-| Key | Action |
-|---|---|
-| <kbd>Mod</kbd> + <kbd>Return</kbd> | Open terminal |
-| <kbd>Mod</kbd> + <kbd>W</kbd> | Wallpaper selector |
-| <kbd>Mod</kbd> + <kbd>Space</kbd> | Workspace overview |
+| <kbd>Mod</kbd> + <kbd>Enter</kbd> | Terminal (Alacritty) |
+| <kbd>Mod</kbd> + <kbd>W</kbd> | Wallpaper picker (Material You) |
+| <kbd>Mod</kbd> + <kbd>Space</kbd> / <kbd>Super</kbd> + <kbd>Tab</kbd> | Overview mode |
 | <kbd>Mod</kbd> + <kbd>V</kbd> | Clipboard history |
-| <kbd>Mod</kbd> + <kbd>,</kbd> | iNiR settings |
-| <kbd>Mod</kbd> + <kbd>/</kbd> | Cheatsheet |
+| <kbd>Mod</kbd> + <kbd>,</kbd> | iNiR Settings |
+| <kbd>Mod</kbd> + <kbd>/</kbd> | Shortcuts cheatsheet |
 | <kbd>Mod</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd> | Region screenshot |
-| <kbd>Mod</kbd> + <kbd>Shift</kbd> + <kbd>X</kbd> | Region OCR |
-| <kbd>Mod</kbd> + <kbd>Alt</kbd> + <kbd>R</kbd>/<kbd>F</kbd>/<kbd>S</kbd> | Record region / fullscreen / stop |
-| <kbd>Mod</kbd> + <kbd>E</kbd> | File manager |
-| <kbd>Mod</kbd> + <kbd>B</kbd> | Web browser |
-| <kbd>Mod</kbd> + <kbd>Q</kbd> / <kbd>Shift</kbd>+<kbd>Q</kbd> | Close window / quit session |
-| <kbd>Mod</kbd> + <kbd>F</kbd> | Toggle fullscreen |
-| <kbd>Mod</kbd> + <kbd>1</kbd>–<kbd>5</kbd> | Focus / move to workspace 1–5 |
-
-### 🔑 niri missing from the login screen (GDM)
-
-GDM can **hide Wayland sessions** (including niri) in three known cases: VMs without 3D acceleration, some NVIDIA driver combos, or stale AccountsService state that remembers an old session. The installer detects VMs/NVIDIA and recommends **greetd** for exactly this reason.
-
-If niri does not appear after a reboot, either:
-
-- Switch display manager: set in `/etc/nixos/configuration.nix`
-  ```nix
-  programs.inir.desktop.displayManager = "greetd";   # or "gdm"
-  ```
-  then `sudo nixos-rebuild switch --flake /etc/nixos#nixos`. tuigreet always lists every installed session (pick niri with F3).
-- Or clear stale AccountsService state: `sudo rm -f /var/lib/AccountsService/users/*` and reboot.
-
-### 🤖 AI configuration review (optional)
-
-The installer offers an optional, read-only configuration review through an AI CLI. It checks the resulting config for conflicts and machine-specific pitfalls (GPU, VM, display manager) and only *prints suggestions* — it never edits files. Skip it with `--no-ai`.
-
-No AI CLI installed? **No problem:** it downloads `@anthropic-ai/claude-code` on the fly via `npx` (cached only — nothing is installed permanently). On a pure NixOS box without npm, it uses an ephemeral `nix shell nixpkgs#nodejs` instead. It reuses your existing Claude login/API key if you have one; if the CLI has never been authenticated, the review is skipped harmlessly.
-
-### 🧩 Non-destructive modules
-
-`modules/default.nix` **auto-imports every `.nix` file** in `/etc/nixos/modules` (except `inir-deps.nix`, which is a function). The installer only overwrites the iNiR-owned files (`audio.nix`, `desktop.nix`, `fonts.nix`, `inir-deps.nix`, `inir.nix`, `runtime.nix`, `default.nix`) — your own modules (`packages.nix`, `printing.nix`, …) are preserved and imported automatically, no imports-list editing needed.
-
-### 🖼️ Wallpaper renderer notice
-
-Settings → Wallpaper renderer shows *"awww is the default backend, but the 'awww' / 'awww-daemon' binaries were not found in PATH"* if `awww` is missing. It is included in [`modules/inir-deps.nix`](modules/inir-deps.nix); after a `nixos-rebuild switch` the notice disappears and iNiR uses hardware-accelerated wallpaper transitions. Until then it silently falls back to the internal renderer — nothing breaks.
-
-### 📸 Screenshots troubleshooting
-
-- Region screenshots are saved to the **XDG Pictures directory** (`~/Imágenes/Screenshots` on a Spanish locale, `~/Pictures/Screenshots` on English) — not a hardcoded path. The snip toolbar's *Copy* action writes there and copies the image to the clipboard.
-- The snip toolbar **remembers your last action** (`rememberSnipChoice` in `~/.config/illogical-impulse/config.json`). If the menu opens but "nothing happens", you probably left *Image search* (action `2`) selected — it uploads the crop to an image host instead of saving locally. Reset it with:
-  ```bash
-  jq '.regionSelector.lastAction = 0 | .regionSelector.lastMode = 0' \
-    ~/.config/illogical-impulse/config.json > /tmp/c.json && mv /tmp/c.json \
-    ~/.config/illogical-impulse/config.json
-  ```
-- `magick` (ImageMagick) is required to crop the grim capture; it is included in [`modules/inir-deps.nix`](modules/inir-deps.nix). If you trimmed your deps, add `imagemagick` back or cropping will silently fail.
-- <kbd>Print</kbd> / <kbd>Ctrl</kbd>+<kbd>Print</kbd> / <kbd>Alt</kbd>+<kbd>Print</kbd> use niri's built-in screenshot UI and always save to `$XDG_PICTURES_DIR/Screenshots`.
+| <kbd>Mod</kbd> + <kbd>Shift</kbd> + <kbd>X</kbd> | Region OCR (extract text) |
+| <kbd>Mod</kbd> + <kbd>Alt</kbd> + <kbd>R</kbd> / <kbd>S</kbd> | Record region / Stop recording |
+| <kbd>Mod</kbd> + <kbd>E</kbd> | File manager (Nautilus) |
+| <kbd>Mod</kbd> + <kbd>Q</kbd> / <kbd>Shift</kbd>+<kbd>Q</kbd> | Close window / Quit session |
+| <kbd>Mod</kbd> + <kbd>1</kbd>–<kbd>5</kbd> | Go to workspace 1–5 |
 
 ---
 
-## ✅ Post-Install Verification
+## 🎨 Color Synchronization (Material You)
 
-```bash
-bash scripts/verify-setup.sh
-```
-
-You can also test the `materialyoucolor` Python module directly:
-```bash
-python3 -c "import materialyoucolor; print('materialyoucolor is working!')"
-```
-
-Checks CLI tools, the `materialyoucolor` Python module import, service status, plus: `allowUnfree` enabled, the niri Wayland session registered, and free disk space under `/nix`.
+When picking a wallpaper with <kbd>Mod</kbd> + <kbd>W</kbd>, `niri-sync-colors` extracts the Material You color palette automatically and updates:
+- **Niri active focus ring** (`focus-ring` in `~/.config/niri/config.kdl`).
+- **Alacritty color theme** (`~/.config/alacritty/theme.toml`).
+- **GTK / GNOME accent** (`accent-color` in libadwaita).
 
 ---
 
-## 🔄 Updating
+## 🗺️ Repository Structure
 
-```bash
-cd /etc/nixos && nix flake update
-sudo nixos-rebuild switch --flake /etc/nixos
-systemctl --user restart inir.service
-```
-
-Rollback: `sudo nixos-rebuild switch --rollback`
-
-> [!NOTE]
-> Installer backups live in `/tmp/inir-nixos-backups-<timestamp>/` and are **erased on reboot**. Copy them somewhere permanent if you want to keep them:
-> ```bash
-> cp -r /tmp/inir-nixos-backups-<timestamp> ~/inir-nixos-backups
-> ```
+| File / Folder | Purpose |
+|---|---|
+| `modules/` | NixOS modules: iNiR package, dependencies, fonts, audio, and patches |
+| `niri/config.kdl` | Niri compositor shortcuts, layout, and window rules |
+| `alacritty/alacritty.toml` | Terminal configuration with dynamic palette support |
+| `scripts/niri-sync-colors` | Background daemon/script for Material You color sync |
+| `scripts/record-screen` | Screen recorder script with audio capture |
+| `scripts/verify-setup.sh` | Sanity check and diagnostic verification script |
+| `install.sh` | Automated installer for fresh installations |
 
 ---
 
 ## 🐛 Troubleshooting
 
-| Issue | Fix |
+| Issue | Cause & Fix |
 |---|---|
-| `inir run` → "Unable to locate config-path helper" | Caused by: **1)** User tmpfiles not yet applied after manual install (run `systemd-tmpfiles --user --create` to initialize symlinks), or **2)** A real `~/.config/quickshell/inir` directory shadowing the packaged runtime. Fix: `rm -rf ~/.config/quickshell/inir && systemd-tmpfiles --user --create`. |
-| Stray `~/.config/systemd/user/inir.service` | Overrides the NixOS service. Remove it — the installer does this automatically. |
-| Missing `/bin/cat` | Fixed via `systemd.tmpfiles.rules` in `modules/inir.nix`. |
-| Missing icons in QuickShell | Fixed by `modules/patches/inir-icon-theme.patch`. |
-| DDC/CI brightness fails | Requires `video`/`i2c` groups and `hardware.i2c.enable = true`. |
+| `Unable to locate config-path helper` when running `inir run` | **1)** User symlinks not initialized: run `systemd-tmpfiles --user --create`.<br>**2)** A real directory shadows the runtime: run `rm -rf ~/.config/quickshell/inir && systemd-tmpfiles --user --create`. |
+| Niri doesn't show up in display manager (GDM) | GDM can hide Wayland sessions in VMs or NVIDIA setups. Switch to `programs.inir.desktop.displayManager = "greetd";` or clear `sudo rm -f /var/lib/AccountsService/users/*`. |
+| `allowUnfree` evaluation error | Add `nixpkgs.config.allowUnfree = true;` to your `configuration.nix`. |
+| Brightness control (DDC/CI) does not work | Ensure your user is in `video` and `i2c` groups, and `hardware.i2c.enable = true;`. |
 
 ---
 
-*Made with ❄️ for NixOS and Niri*
+<div align="center">
+  <i>Made with ❄️ for NixOS and Niri</i>
+</div>
