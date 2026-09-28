@@ -33,6 +33,7 @@ SKIP_REBUILD=0
 CHECK_ONLY=0
 NO_AI=0
 UPDATE_ONLY=0
+ENABLE_MASCOT=""
 
 # ============================================================
 # Options
@@ -56,6 +57,12 @@ Options:
   --update
       Non-interactive sync: updates iNiR modules and rebuilds system.
 
+  --mascot
+      Enable the Kira mascot companion and art pack without prompting.
+
+  --no-mascot
+      Skip the Kira mascot companion without prompting.
+
   --no-ai
       Skip the optional AI configuration review (if available).
 
@@ -70,6 +77,7 @@ Examples:
   ./install.sh
   ./install.sh --yes
   ./install.sh --dry-run
+  ./install.sh --mascot
   ./install.sh --update
   ./install.sh --skip-rebuild
 HELP
@@ -81,6 +89,8 @@ for arg in "$@"; do
         --dry-run)        DRY_RUN=1 ;;
         --skip-rebuild)   SKIP_REBUILD=1 ;;
         --update)         UPDATE_ONLY=1; ASSUME_YES=1 ;;
+        --mascot)         ENABLE_MASCOT=1 ;;
+        --no-mascot)      ENABLE_MASCOT=0 ;;
         --no-ai)          NO_AI=1 ;;
         --check)          CHECK_ONLY=1 ;;
         --help|-h)        usage; exit 0 ;;
@@ -1074,6 +1084,43 @@ EOF
 EOF
         offer_nix_injection "user $DETECTED_USER (with brightness groups)" "$GRP_BLOCK"
         rm -f "$GRP_BLOCK"
+    fi
+
+    # 7) Optional Kira mascot art pack and desktop companion
+    if ! grep -q "programs.inir.mascot.enable" "$MAIN_CONF" 2>/dev/null; then
+        echo
+        info "Kira is the official iNiR desktop companion mascot."
+        info "She peeks from screen edges, reacts to music/volume/battery events, and has mini-games."
+        local want_mascot=0
+        if [[ "$ENABLE_MASCOT" == "1" ]]; then
+            want_mascot=1
+        elif [[ "$ENABLE_MASCOT" == "0" ]]; then
+            want_mascot=0
+        elif confirm "Download and enable Kira mascot (animated companion & widgets)?"; then
+            want_mascot=1
+        fi
+
+        if [[ "$want_mascot" -eq 1 ]]; then
+            MASCOT_BLOCK="$(mktemp)"
+            cat > "$MASCOT_BLOCK" <<'EOF'
+  # Official iNiR Kira mascot art pack & companion
+  programs.inir.mascot.enable = true;
+EOF
+            if [[ "$DRY_RUN" -eq 1 ]]; then
+                dry_run_msg "Would inject into configuration.nix (Kira mascot art pack):"
+                local line
+                while IFS= read -r line; do printf '      %s\n' "$line"; done < "$MASCOT_BLOCK"
+            else
+                if inject_into_configuration_nix "$MASCOT_BLOCK"; then
+                    ok "Kira mascot enabled in configuration.nix"
+                else
+                    warn "Could not inject mascot configuration automatically."
+                fi
+            fi
+            rm -f "$MASCOT_BLOCK"
+        else
+            info "Kira mascot skipped (you can enable it later with 'programs.inir.mascot.enable = true;')"
+        fi
     fi
 fi
 

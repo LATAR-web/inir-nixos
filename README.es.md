@@ -154,6 +154,8 @@ chmod +x install.sh
 |---|---|
 | `--dry-run` | Simula la instalación sin tocar archivos ni reconstruir. |
 | `-y`, `--yes` | Modo no interactivo: asume "sí" a todas las confirmaciones. |
+| `--mascot` | Descarga e integra la mascota Kira sin preguntar interactivamente. |
+| `--no-mascot` | Omite la mascota Kira sin preguntar interactivamente. |
 | `--skip-rebuild` | Despliega archivos y dotfiles pero omite `nixos-rebuild switch`. |
 | `--check` | Ejecuta `scripts/verify-setup.sh` y termina. |
 

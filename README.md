@@ -154,6 +154,8 @@ chmod +x install.sh
 |---|---|
 | `--dry-run` | Simulates installation without modifying files or rebuilding. |
 | `-y`, `--yes` | Non-interactive: assumes "yes" to all prompts. |
+| `--mascot` | Enables the Kira mascot companion and art pack without prompting. |
+| `--no-mascot` | Skips the Kira mascot companion without prompting. |
 | `--skip-rebuild` | Deploys files and dotfiles but skips `nixos-rebuild switch`. |
 | `--check` | Runs `scripts/verify-setup.sh` and exits. |
 
