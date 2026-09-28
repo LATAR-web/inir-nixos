@@ -93,7 +93,7 @@ if isinstance(is_dark, str):
 
 # 1. Update Niri focus-ring colors
 niri_updated = False
-if niri_config_py and os.path.isfile(niri_config_py) and os.access(niri_config_py, os.X_OK):
+if niri_config_py and os.path.isfile(niri_config_py) and os.access(niri_config_py, os.R_OK):
     ret1 = os.system(f"{sys.executable} \"{niri_config_py}\" set layout focus-ring.active-color \"{primary}\" >/dev/null 2>&1")
     ret2 = os.system(f"{sys.executable} \"{niri_config_py}\" set layout focus-ring.inactive-color \"{secondary}\" >/dev/null 2>&1")
     if ret1 == 0 and ret2 == 0:

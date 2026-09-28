@@ -172,6 +172,14 @@ else
     fail "inir config-path helper NOT found — 'inir run' will fail (did the rebuild apply modules/inir.nix?)"
 fi
 
+if [[ -d "/run/current-system/sw/share/quickshell/inir/assets/images/mascot" || -d "$HOME/.config/quickshell/inir/assets/images/mascot" ]]; then
+    ok "Kira mascot art pack present"
+elif grep -rqE 'programs\.inir\.mascot\.enable[[:space:]]*=[[:space:]]*true' /etc/nixos/configuration.nix /etc/nixos/flake.nix /etc/nixos/modules/*.nix 2>/dev/null; then
+    warn "Kira mascot enabled in configuration but assets not found in runtime (check rebuild)"
+else
+    info "Kira mascot not enabled (optional; enable with programs.inir.mascot.enable = true)"
+fi
+
 if [[ -w "$HOME/.local/bin" ]]; then
     ok "~/.local/bin is writable"
 else
@@ -185,15 +193,19 @@ else
     fail "niri Wayland session NOT registered (did the rebuild apply modules/inir.nix?)"
 fi
 
-# Disk space under /nix (a full store breaks every future rebuild)
-_nix_free="$(df -BG --output=avail /nix 2>/dev/null | tail -n1 | tr -dc '0-9' || echo 0)"
+# Disk space under /nix or / (a full store breaks every future rebuild)
+_target_dir="/nix"
+[[ -d /nix ]] || _target_dir="/"
+_nix_free="$(df -BG --output=avail "$_target_dir" 2>/dev/null | tail -n1 | tr -dc '0-9' || echo 0)"
 _nix_free="${_nix_free:-0}"
 if (( _nix_free > 0 && _nix_free < 5 )); then
-    fail "Only ${_nix_free}GB free in /nix — run 'sudo nix-collect-garbage -d'"
+    fail "Only ${_nix_free}GB free in $_target_dir — free disk space to prevent build failures"
 elif (( _nix_free > 0 && _nix_free < 10 )); then
-    warn "${_nix_free}GB free in /nix — consider 'sudo nix-collect-garbage -d'"
+    warn "${_nix_free}GB free in $_target_dir — consider freeing disk space"
+elif (( _nix_free >= 10 )); then
+    ok "Disk space OK (${_nix_free}GB free in $_target_dir)"
 else
-    ok "Disk space OK (${_nix_free}GB free in /nix)"
+    info "Could not determine available disk space for $_target_dir"
 fi
 
 echo "── Done ──"

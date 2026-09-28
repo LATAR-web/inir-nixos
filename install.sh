@@ -1091,7 +1091,7 @@ EOF
         echo
         info "Kira is the official iNiR desktop companion mascot."
         info "She peeks from screen edges, reacts to music/volume/battery events, and has mini-games."
-        local want_mascot=0
+        want_mascot=0
         if [[ "$ENABLE_MASCOT" == "1" ]]; then
             want_mascot=1
         elif [[ "$ENABLE_MASCOT" == "0" ]]; then
@@ -1108,7 +1108,6 @@ EOF
 EOF
             if [[ "$DRY_RUN" -eq 1 ]]; then
                 dry_run_msg "Would inject into configuration.nix (Kira mascot art pack):"
-                local line
                 while IFS= read -r line; do printf '      %s\n' "$line"; done < "$MASCOT_BLOCK"
             else
                 if inject_into_configuration_nix "$MASCOT_BLOCK"; then
@@ -1394,8 +1393,8 @@ if [[ "$DRY_RUN" -eq 0 && "$SKIP_REBUILD" -eq 0 ]]; then
     fi
 
     # Verify that the rebuild installed the Niri and iNiR binaries and session
-    local niri_found=0
-    local inir_found=0
+    niri_found=0
+    inir_found=0
 
     if command -v niri >/dev/null 2>&1 || [[ -x /run/current-system/sw/bin/niri ]]; then
         niri_found=1
