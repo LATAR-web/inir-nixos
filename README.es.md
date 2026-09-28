@@ -79,6 +79,9 @@ Importa `./modules`, habilita software privativo y añade los grupos necesarios 
 
   nixpkgs.config.allowUnfree = true;
   users.users.<tu_usuario>.extraGroups = [ "wheel" "networkmanager" "video" "i2c" ];
+
+  # Extra opcional: Mascota Kira (compañero interactivo, widgets y animaciones)
+  # programs.inir.mascot.enable = true;
 }
 ```
 
@@ -184,11 +187,27 @@ Al seleccionar un nuevo fondo con <kbd>Mod</kbd> + <kbd>W</kbd>, `niri-sync-colo
 
 ---
 
+## 🐾 Mascota Kira (Extra Opcional)
+
+iNiR incluye a **Kira**, una mascota animada para tu escritorio que asoma por los bordes de la pantalla, reacciona a eventos (música, volumen, batería, actualizaciones) y ofrece minijuegos y widgets de fondo.
+
+Para activarla en tu `/etc/nixos/configuration.nix`:
+```nix
+programs.inir.mascot.enable = true;
+```
+
+Tras reconstruir (`sudo nixos-rebuild switch`), puedes configurarla e interactuar con ella:
+- **Ajustes gráficos:** <kbd>Mod</kbd> + <kbd>,</kbd> → **Mascota** (poses, tamaño, frecuencia de visita y widgets).
+- **Comandos IPC:** `inir mascot poke`, `inir mascot romp` (modo caos), `inir mascot chase` (juego de atrapar), `inir mascot hideSeek` (escondite) o `inir mascot hide`.
+
+---
+
 ## 🗺️ Estructura del Repositorio
 
 | Archivo / Carpeta | Propósito |
 |---|---|
 | `modules/` | Módulos NixOS: paquete iNiR, dependencias, fuentes, audio y parches |
+| `modules/mascot.nix` | Módulo extra: integración y paquete de arte de la mascota Kira |
 | `niri/config.kdl` | Configuración de atajos, ventanas y focus-ring de Niri |
 | `alacritty/alacritty.toml` | Configuración de terminal con soporte de temas dinámicos |
 | `scripts/niri-sync-colors` | Demonio/script de sincronización de colores Material You |

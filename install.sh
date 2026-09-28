@@ -636,7 +636,7 @@ section_note "modules/default.nix auto-imports every .nix in that directory."
 if [[ "$DRY_RUN" -eq 0 ]]; then
     sudo mkdir -p /etc/nixos/modules
     # 1) Update only the iNiR-owned module files (never touch user files)
-    for f in audio.nix desktop.nix fonts.nix inir-deps.nix inir.nix runtime.nix default.nix; do
+    for f in audio.nix desktop.nix fonts.nix inir-deps.nix inir.nix mascot.nix runtime.nix default.nix; do
         # Backup only when the installed file actually differs from the repo one
         if [[ -f "/etc/nixos/modules/$f" ]] && ! cmp -s "$REPO_DIR/modules/$f" "/etc/nixos/modules/$f"; then
             backup_if_exists "/etc/nixos/modules/$f"
@@ -654,7 +654,7 @@ if [[ "$DRY_RUN" -eq 0 ]]; then
     for f in /etc/nixos/modules/*.nix; do
         base="$(basename "$f")"
         case "$base" in
-            audio.nix|desktop.nix|fonts.nix|inir-deps.nix|inir.nix|runtime.nix|default.nix) ;;
+            audio.nix|desktop.nix|fonts.nix|inir-deps.nix|inir.nix|mascot.nix|runtime.nix|default.nix) ;;
             *) local_preserved+=("$base") ;;
         esac
     done

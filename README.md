@@ -79,6 +79,9 @@ Import `./modules`, enable proprietary software, and grant brightness/hardware p
 
   nixpkgs.config.allowUnfree = true;
   users.users.<your_user>.extraGroups = [ "wheel" "networkmanager" "video" "i2c" ];
+
+  # Optional extra: Kira mascot (interactive companion, widgets, animations)
+  # programs.inir.mascot.enable = true;
 }
 ```
 
@@ -184,11 +187,27 @@ When picking a wallpaper with <kbd>Mod</kbd> + <kbd>W</kbd>, `niri-sync-colors` 
 
 ---
 
+## 🐾 Kira Mascot (Optional Extra)
+
+iNiR includes **Kira**, an animated desktop mascot companion that peeks from screen edges, reacts to system events (music, volume, battery, updates), and offers mini-games and wallpaper widgets.
+
+To enable her in your `/etc/nixos/configuration.nix`:
+```nix
+programs.inir.mascot.enable = true;
+```
+
+After rebuilding (`sudo nixos-rebuild switch`), you can customize and interact with her:
+- **Graphical Settings:** <kbd>Mod</kbd> + <kbd>,</kbd> → **Mascota** (poses, size, visit frequency, and widgets).
+- **IPC Commands:** `inir mascot poke`, `inir mascot romp` (chaos mode), `inir mascot chase` (catch game), `inir mascot hideSeek` (hide and seek), or `inir mascot hide`.
+
+---
+
 ## 🗺️ Repository Structure
 
 | File / Folder | Purpose |
 |---|---|
 | `modules/` | NixOS modules: iNiR package, dependencies, fonts, audio, and patches |
+| `modules/mascot.nix` | Optional extra module: Kira mascot art pack and desktop companion integration |
 | `niri/config.kdl` | Niri compositor shortcuts, layout, and window rules |
 | `alacritty/alacritty.toml` | Terminal configuration with dynamic palette support |
 | `scripts/niri-sync-colors` | Background daemon/script for Material You color sync |

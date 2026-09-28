@@ -27,6 +27,7 @@
   # programs.inir.audio.enable = true;               # Enabled by default (PipeWire)
   # programs.inir.desktop.enable = true;             # Enabled by default (GDM)
   # programs.inir.desktop.enableGnomeFallback = false; # Set true only if you want GNOME installed as fallback
+  # programs.inir.mascot.enable = true;              # Optional Kira mascot art pack and desktop companion
 
   # Virtualization: QEMU / KVM, GNOME Boxes & Virt-Manager (Optional)
   # virtualisation.libvirtd = {

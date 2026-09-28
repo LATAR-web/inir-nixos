@@ -17,17 +17,31 @@ let
       ./patches/inir-nixos-fixes.patch
     ];
   });
+
+  mascotPackage = config.programs.inir.mascot.package or (
+    if inir != null && builtins.pathExists "${inir}/nix/mascot-package.nix"
+    then pkgs.callPackage "${inir}/nix/mascot-package.nix" { inherit pkgs; }
+    else null
+  );
+
+  inirPackage =
+    if (config.programs.inir.mascot.enable or false) && mascotPackage != null
+    then pkgs.symlinkJoin {
+      name = "inir-with-mascot-${inirPatched.version or "2.31.0"}";
+      paths = [ inirPatched mascotPackage ];
+    }
+    else inirPatched;
 in
 {
   imports = [
     inir.nixosModules.inir
   ];
 
-  # Habilitar el módulo oficial de iNiR con detección de iconos corregida
+  # Habilitar el módulo oficial de iNiR con detección de iconos corregida y soporte para mascota
   programs.inir = {
     enable = true;
     service.compositor = "niri";
-    package = inirPatched;
+    package = lib.mkDefault inirPackage;
     extraPackages = inirDeps;
   };
 
