@@ -81,10 +81,19 @@ Importa `./modules`, habilita software privativo y añade los grupos necesarios 
   nixpkgs.config.allowUnfree = true;
   users.users.<tu_usuario>.extraGroups = [ "wheel" "networkmanager" "video" "i2c" ];
 
-  # Extra opcional: Mascota Kira (compañero interactivo, widgets y animaciones)
+  # --- Mascota Kira (Extra Opcional · Fase de Pruebas) ---
+  # Descomenta la siguiente línea si deseas que Kira te acompañe en el escritorio:
   # programs.inir.mascot.enable = true;
 }
 ```
+
+> [!TIP]
+> ### 🐾 ¿Cómo agregar la Mascota Kira en la Instalación Manual?
+> Si deseas incluir a la mascota oficial **Kira** (compañero interactivo de escritorio, animaciones y widgets):
+> 1. **Módulo:** Verifica que `modules/mascot.nix` esté dentro de `/etc/nixos/modules/` (se incluye al copiar la carpeta `modules/` en el Paso 1).
+> 2. **Habilitación:** Añade `programs.inir.mascot.enable = true;` dentro de tu `/etc/nixos/configuration.nix`.
+> 3. **Reconstrucción:** Ejecuta el Paso 5 (`sudo nixos-rebuild switch`). Nix descargará el paquete de arte oficial y lo fusionará automáticamente dentro del runtime de iNiR mediante `symlinkJoin`.
+> 4. **Uso:** Tras iniciar sesión, puedes abrir sus ajustes con <kbd>Mod</kbd> + <kbd>,</kbd> → pestaña **Mascota**, o interactuar con comandos como `inir mascot poke` o `inir mascot chase`.
 
 ### 4. Limpia posibles directorios residuales
 Si anteriormente clonaste o creaste `~/.config/quickshell/inir` a mano, bloquerá el runtime empaquetado:

@@ -81,10 +81,19 @@ Import `./modules`, enable proprietary software, and grant brightness/hardware p
   nixpkgs.config.allowUnfree = true;
   users.users.<your_user>.extraGroups = [ "wheel" "networkmanager" "video" "i2c" ];
 
-  # Optional extra: Kira mascot (interactive companion, widgets, animations)
+  # --- Kira Mascot (Optional Extra · Testing Phase) ---
+  # Uncomment the following line if you want Kira to accompany your desktop:
   # programs.inir.mascot.enable = true;
 }
 ```
+
+> [!TIP]
+> ### 🐾 How to Add the Kira Mascot in Manual Installation
+> If you want to include the official **Kira** mascot (desktop companion, animations, and widgets):
+> 1. **Module:** Ensure `modules/mascot.nix` is inside `/etc/nixos/modules/` (included automatically when copying the `modules/` directory in Step 1).
+> 2. **Enable:** Add `programs.inir.mascot.enable = true;` inside your `/etc/nixos/configuration.nix`.
+> 3. **Rebuild:** Run Step 5 (`sudo nixos-rebuild switch`). Nix will fetch the official art pack and merge it directly into the iNiR quickshell runtime via `symlinkJoin`.
+> 4. **Usage:** After logging in, customize her in Settings via <kbd>Mod</kbd> + <kbd>,</kbd> → **Mascota** tab, or interact via commands like `inir mascot poke` or `inir mascot chase`.
 
 ### 4. Remove any residual directories
 If you previously cloned or created `~/.config/quickshell/inir` manually, it will shadow the packaged runtime:
