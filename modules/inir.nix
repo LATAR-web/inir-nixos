@@ -34,6 +34,12 @@ in
   # Paquetes disponibles globalmente en el sistema para herramientas y scripts de iNiR
   environment.systemPackages = inirDeps;
 
+  # Variables de entorno globales para que cualquier shell o launcher localice el runtime
+  environment.variables = {
+    INIR_SYSTEM_RUNTIME_DIR = "/run/current-system/sw/share/quickshell/inir";
+    INIR_FALLBACK_SYSTEM_RUNTIME_DIR = "/run/current-system/sw/share/quickshell/inir";
+  };
+
   # Control de hardware para brillo de monitores externos mediante ddcutil
   hardware.i2c.enable = lib.mkDefault true;
 
@@ -42,6 +48,7 @@ in
     "L+ /bin/cat - - - - ${pkgs.coreutils}/bin/cat"
     "d /usr/share 0755 root root -"
     "L+ /usr/share/icons - - - - /run/current-system/sw/share/icons"
+    "L+ /usr/share/quickshell - - - - /run/current-system/sw/share/quickshell"
   ];
 
   # Habilitar Niri y dconf por defecto

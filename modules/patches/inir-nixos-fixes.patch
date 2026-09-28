@@ -40,7 +40,40 @@
              }
 --- a/scripts/inir
 +++ b/scripts/inir
-@@ -3881,7 +3881,7 @@
+@@ -21,6 +21,7 @@ source_config_path_helper() {
+         "$user_config_dir/scripts/lib/config-path.sh"
+         "$system_config_dir/scripts/lib/config-path.sh"
+         "$fallback_system_config_dir/scripts/lib/config-path.sh"
++        "/run/current-system/sw/share/quickshell/inir/scripts/lib/config-path.sh"
+     )
+ 
+     local helper_path
+@@ -45,6 +46,7 @@ source_niri_session_env_helper() {
+         "$user_config_dir/scripts/lib/niri-session-env.sh"
+         "$system_config_dir/scripts/lib/niri-session-env.sh"
+         "$fallback_system_config_dir/scripts/lib/niri-session-env.sh"
++        "/run/current-system/sw/share/quickshell/inir/scripts/lib/niri-session-env.sh"
+     )
+ 
+     local helper_path
+@@ -73,6 +75,7 @@ source_ipc_registry() {
+         "$user_config_dir/scripts/lib/ipc-registry.sh"
+         "$system_config_dir/scripts/lib/ipc-registry.sh"
+         "$fallback_system_config_dir/scripts/lib/ipc-registry.sh"
++        "/run/current-system/sw/share/quickshell/inir/scripts/lib/ipc-registry.sh"
+     )
+ 
+     local registry_path
+@@ -1874,7 +1877,7 @@ resolve_config_dir() {
+     fi
+ 
+     local candidate
+-    for candidate in "$user_config_dir" "$system_config_dir" "$fallback_system_config_dir"; do
++    for candidate in "$user_config_dir" "$system_config_dir" "$fallback_system_config_dir" "/run/current-system/sw/share/quickshell/inir"; do
+         if [[ -n "$candidate" && -f "$candidate/shell.qml" ]]; then
+             config_dir="$(canonicalize_path "$candidate")"
+             return
+@@ -3881,7 +3884,7 @@
              echo "hyprpicker not found — install it to use colorpicker" >&2
              exit 1
          fi

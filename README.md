@@ -84,32 +84,89 @@ Runs 7 phases, reproducibly and safely:
 
 ### Option B — Manual Step-by-Step
 
-1. `sudo cp -a modules/ /etc/nixos/modules/`
-2. Add `./modules` to `imports` in `configuration.nix`; add `video`/`i2c` to your user's groups.
-3. In `flake.nix`, add the `inir` input and pass it via `specialArgs`:
+If you prefer to integrate iNiR manually without running `install.sh`:
+
+1. **Copy modules to `/etc/nixos`**:
+   ```bash
+   sudo cp -a modules/ /etc/nixos/modules/
+   # If /etc/nixos is a git repository, you must stage the files (otherwise Nix Flakes will ignore them):
+   sudo git -C /etc/nixos add -A modules/
+   ```
+
+2. **Configure `/etc/nixos/configuration.nix`**:
+   - Add `./modules` to `imports`.
+   - Ensure `nixpkgs.config.allowUnfree = true;` is set (needed for NVIDIA drivers, proprietary fonts, etc.).
+   - Add `"video"` and `"i2c"` groups to your user for DDC/CI monitor brightness control:
    ```nix
-   inputs.inir = {
-     url = "github:snowarch/inir";
-     inputs.nixpkgs.follows = "nixpkgs";
+   imports = [
+     ./hardware-configuration.nix
+     ./modules
+   ];
+
+   nixpkgs.config.allowUnfree = true;
+   users.users.<your_user>.extraGroups = [ "wheel" "networkmanager" "video" "i2c" ];
+   ```
+
+3. **Configure `/etc/nixos/flake.nix`**:
+   Add the `inir` input and pass it via `specialArgs`:
+   ```nix
+   inputs = {
+     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+     inir = {
+       url = "github:snowarch/inir";
+       inputs.nixpkgs.follows = "nixpkgs";
+     };
    };
+
    outputs = { self, nixpkgs, inir, ... }: {
-     nixosConfigurations."your_hostname" = nixpkgs.lib.nixosSystem {
+     nixosConfigurations.<your_hostname> = nixpkgs.lib.nixosSystem {
        specialArgs = { inherit inir; };
        modules = [ ./configuration.nix ];
      };
+     # Recommended fallbacks
+     nixosConfigurations.nixos = self.nixosConfigurations.<your_hostname>;
+     nixosConfigurations.default = self.nixosConfigurations.<your_hostname>;
    };
    ```
-4. `sudo nixos-rebuild switch --flake /etc/nixos`
-5. Install user configurations (Niri, Alacritty, color sync daemon):
+   *(If `/etc/nixos` is tracked by git, run `sudo git -C /etc/nixos add flake.nix flake.lock configuration.nix`)*
+
+4. **Clean up any existing local iNiR directory** (avoids the `Unable to locate config-path helper` error):
+   > [!IMPORTANT]
+   > If you previously cloned or created `~/.config/quickshell/inir` as a real directory, it will shadow the Nix-packaged runtime. Back it up if you have custom changes and remove it:
    ```bash
+   [[ -d ~/.config/quickshell/inir && ! -L ~/.config/quickshell/inir ]] && rm -rf ~/.config/quickshell/inir
+   ```
+
+5. **Build and switch configuration**:
+   ```bash
+   sudo nixos-rebuild switch --flake /etc/nixos#<your_hostname>
+   # Or using the fallback alias:
+   sudo nixos-rebuild switch --flake /etc/nixos#nixos
+   ```
+
+6. **Activate user symlinks and deploy dotfiles**:
+   > [!IMPORTANT]
+   > `nixos-rebuild` only applies system-level (`root`) tmpfiles rules. To create user runtime symlinks (`~/.config/quickshell/inir` and `~/.local/bin/inir`), you **must** run `systemd-tmpfiles --user --create`:
+   ```bash
+   # Generates user runtime symlinks (~/.config/quickshell/inir, ~/.local/bin/inir, version.json)
+   systemd-tmpfiles --user --create
+
+   # Deploy Niri, Alacritty, and user service configurations
    mkdir -p ~/.config/niri ~/.config/alacritty ~/.local/bin ~/.config/systemd/user ~/Pictures/Wallpapers
    cp niri/config.kdl ~/.config/niri/config.kdl
    cp alacritty/alacritty.toml ~/.config/alacritty/alacritty.toml
    cp scripts/niri-sync-colors ~/.local/bin/ && chmod +x ~/.local/bin/niri-sync-colors
+   cp scripts/record-screen ~/.local/bin/ && chmod +x ~/.local/bin/record-screen
    cp systemd/niri-sync-colors.service ~/.config/systemd/user/
    ~/.local/bin/niri-sync-colors # seeds initial theme
    systemctl --user daemon-reload && systemctl --user enable --now niri-sync-colors.service
    ```
+
+7. **Verify setup**:
+   ```bash
+   bash scripts/verify-setup.sh
+   ```
+   *Note:* To start the full graphical shell, log into **Niri** from your display manager (GDM or greetd). `inir.service` starts automatically upon Niri session startup. If you test `inir run` from a terminal, it will resolve the packaged runtime without path errors.
 
 ---
 
@@ -281,7 +338,7 @@ Rollback: `sudo nixos-rebuild switch --rollback`
 
 | Issue | Fix |
 |---|---|
-| `inir run` → "Unable to locate config-path helper" | A real `~/.config/quickshell/inir` directory is shadowing the packaged runtime. Back it up, remove it, then run `systemd-tmpfiles --user --create` (the installer offers this automatically). |
+| `inir run` → "Unable to locate config-path helper" | Caused by: **1)** User tmpfiles not yet applied after manual install (run `systemd-tmpfiles --user --create` to initialize symlinks), or **2)** A real `~/.config/quickshell/inir` directory shadowing the packaged runtime. Fix: `rm -rf ~/.config/quickshell/inir && systemd-tmpfiles --user --create`. |
 | Stray `~/.config/systemd/user/inir.service` | Overrides the NixOS service. Remove it — the installer does this automatically. |
 | Missing `/bin/cat` | Fixed via `systemd.tmpfiles.rules` in `modules/inir.nix`. |
 | Missing icons in QuickShell | Fixed by `modules/patches/inir-icon-theme.patch`. |
