@@ -1089,21 +1089,21 @@ EOF
     # 7) Optional Kira mascot art pack and desktop companion
     if ! grep -q "programs.inir.mascot.enable" "$MAIN_CONF" 2>/dev/null; then
         echo
-        info "Kira is the official iNiR desktop companion mascot."
+        info "Kira is the official iNiR desktop companion mascot (testing phase / fase de pruebas)."
         info "She peeks from screen edges, reacts to music/volume/battery events, and has mini-games."
         want_mascot=0
         if [[ "$ENABLE_MASCOT" == "1" ]]; then
             want_mascot=1
         elif [[ "$ENABLE_MASCOT" == "0" ]]; then
             want_mascot=0
-        elif confirm "Download and enable Kira mascot (animated companion & widgets)?"; then
+        elif confirm "Download and enable Kira mascot (testing phase · companion & widgets)?"; then
             want_mascot=1
         fi
 
         if [[ "$want_mascot" -eq 1 ]]; then
             MASCOT_BLOCK="$(mktemp)"
             cat > "$MASCOT_BLOCK" <<'EOF'
-  # Official iNiR Kira mascot art pack & companion
+  # Official iNiR Kira mascot art pack & companion (testing phase)
   programs.inir.mascot.enable = true;
 EOF
             if [[ "$DRY_RUN" -eq 1 ]]; then

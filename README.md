@@ -27,6 +27,7 @@
 - [⚡ Automated Installation (`install.sh`)](#-automated-installation-installsh)
 - [⌨️ Keyboard Shortcuts](#️-keyboard-shortcuts)
 - [🎨 Color Synchronization](#-color-synchronization-material-you)
+- [🐾 Kira Mascot (Testing Phase)](#-kira-mascot-optional-extra--testing-phase-)
 - [🗺️ Repository Structure](#️-repository-structure)
 - [🐛 Troubleshooting](#-troubleshooting)
 
@@ -189,7 +190,10 @@ When picking a wallpaper with <kbd>Mod</kbd> + <kbd>W</kbd>, `niri-sync-colors` 
 
 ---
 
-## 🐾 Kira Mascot (Optional Extra)
+## 🐾 Kira Mascot (Optional Extra · Testing Phase 🧪)
+
+> [!NOTE]
+> **Testing / experimental phase:** The Kira mascot integration on NixOS is currently in an active **testing phase**. Visual widgets, companion behavior, and mini-games are being evaluated.
 
 iNiR includes **Kira**, an animated desktop mascot companion that peeks from screen edges, reacts to system events (music, volume, battery, updates), and offers mini-games and wallpaper widgets.
 

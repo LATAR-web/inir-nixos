@@ -27,6 +27,7 @@
 - [⚡ Instalación Automatizada (`install.sh`)](#-instalación-automatizada-installsh)
 - [⌨️ Atajos de Teclado](#️-atajos-de-teclado)
 - [🎨 Sincronización de Color](#-sincronización-de-color-material-you)
+- [🐾 Mascota Kira (Fase de Pruebas)](#-mascota-kira-extra-opcional--fase-de-pruebas-)
 - [🗺️ Estructura del Repositorio](#️-estructura-del-repositorio)
 - [🐛 Solución de Problemas](#-solución-de-problemas)
 
@@ -189,7 +190,10 @@ Al seleccionar un nuevo fondo con <kbd>Mod</kbd> + <kbd>W</kbd>, `niri-sync-colo
 
 ---
 
-## 🐾 Mascota Kira (Extra Opcional)
+## 🐾 Mascota Kira (Extra Opcional · Fase de Pruebas 🧪)
+
+> [!NOTE]
+> **Fase experimental / pruebas:** La integración de la mascota Kira en NixOS se encuentra actualmente en **fase de pruebas**. Su comportamiento, poses y minijuegos están en evaluación activa.
 
 iNiR incluye a **Kira**, una mascota animada para tu escritorio que asoma por los bordes de la pantalla, reacciona a eventos (música, volumen, batería, actualizaciones) y ofrece minijuegos y widgets de fondo.
 
