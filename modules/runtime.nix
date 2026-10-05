@@ -16,7 +16,7 @@
 
   environment.variables.QML2_IMPORT_PATH = lib.makeSearchPath "lib/qt-6/qml" [
     pkgs.kdePackages.qt5compat
-    pkgs.kdePackages.kirigami
+    (pkgs.kdePackages.kirigami.passthru.unwrapped or pkgs.kdePackages.kirigami)
     pkgs.kdePackages.qtmultimedia
     pkgs.kdePackages.syntax-highlighting
   ];

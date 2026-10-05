@@ -2,6 +2,15 @@
 
 let
   inirDeps = import ./inir-deps.nix { inherit pkgs; };
+  pythonEnv = lib.findSingle
+    (p: lib.hasPrefix "python3-" (p.name or "") && lib.hasSuffix "-env" (p.name or ""))
+    (pkgs.python3.withPackages (ps: []))
+    null
+    inirDeps;
+
+  niriSyncColors = pkgs.writeScriptBin "niri-sync-colors" (builtins.readFile ../scripts/niri-sync-colors);
+  recordScreen = pkgs.writeScriptBin "record-screen" (builtins.readFile ../scripts/record-screen);
+
   versionJsonFile = pkgs.writeText "inir-version.json" ((builtins.toJSON {
     version = inir.shortRev or "2.31.0";
     commit = inir.rev or "9574fa424c0d1008e927454e933a7fbe292f9fb2";
@@ -46,7 +55,10 @@ in
   };
 
   # Paquetes disponibles globalmente en el sistema para herramientas y scripts de iNiR
-  environment.systemPackages = inirDeps;
+  environment.systemPackages = inirDeps ++ [
+    niriSyncColors
+    recordScreen
+  ];
 
   # Variables de entorno globales para que cualquier shell o launcher localice el runtime
   environment.variables = {
@@ -109,12 +121,27 @@ in
     };
   };
 
+  # Servicio de usuario para sincronización automática de colores con Niri / Alacritty / GTK
+  systemd.user.services.niri-sync-colors = {
+    description = "Sync Niri colors and iNiR wallpaper with generated theme data";
+    wantedBy = [ "graphical-session.target" "default.target" ];
+    after = [ "inir.service" ];
+    serviceConfig = {
+      Type = "simple";
+      ExecStart = "${niriSyncColors}/bin/niri-sync-colors --watch";
+      Restart = "on-failure";
+      RestartSec = 5;
+    };
+  };
+
   # Reglas de usuario para asegurar symlinks correctos y compatibilidad permanente de iconos
   systemd.user.tmpfiles.rules = [
     "d %h/.local/bin 0755 - - -"
     "d %h/.local/state/quickshell 0755 - - -"
-    "L+ %h/.local/state/quickshell/.venv - - - - %h/.local/share/inir/venv"
+    "L+ %h/.local/state/quickshell/.venv - - - - ${pythonEnv}"
     "L+ %h/.local/bin/inir - - - - /run/current-system/sw/bin/inir"
+    "L+ %h/.local/bin/niri-sync-colors - - - - ${niriSyncColors}/bin/niri-sync-colors"
+    "L+ %h/.local/bin/record-screen - - - - ${recordScreen}/bin/record-screen"
     "L+ %h/.local/bin/pactl - - - - ${pkgs.pulseaudio}/bin/pactl"
     "d %h/.config/inir 0755 - - -"
     "L+ %h/.config/inir/version.json - - - - ${versionJsonFile}"

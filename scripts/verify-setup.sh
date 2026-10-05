@@ -47,6 +47,8 @@ check_command pactl "pactl (PulseAudio CLI)"
 check_command playerctl "playerctl (media key control)"
 check_command alacritty "alacritty (terminal emulator)"
 check_command nautilus "nautilus (file manager)"
+check_command rsync "rsync"
+check_command curl "curl"
 
 if command -v pactl >/dev/null 2>&1; then
     _def_sink="$(pactl get-default-sink 2>/dev/null || true)"
@@ -59,10 +61,22 @@ else
     fail "pactl not found (screen recording will not capture audio)"
 fi
 
-if python3 -c "import materialyoucolor" 2>/dev/null; then
-    ok "materialyoucolor importable"
+if python3 -c "import materialyoucolor, PIL, cv2, numpy, psutil, tqdm" 2>/dev/null; then
+    ok "Core Python dependencies importable (materialyoucolor, PIL, cv2, numpy, psutil, tqdm)"
 else
-    fail "materialyoucolor NOT importable"
+    fail "Core Python dependencies NOT fully importable (materialyoucolor, PIL, cv2, numpy, psutil, tqdm)"
+fi
+
+if python3 -c "import ytmusicapi, yt_dlp, secretstorage" 2>/dev/null; then
+    ok "YouTube Music Python dependencies importable (ytmusicapi, yt_dlp, secretstorage)"
+else
+    warn "YouTube Music Python dependencies NOT fully importable"
+fi
+
+if [[ -x "$HOME/.local/state/quickshell/.venv/bin/python3" || -x "$HOME/.local/state/quickshell/.venv/bin/python" ]]; then
+    ok "iNiR Python venv runtime available (~/.local/state/quickshell/.venv)"
+else
+    warn "iNiR Python venv runtime not linked yet (~/.local/state/quickshell/.venv - run: systemd-tmpfiles --user --create)"
 fi
 
 if systemctl --user is-active --quiet inir.service; then

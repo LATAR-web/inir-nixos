@@ -23,5 +23,9 @@
 
       # Default configuration fallback
       nixosConfigurations.default = systemConfig;
+
+      # Expose modules for use as a flake input
+      nixosModules.default = ./modules;
+      nixosModules.inir = ./modules/inir.nix;
     };
 }

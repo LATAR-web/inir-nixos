@@ -4,7 +4,13 @@ set -Eeuo pipefail
 COLORS_JSON="$HOME/.local/state/quickshell/user/generated/colors.json"
 META_JSON="$HOME/.local/state/quickshell/user/generated/theme-meta.json"
 GENERATED_DIR="$HOME/.local/state/quickshell/user/generated"
-SHELL_CONFIG_FILE="$HOME/.config/illogical-impulse/config.json"
+if [[ -f "$HOME/.config/inir/config.json" ]]; then
+    SHELL_CONFIG_FILE="$HOME/.config/inir/config.json"
+elif [[ -f "$HOME/.config/illogical-impulse/config.json" ]]; then
+    SHELL_CONFIG_FILE="$HOME/.config/illogical-impulse/config.json"
+else
+    SHELL_CONFIG_FILE="$HOME/.config/inir/config.json"
+fi
 NIRI_CONFIG_FILE="$HOME/.config/niri/config.kdl"
 ALACRITTY_THEME_FILE="$HOME/.config/alacritty/theme.toml"
 PYTHON="python3"

@@ -11,6 +11,12 @@
 with pkgs; [
   # --- Core shell / compositor glue ---
   git                      # version control and flake management
+  curl                     # downloads and API requests (tesseract models, OCR, weather)
+  wget                     # file downloader fallback
+  rsync                    # sync operations for shell themes, backups and presets
+  glib                     # provides `gsettings` for GNOME/GTK desktop theme sync
+  util-linux               # provides `flock`, used by niri-sync-colors watcher
+  procps                   # provides `pgrep`, `pkill`, `pidof`, `kill`
   inotify-tools            # provides `inotifywait`, used by systemd/niri-sync-colors.service
   quickshell              # the actual runtime iNiR's `inir` launcher wraps
   xwayland-satellite       # Xwayland support under niri (non-native apps)
@@ -47,13 +53,27 @@ with pkgs; [
 
   # --- Wallpapers / color pipeline ---
   awww                      # default hardware-accelerated wallpaper backend ('awww'/'awww-daemon'); without it iNiR falls back to the internal renderer
-  matugen                          # the actual engine that generates the Material You palette
+  matugen                   # the actual engine that generates the Material You palette
+  gowall                    # wallpaper processing and palette conversion used in switchwall.sh
   (python3.withPackages (ps: with ps; [
     pip
     materialyoucolor
+    material-color-utilities
     pillow
     evdev
     numpy
+    psutil
+    pygobject3
+    pycairo
+    loguru
+    click
+    websockets
+    ytmusicapi
+    secretstorage
+    opencv4                 # provides cv2 for wallpaper scheme & region detection (scheme_for_image.py, find_regions.py)
+    tqdm                    # progress reporting for thumbnail generator (thumbgen.py)
+    yt-dlp                  # cookie extraction and streaming backend for YouTube Music
+    kde-material-you-colors # KDE/Qt color palette synchronization
   ]))
 
   # --- Screenshots / OCR / screen recording ---
@@ -70,6 +90,7 @@ with pkgs; [
   brightnessctl
   ddcutil                  # external monitor brightness over DDC/CI
   playerctl                # media keys / MPRIS control used in niri/config.kdl
+  wireplumber              # provides `wpctl`, required for audio device control and query
   hyprpicker               # color picker tool used by inir
   upower
   blueman
@@ -95,10 +116,16 @@ with pkgs; [
   translate-shell            # translate widget
   socat                      # used by a couple of IPC helper scripts
   mission-center              # system monitor GUI, launched from the dashboard
+  songrec                     # audio recognition (Shazam-like) used by recognize-music.sh
+  ani-cli                     # anime streaming CLI used by inir-ani
   lsp-plugins                 # audio effect plugins, only relevant if you use easyeffects/cava
   cava
   easyeffects
   mpv
   mpvScripts.mpris             # media-key/MPRIS integration for the YouTube Music widget
   yt-dlp
+  deno                        # JavaScript runtime required by yt-dlp / InnerTube for YouTube Music
+  libdbusmenu-gtk3            # D-Bus menu support for system tray
+  ffmpegthumbnailer           # Video thumbnail extraction
+  zenity                      # GUI dialog fallback for scripts
 ]
