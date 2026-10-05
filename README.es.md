@@ -23,8 +23,7 @@
 
 ## 📑 Tabla de Contenidos
 
-- [📦 Instalación Manual (Recomendada)](#-instalación-manual-recomendada)
-- [⚡ Instalación Automatizada (`install.sh`)](#-instalación-automatizada-installsh)
+- [📦 Guía de Instalación](#-guía-de-instalación)
 - [⌨️ Atajos de Teclado](#️-atajos-de-teclado)
 - [🎨 Sincronización de Color](#-sincronización-de-color-material-you)
 - [🐾 Mascota Kira (Fase de Pruebas)](#-mascota-kira-extra-opcional--fase-de-pruebas-)
@@ -33,9 +32,9 @@
 
 ---
 
-## 📦 Instalación Manual (Recomendada)
+## 📦 Guía de Instalación
 
-Este es el método **predilecto** si ya tienes tu propia configuración de NixOS y deseas integrar iNiR de manera limpia y bajo tu control.
+Este es el método estándar declarativo para integrar iNiR en tu sistema NixOS usando Flakes y módulos.
 
 ### 1. Copia los módulos a `/etc/nixos`
 ```bash
@@ -137,40 +136,6 @@ bash scripts/verify-setup.sh
 
 ---
 
-## ⚡ Instalación Automatizada (`install.sh`)
-
-> [!CAUTION]
-> ### ⚠️ ADVERTENCIA: SOLO PARA INSTALACIONES NUEVAS / LIMPIAS
-> `install.sh` **reconstruye por completo tu sistema NixOS**:
-> - Migra tu canal a `nixos-unstable`.
-> - Reescribe o inyecta configuraciones en `/etc/nixos/configuration.nix` (controladores GPU, microcódigo, display manager).
-> - Puede sobreescribir tus dotfiles en `~/.config/`.
-> 
-> **NO lo ejecutes en un sistema personal con configuraciones existentes que desees conservar.** Para sistemas existentes, utiliza siempre la [Instalación Manual](#-instalación-manual-recomendada).
-
-Si estás en una instalación nueva de NixOS y deseas automatizar todo:
-
-```bash
-git clone https://github.com/LATAR-web/inir-nixos.git
-cd inir-nixos
-chmod +x install.sh
-
-./install.sh --dry-run   # Simulación obligatoria: comprueba sin modificar nada
-./install.sh             # Ejecución interactiva
-```
-
-### Opciones del script:
-| Bandera | Descripción |
-|---|---|
-| `--dry-run` | Simula la instalación sin tocar archivos ni reconstruir. |
-| `-y`, `--yes` | Modo no interactivo: asume "sí" a todas las confirmaciones. |
-| `--mascot` | Descarga e integra la mascota Kira sin preguntar interactivamente. |
-| `--no-mascot` | Omite la mascota Kira sin preguntar interactivamente. |
-| `--skip-rebuild` | Despliega archivos y dotfiles pero omite `nixos-rebuild switch`. |
-| `--check` | Ejecuta `scripts/verify-setup.sh` y termina. |
-
----
-
 ## ⌨️ Atajos de Teclado
 
 | Atajo | Acción |
@@ -228,7 +193,6 @@ Tras reconstruir (`sudo nixos-rebuild switch`), puedes configurarla e interactua
 | `scripts/niri-sync-colors` | Demonio/script de sincronización de colores Material You |
 | `scripts/record-screen` | Grabador de pantalla con audio |
 | `scripts/verify-setup.sh` | Script de diagnóstico y verificación del entorno |
-| `install.sh` | Instalador automatizado para sistemas nuevos |
 
 ---
 

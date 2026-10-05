@@ -23,8 +23,7 @@
 
 ## 📑 Table of Contents
 
-- [📦 Manual Installation (Recommended)](#-manual-installation-recommended)
-- [⚡ Automated Installation (`install.sh`)](#-automated-installation-installsh)
+- [📦 Installation Guide](#-installation-guide)
 - [⌨️ Keyboard Shortcuts](#️-keyboard-shortcuts)
 - [🎨 Color Synchronization](#-color-synchronization-material-you)
 - [🐾 Kira Mascot (Testing Phase)](#-kira-mascot-optional-extra--testing-phase-)
@@ -33,9 +32,9 @@
 
 ---
 
-## 📦 Manual Installation (Recommended)
+## 📦 Installation Guide
 
-This is the **preferred** method if you already have an existing NixOS setup and want to integrate iNiR cleanly under your direct control.
+This is the standard declarative method to integrate iNiR into your NixOS system using Nix Flakes and modules.
 
 ### 1. Copy modules to `/etc/nixos`
 ```bash
@@ -137,40 +136,6 @@ bash scripts/verify-setup.sh
 
 ---
 
-## ⚡ Automated Installation (`install.sh`)
-
-> [!CAUTION]
-> ### ⚠️ WARNING: ONLY FOR FRESH / CLEAN INSTALLATIONS
-> `install.sh` **rebuilds your entire NixOS system**:
-> - Migrates your channel to `nixos-unstable`.
-> - Modifies or injects configuration in `/etc/nixos/configuration.nix` (GPU drivers, microcode, display manager).
-> - May overwrite dotfiles in `~/.config/`.
-> 
-> **DO NOT run this on an established system with custom configurations you want to preserve.** For existing systems, always use [Manual Installation](#-manual-installation-recommended).
-
-If you are on a fresh NixOS install and want full automation:
-
-```bash
-git clone https://github.com/LATAR-web/inir-nixos.git
-cd inir-nixos
-chmod +x install.sh
-
-./install.sh --dry-run   # Mandatory dry-run: checks everything without modifying
-./install.sh             # Interactive run
-```
-
-### Script CLI Flags:
-| Flag | Description |
-|---|---|
-| `--dry-run` | Simulates installation without modifying files or rebuilding. |
-| `-y`, `--yes` | Non-interactive: assumes "yes" to all prompts. |
-| `--mascot` | Enables the Kira mascot companion and art pack without prompting. |
-| `--no-mascot` | Skips the Kira mascot companion without prompting. |
-| `--skip-rebuild` | Deploys files and dotfiles but skips `nixos-rebuild switch`. |
-| `--check` | Runs `scripts/verify-setup.sh` and exits. |
-
----
-
 ## ⌨️ Keyboard Shortcuts
 
 | Shortcut | Action |
@@ -228,7 +193,6 @@ After rebuilding (`sudo nixos-rebuild switch`), you can customize and interact w
 | `scripts/niri-sync-colors` | Background daemon/script for Material You color sync |
 | `scripts/record-screen` | Screen recorder script with audio capture |
 | `scripts/verify-setup.sh` | Sanity check and diagnostic verification script |
-| `install.sh` | Automated installer for fresh installations |
 
 ---
 

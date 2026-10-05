@@ -51,7 +51,7 @@
   #   qemu        # QEMU utilities
   # ];
 
-  # Primary User (automatically configured by install.sh)
+  # Primary User
   # NOTE: 'video' and 'i2c' groups are required for monitor brightness controls (ddcutil)
   # NOTE: 'libvirtd' and 'kvm' groups are required for hardware-accelerated VMs without root
   users.users."YOUR_USERNAME" = {
