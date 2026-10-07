@@ -7,15 +7,15 @@
         ]
       },
       "locked": {
-        "lastModified": 1789849958,
-        "narHash": "sha256-Zu4FrR/vn+Pq81hLkR5n3XXt+ja7m0my6ml+4IJotn4=",
-        "owner": "snowarch",
+        "lastModified": 1791335886,
+        "narHash": "sha256-H6CEIk26ccCN3/QpC4/YvTg3+kllKlF/Qo+C9y9NQZs=",
+        "owner": "LATAR-web",
         "repo": "inir",
-        "rev": "9574fa424c0d1008e927454e933a7fbe292f9fb2",
+        "rev": "dc8195889770b8303d6d6dfc0bc5172075137f6c",
         "type": "github"
       },
       "original": {
-        "owner": "snowarch",
+        "owner": "LATAR-web",
         "repo": "inir",
         "type": "github"
       }

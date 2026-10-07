@@ -5,7 +5,7 @@
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
 
     inir = {
-      url = "github:snowarch/inir";
+      url = "github:LATAR-web/inir";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
