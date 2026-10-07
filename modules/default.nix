@@ -9,6 +9,6 @@
   imports =
     builtins.map (f: ./${f})
       (builtins.filter (
-        n: lib.hasSuffix ".nix" n && n != "default.nix" && n != "inir-deps.nix"
+        n: lib.hasSuffix ".nix" n && n != "default.nix" && n != "inir-deps.nix" && n != "home-manager.nix"
       ) (builtins.attrNames (builtins.readDir ./.)));
 }

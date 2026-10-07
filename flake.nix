@@ -248,8 +248,18 @@
       # Home Manager Modules
       # =======================================================================
       homeModules = {
-        default = inir.homeModules.default;
-        inir = inir.homeModules.inir;
+        default = ./modules/home-manager.nix;
+        inir = ./modules/home-manager.nix;
+        upstream = inir.homeModules.default;
       };
+
+      # =======================================================================
+      # Continuous Integration Checks
+      # =======================================================================
+      checks = forAllSystems (system: {
+        verify-setup = self.packages.${system}.verify-setup;
+        niri-sync-colors = self.packages.${system}.niri-sync-colors;
+        record-screen = self.packages.${system}.record-screen;
+      });
     };
 }
