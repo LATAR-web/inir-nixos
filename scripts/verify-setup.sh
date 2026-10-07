@@ -135,16 +135,16 @@ if [[ -f "$HOME/.config/systemd/user/xwayland-satellite.service" ]]; then
     fail "stale xwayland-satellite.service found (remove to prevent conflicts; niri manages xwayland natively)"
 fi
 
-if [[ -x "$HOME/.local/bin/niri-sync-colors" ]]; then
-    ok "niri-sync-colors is executable"
+if [[ -x "$HOME/.local/bin/niri-sync-colors" ]] || command -v niri-sync-colors >/dev/null 2>&1; then
+    ok "niri-sync-colors is available"
 else
-    fail "~/.local/bin/niri-sync-colors missing or not executable"
+    fail "niri-sync-colors missing or not executable (run: systemd-tmpfiles --user --create)"
 fi
 
-if [[ -x "$HOME/.local/bin/record-screen" ]]; then
-    ok "record-screen is executable"
+if [[ -x "$HOME/.local/bin/record-screen" ]] || command -v record-screen >/dev/null 2>&1; then
+    ok "record-screen is available"
 else
-    warn "~/.local/bin/record-screen missing or not executable"
+    warn "record-screen missing or not executable"
 fi
 
 if [[ -f "$HOME/.config/systemd/user/niri-sync-colors.service" || -f "/etc/systemd/user/niri-sync-colors.service" ]] || systemctl --user list-unit-files niri-sync-colors.service 2>/dev/null | grep -q 'niri-sync-colors'; then
