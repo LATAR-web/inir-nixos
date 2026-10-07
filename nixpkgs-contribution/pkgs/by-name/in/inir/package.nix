@@ -44,24 +44,26 @@
 }:
 
 let
-  pythonRuntime = python3.withPackages (ps: with ps; [
-    materialyoucolor
-    material-color-utilities
-    opencv4
-    pillow
-    numpy
-    psutil
-    tqdm
-    loguru
-    click
-    pygobject3
-    pycairo
-    kde-material-you-colors
-    websockets
-    ytmusicapi
-    yt-dlp
-    secretstorage
-  ]);
+  pythonRuntime = python3.withPackages (
+    ps: with ps; [
+      materialyoucolor
+      material-color-utilities
+      opencv4
+      pillow
+      numpy
+      psutil
+      tqdm
+      loguru
+      click
+      pygobject3
+      pycairo
+      kde-material-you-colors
+      websockets
+      ytmusicapi
+      yt-dlp
+      secretstorage
+    ]
+  );
 
   runtimeDeps = [
     bash
@@ -117,9 +119,12 @@ let
     qt6.qtwayland
   ];
 in
-stdenvNoCC.mkDerivation rec {
+stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "inir";
   version = "2.32.0";
+
+  strictDeps = true;
+  __structuredAttrs = true;
 
   src = fetchFromGitHub {
     owner = "LATAR-web";
@@ -128,7 +133,11 @@ stdenvNoCC.mkDerivation rec {
     hash = "sha256-H6CEIk26ccCN3/QpC4/YvTg3+kllKlF/Qo+C9y9NQZs=";
   };
 
-  nativeBuildInputs = [ makeWrapper python3 rsync ];
+  nativeBuildInputs = [
+    makeWrapper
+    python3
+    rsync
+  ];
 
   preFixup = ''
     find "$out/share/quickshell/inir" -type f -name '*.py' -exec chmod -x {} +
@@ -174,4 +183,4 @@ stdenvNoCC.mkDerivation rec {
     platforms = lib.platforms.linux;
     mainProgram = "inir";
   };
-}
+})
