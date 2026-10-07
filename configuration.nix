@@ -23,11 +23,41 @@
   # Nixpkgs configuration
   nixpkgs.config.allowUnfree = true;
 
-  # Optional iNiR module customizations:
-  # programs.inir.audio.enable = true;               # Enabled by default (PipeWire)
-  # programs.inir.desktop.enable = true;             # Enabled by default (GDM)
-  # programs.inir.desktop.enableGnomeFallback = false; # Set true only if you want GNOME installed as fallback
-  # programs.inir.mascot.enable = true;              # Optional Kira mascot art pack and desktop companion (fase de pruebas)
+  # =========================================================================
+  # Ajustes de iNiR Desktop Shell (Declarativo para NixOS)
+  # =========================================================================
+  programs.inir = {
+    enable = true;
+
+    # Sincronización automática de colores Material You (Niri focus-ring, Alacritty, GTK)
+    colorSync.enable = true;
+
+    # Herramienta de grabación de pantalla de alto rendimiento con audio
+    screenRecording.enable = true;
+
+    # Soporte I2C y DDC/CI para control de brillo de monitores externos
+    hardware.brightnessControl = true;
+
+    # Compositor Wayland Niri con configuración modular lista para usar
+    niri = {
+      enable = true;
+      autoDeployConfig = true;
+      defaultTerminal = "alacritty";
+    };
+
+    # Audio PipeWire + WirePlumber con integración pactl/playerctl
+    audio.enable = true;
+
+    # Pantalla de login (display manager): "gdm" o "greetd" (tuigreet)
+    desktop = {
+      enable = true;
+      displayManager = "gdm";
+      enableGnomeFallback = false;
+    };
+
+    # Mascota Kira (compañero interactivo de escritorio y widgets)
+    # mascot.enable = true;
+  };
 
   # Virtualization: QEMU / KVM, GNOME Boxes & Virt-Manager (Optional)
   # virtualisation.libvirtd = {

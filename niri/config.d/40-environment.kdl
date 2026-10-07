@@ -1,0 +1,20 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// 40 — Environment variables
+// ─────────────────────────────────────────────────────────────────────────────
+
+environment {
+    XDG_CURRENT_DESKTOP "niri"
+    XDG_MENU_PREFIX "plasma-"
+    QT_QPA_PLATFORM "wayland"
+    ELECTRON_OZONE_PLATFORM_HINT "wayland"
+    QT_IMAGEIO_MAXALLOC "0"
+    QT_LOGGING_RULES "quickshell.dbus.properties=false"
+    QT_QPA_PLATFORMTHEME "kde"
+    QT_STYLE_OVERRIDE "Darkly"
+    INIR_VENV "$HOME/.local/state/quickshell/.venv"
+    ILLOGICAL_IMPULSE_VIRTUAL_ENV "$HOME/.local/state/quickshell/.venv"
+}
+
+xwayland-satellite {
+    path "/run/current-system/sw/bin/xwayland-satellite"
+}

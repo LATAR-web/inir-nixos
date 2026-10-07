@@ -1,0 +1,46 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// 20 — Layout, gaps, borders, shadows & overview
+// ─────────────────────────────────────────────────────────────────────────────
+
+layout {
+    gaps 12
+    background-color "transparent"
+    center-focused-column "never"
+    always-center-single-column
+
+    preset-column-widths {
+        proportion 0.33333
+        proportion 0.5
+        proportion 0.66667
+    }
+
+    default-column-width {
+        proportion 0.5
+    }
+
+    // Dynamic focus ring colors are managed live by niri-sync-colors from Material You
+    focus-ring {
+        width 1
+        active-color "#7aa2f7"
+        inactive-color "#565f89"
+    }
+
+    border {
+        off
+    }
+
+    shadow {
+        softness 30
+        spread 5
+        offset x=0 y=5
+        draw-behind-window true
+        color "#00000070"
+    }
+
+    struts {
+        left 4
+        right 4
+        top 4
+        bottom 4
+    }
+}

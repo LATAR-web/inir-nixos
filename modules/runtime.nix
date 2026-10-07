@@ -9,7 +9,6 @@
     ];
   };
   environment.localBinInPath = true;
-  environment.variables.LD_LIBRARY_PATH = "/run/current-system/sw/share/nix-ld/lib";
   # Optional: fixes screen flickering on Intel laptops (Gen 9-12) with Panel Self
   # Refresh. Harmless no-op inside VMs (no i915 there).
   boot.kernelParams = [ "i915.enable_psr=0" ];

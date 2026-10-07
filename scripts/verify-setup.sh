@@ -99,13 +99,13 @@ fi
 
 if [[ -f "$HOME/.config/niri/config.kdl" ]]; then
     ok "config.kdl exists"
-    if grep -Eq 'wl-paste .*--watch' "$HOME/.config/niri/config.kdl" 2>/dev/null; then
-        ok "clipboard watcher configured in config.kdl"
+    if grep -Eqr 'wl-paste .*--watch' "$HOME/.config/niri/" 2>/dev/null; then
+        ok "clipboard watcher configured in Niri config"
     else
-        fail "clipboard watcher missing in config.kdl"
+        fail "clipboard watcher missing in Niri config"
     fi
-    if grep -Eq 'niri-sync-colors' "$HOME/.config/niri/config.kdl" 2>/dev/null; then
-        ok "color sync autostart configured in config.kdl"
+    if grep -Eqr 'niri-sync-colors' "$HOME/.config/niri/" 2>/dev/null; then
+        ok "color sync autostart configured in Niri config"
     fi
 else
     fail "~/.config/niri/config.kdl missing"

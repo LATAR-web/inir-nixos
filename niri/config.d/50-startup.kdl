@@ -1,0 +1,13 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// 50 — Processes spawned at login
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Rebuild sycoca database so KDE/Qt apps see .desktop entries
+spawn-at-startup "bash" "-c" "systemctl --user import-environment XDG_MENU_PREFIX 2>/dev/null || true"
+
+// Clipboard history watcher (iNiR clipboard overlay: Mod+V)
+spawn-at-startup "bash" "-c" "exec wl-paste --no-newline --type text --watch ~/.config/quickshell/inir/scripts/clipboard-store.py"
+spawn-at-startup "bash" "-c" "exec wl-paste --type image --watch ~/.config/quickshell/inir/scripts/clipboard-image-store.sh"
+
+// Sincronización inicial de tema y color (el daemon en caliente lo gestiona systemd)
+spawn-at-startup "niri-sync-colors"

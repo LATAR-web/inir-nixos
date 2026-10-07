@@ -1,0 +1,56 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// 30 — Window rules
+// ─────────────────────────────────────────────────────────────────────────────
+
+window-rule {
+    geometry-corner-radius 12
+    clip-to-geometry true
+}
+
+// Gaming surfaces: avoid client clipping for direct scanout
+window-rule {
+    match app-id=r#"^(gamescope|steam_app_[0-9]+|dota2|lutris|net\.lutris\..*|heroic|com\.heroicgameslauncher\.hgl|org\.prismlauncher\.PrismLauncher|minecraft|wine|wine64)$"#
+    geometry-corner-radius 0
+    clip-to-geometry false
+}
+
+window-rule {
+    match is-active=false
+    opacity 0.95
+}
+
+// Picture-in-picture floating
+window-rule {
+    match app-id=r#"firefox$"# title="^Picture-in-Picture$"
+    open-floating true
+}
+window-rule {
+    match app-id=r#"zen$"# title="^Picture-in-Picture$"
+    open-floating true
+}
+
+// Steam notification toasts
+window-rule {
+    match app-id="steam" title=r#"^notificationtoasts_\d+_desktop$"#
+    open-floating true
+    open-focused false
+    default-floating-position x=10 y=10 relative-to="bottom-right"
+}
+
+// XEmbed SNI bridge tray fix
+window-rule {
+    match app-id=r#"^xembedsniproxy$"#
+    open-floating true
+    open-focused false
+    opacity 0.0
+    focus-ring { off; }
+    border { off; }
+    shadow { off; }
+}
+
+window-rule {
+    background-effect {
+        blur true
+        xray false
+    }
+}

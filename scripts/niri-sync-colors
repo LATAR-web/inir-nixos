@@ -105,21 +105,28 @@ if niri_config_py and os.path.isfile(niri_config_py) and os.access(niri_config_p
     if ret1 == 0 and ret2 == 0:
         niri_updated = True
 
-# Fallback: direct atomic update of config.kdl
-if not niri_updated and os.path.exists(niri_kdl_file):
-    try:
-        with open(niri_kdl_file, "r", encoding="utf-8") as f:
-            kdl = f.read()
-        kdl_new = re.sub(r"(active-color\s+)\"[^\"]+\"", lambda m: f"{m.group(1)}\"{primary}\"", kdl)
-        kdl_new = re.sub(r"(inactive-color\s+)\"[^\"]+\"", lambda m: f"{m.group(1)}\"{secondary}\"", kdl_new)
-        if kdl_new != kdl:
-            tmp = f"{niri_kdl_file}.tmp.{os.getpid()}"
-            with open(tmp, "w", encoding="utf-8") as f:
-                f.write(kdl_new)
-            os.replace(tmp, niri_kdl_file)
-            niri_updated = True
-    except Exception:
-        pass
+# Fallback: direct atomic update of config.kdl or modular 20-layout-and-overview.kdl
+if not niri_updated:
+    candidates = [
+        os.path.join(os.path.dirname(niri_kdl_file), "config.d", "20-layout-and-overview.kdl"),
+        niri_kdl_file
+    ]
+    for target in candidates:
+        if os.path.exists(target):
+            try:
+                with open(target, "r", encoding="utf-8") as f:
+                    kdl = f.read()
+                kdl_new = re.sub(r"(active-color\s+)\"[^\"]+\"", lambda m: f"{m.group(1)}\"{primary}\"", kdl)
+                kdl_new = re.sub(r"(inactive-color\s+)\"[^\"]+\"", lambda m: f"{m.group(1)}\"{secondary}\"", kdl_new)
+                if kdl_new != kdl:
+                    tmp = f"{target}.tmp.{os.getpid()}"
+                    with open(tmp, "w", encoding="utf-8") as f:
+                        f.write(kdl_new)
+                    os.replace(tmp, target)
+                    niri_updated = True
+                    break
+            except Exception:
+                pass
 
 # 2. Sync wallpaper path into iNiR shell config
 if os.path.exists(meta_file):
