@@ -1,26 +1,27 @@
+# Ejemplo de configuración para /etc/nixos/configuration.nix
+# Integrando iNiR Desktop Shell sobre Niri Wayland
 { config, pkgs, ... }:
 
 {
   imports = [
     ./hardware-configuration.nix
-    ./modules
+    # Si usas flakes, importa el módulo desde inputs: inir-nixos.nixosModules.default
+    # Si copiaste la carpeta modules/: ./modules
   ];
 
-  # Bootloader
+  # Bootloader (ajusta según tu sistema UEFI o BIOS)
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 
-  # Networking
+  # Red y Hostname
   networking.hostName = "nixos";
   networking.networkmanager.enable = true;
-  networking.firewall.allowedTCPPorts = [ 53317 ];
-  networking.firewall.allowedUDPPorts = [ 53317 ];
 
-  # Locale & Timezone
+  # Zona horaria e idioma
   time.timeZone = "America/Mexico_City";
   i18n.defaultLocale = "es_MX.UTF-8";
 
-  # Nixpkgs configuration
+  # Paquetes privativos (necesario para drivers NVIDIA, Steam, etc.)
   nixpkgs.config.allowUnfree = true;
 
   # =========================================================================
@@ -41,7 +42,7 @@
     # Compositor Wayland Niri con configuración modular lista para usar
     niri = {
       enable = true;
-      autoDeployConfig = true;
+      autoDeployConfig = true; # Despliega automáticamente ~/.config/niri y ~/.config/alacritty
       defaultTerminal = "alacritty";
     };
 
@@ -51,7 +52,7 @@
     # Pantalla de login (display manager): "gdm" o "greetd" (tuigreet)
     desktop = {
       enable = true;
-      displayManager = "gdm";
+      displayManager = "gdm"; # Usa "greetd" si estás en una VM sin aceleración 3D
       enableGnomeFallback = false;
     };
 
@@ -59,37 +60,12 @@
     # mascot.enable = true;
   };
 
-  # Virtualization: QEMU / KVM, GNOME Boxes & Virt-Manager (Optional)
-  # virtualisation.libvirtd = {
-  #   enable = true;
-  #   qemu = {
-  #     package = pkgs.qemu_kvm;
-  #     runAsRoot = true;
-  #     swtpm.enable = true;
-  #     verbatimConfig = ''
-  #       max_core = 0
-  #     '';
-  #   };
-  # };
-  # virtualisation.spiceUSBRedirection.enable = true;
-  # programs.virt-manager.enable = true;
-  # security.pam.loginLimits = [
-  #   { domain = "*"; item = "core"; type = "-"; value = "unlimited"; }
-  # ];
-  # environment.systemPackages = with pkgs; [
-  #   gnome-boxes # Simple & modern VM manager
-  #   qemu        # QEMU utilities
-  # ];
-
-  # Primary User
-  # NOTE: 'video' and 'i2c' groups are required for monitor brightness controls (ddcutil)
-  # NOTE: 'libvirtd' and 'kvm' groups are required for hardware-accelerated VMs without root
-  users.users."YOUR_USERNAME" = {
+  # Usuario principal
+  # NOTA: 'video' e 'i2c' son requeridos para brillo y ddcutil
+  users.users."TU_USUARIO" = {
     isNormalUser = true;
-    description = "Primary User";
-    extraGroups = [ "networkmanager" "wheel" "video" "i2c" "libvirtd" "kvm" ];
-    packages = with pkgs; [ ];
+    extraGroups = [ "networkmanager" "wheel" "video" "i2c" ];
   };
 
-  system.stateVersion = "26.05";
+  system.stateVersion = "24.11";
 }

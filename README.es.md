@@ -34,105 +34,95 @@
 
 ## 📦 Guía de Instalación
 
-Este es el método estándar declarativo para integrar iNiR en tu sistema NixOS usando Flakes y módulos.
+Puedes integrar iNiR fácilmente en tu propia configuración manual de NixOS, ya sea utilizando **Nix Flakes** (recomendado) o mediante **Módulos locales**.
 
-### 1. Copia los módulos a `/etc/nixos`
-```bash
-sudo cp -a modules/ /etc/nixos/modules/
+### Opción A: Usando Flakes (Recomendado)
 
-# Si /etc/nixos está gestionado con git, debes añadir la carpeta (o Flakes la ignorará):
-sudo git -C /etc/nixos add -A modules/
-```
-
-### 2. Configura `/etc/nixos/flake.nix`
-Agrega el input `inir` y pásalo mediante `specialArgs`:
+En tu propio `/etc/nixos/flake.nix`:
 
 ```nix
 {
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
-    inir = {
-      url = "github:snowarch/inir";
+
+    inir-nixos = {
+      url = "github:LATAR-web/inir-nixos";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 
-  outputs = { self, nixpkgs, inir, ... }: {
+  outputs = { self, nixpkgs, inir-nixos, ... }: {
     nixosConfigurations.<tu_hostname> = nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
-      specialArgs = { inherit inir; };
-      modules = [ ./configuration.nix ];
+      modules = [
+        ./hardware-configuration.nix
+        ./configuration.nix
+        inir-nixos.nixosModules.default
+      ];
     };
   };
 }
 ```
 
-### 3. Integra en `/etc/nixos/configuration.nix`
-Importa `./modules`, habilita software privativo y añade los grupos necesarios para brillo y hardware:
+En tu `/etc/nixos/configuration.nix`:
 
 ```nix
 {
   imports = [
     ./hardware-configuration.nix
-    ./modules # Carga iNiR, Niri, fuentes y servicios
   ];
+
+  # Habilitar iNiR y todas sus dependencias declarativas
+  programs.inir = {
+    enable = true;
+    colorSync.enable = true;
+    screenRecording.enable = true;
+    hardware.brightnessControl = true;
+    niri = {
+      enable = true;
+      autoDeployConfig = true; # Despliega automáticamente ~/.config/niri y ~/.config/alacritty
+      defaultTerminal = "alacritty";
+    };
+    audio.enable = true;
+    desktop = {
+      enable = true;
+      displayManager = "gdm"; # o "greetd" si estás en una VM sin aceleración 3D
+    };
+  };
 
   nixpkgs.config.allowUnfree = true;
   users.users.<tu_usuario>.extraGroups = [ "wheel" "networkmanager" "video" "i2c" ];
-
-  # --- Mascota Kira (Extra Opcional · Fase de Pruebas) ---
-  # Descomenta la siguiente línea si deseas que Kira te acompañe en el escritorio:
-  # programs.inir.mascot.enable = true;
 }
 ```
 
-> [!TIP]
-> ### 🐾 ¿Cómo agregar la Mascota Kira en la Instalación Manual?
-> Si deseas incluir a la mascota oficial **Kira** (compañero interactivo de escritorio, animaciones y widgets):
-> 1. **Módulo:** Verifica que `modules/mascot.nix` esté dentro de `/etc/nixos/modules/` (se incluye al copiar la carpeta `modules/` en el Paso 1).
-> 2. **Habilitación:** Añade `programs.inir.mascot.enable = true;` dentro de tu `/etc/nixos/configuration.nix`.
-> 3. **Reconstrucción:** Ejecuta el Paso 5 (`sudo nixos-rebuild switch`). Nix descargará el paquete de arte oficial y lo fusionará automáticamente dentro del runtime de iNiR mediante `symlinkJoin`.
-> 4. **Uso:** Tras iniciar sesión, puedes abrir sus ajustes con <kbd>Mod</kbd> + <kbd>,</kbd> → pestaña **Mascota**, o interactuar con comandos como `inir mascot poke` o `inir mascot chase`.
-
-### 4. Limpia posibles directorios residuales
-Si anteriormente clonaste o creaste `~/.config/quickshell/inir` a mano, bloquerá el runtime empaquetado:
-```bash
-[[ -d ~/.config/quickshell/inir && ! -L ~/.config/quickshell/inir ]] && rm -rf ~/.config/quickshell/inir
-```
-
-### 5. Reconstruye el sistema
-```bash
-sudo nixos-rebuild switch --flake /etc/nixos#<tu_hostname>
-```
-
-### 6. Inicializa symlinks de usuario y dotfiles
-> [!IMPORTANT]
-> `nixos-rebuild` solo aplica reglas de sistema (`root`). Para generar los symlinks del runtime de iNiR (`~/.config/quickshell/inir` y `~/.local/bin/inir`), **debes ejecutar `systemd-tmpfiles --user --create`**:
+### Opción B: Copiando los módulos a `/etc/nixos` (Manual sin Flake remoto)
 
 ```bash
-# 1. Crear symlinks del runtime de usuario
-systemd-tmpfiles --user --create
+sudo cp -a modules/ /etc/nixos/modules/
 
-# 2. Desplegar configuraciones de Niri, Alacritty y sincronizador de color
-mkdir -p ~/.config/niri ~/.config/alacritty ~/.local/bin ~/.config/systemd/user
-cp niri/config.kdl ~/.config/niri/config.kdl
-cp alacritty/alacritty.toml ~/.config/alacritty/alacritty.toml
-cp scripts/niri-sync-colors ~/.local/bin/ && chmod +x ~/.local/bin/niri-sync-colors
-cp scripts/record-screen ~/.local/bin/ && chmod +x ~/.local/bin/record-screen
-cp systemd/niri-sync-colors.service ~/.config/systemd/user/
-
-# 3. Iniciar sincronización de color inicial
-~/.local/bin/niri-sync-colors
-systemctl --user daemon-reload && systemctl --user enable --now niri-sync-colors.service
+# Si /etc/nixos está gestionado con git:
+sudo git -C /etc/nixos add -A modules/
 ```
 
-### 7. Inicia tu sesión
-Cierra sesión y selecciona **Niri** en tu pantalla de login (GDM o greetd). `inir.service` se iniciará automáticamente.
+Y en tu `/etc/nixos/configuration.nix` añade `imports = [ ./modules ];`.
 
-Para comprobar que todo está listo:
-```bash
-bash scripts/verify-setup.sh
-```
+---
+
+### Paso Final: Reconstruir y desplegar dotfiles
+
+1. **Reconstruye el sistema**:
+   ```bash
+   sudo nixos-rebuild switch --flake /etc/nixos#<tu_hostname>
+   ```
+
+2. **Inicializa los enlaces de usuario y dotfiles**:
+   ```bash
+   systemd-tmpfiles --user --create
+   ```
+   *(Esto crea automáticamente el entorno virtual de Python en `~/.local/state/quickshell/.venv`, los binarios en `~/.local/bin/`, la configuración modular de Niri en `~/.config/niri/config.d/` y Alacritty)*.
+
+3. **Inicia sesión**:
+   Selecciona la sesión **Niri** en tu pantalla de login. Ejecuta `bash scripts/verify-setup.sh` para comprobar que todos los servicios estén en verde (✅).
 
 ---
 

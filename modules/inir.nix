@@ -1,6 +1,17 @@
-{ config, pkgs, lib, inir, ... }:
+{ config, pkgs, lib, inir ? null, ... }:
 
 let
+  inirFlake =
+    if inir != null then inir
+    else (builtins.fetchTarball {
+      url = "https://github.com/LATAR-web/inir/archive/main.tar.gz";
+    });
+
+  inirNixosModule =
+    if inirFlake ? nixosModules && inirFlake.nixosModules ? inir
+    then inirFlake.nixosModules.inir
+    else import "${inirFlake}/nix/nixos-module.nix";
+
   inirDeps = import ./inir-deps.nix { inherit pkgs; };
   pythonEnv = lib.findSingle
     (p: lib.hasPrefix "python3-" (p.name or "") && lib.hasSuffix "-env" (p.name or ""))
@@ -12,15 +23,15 @@ let
   recordScreen = pkgs.writeScriptBin "record-screen" (builtins.readFile ../scripts/record-screen);
 
   versionJsonFile = pkgs.writeText "inir-version.json" ((builtins.toJSON {
-    version = inir.shortRev or inir.dirtyShortRev or "2.32.0";
-    commit = inir.rev or inir.dirtyRev or "db2233ce54e933a7fbe292f9fb2";
+    version = inirFlake.shortRev or inirFlake.dirtyShortRev or "2.32.0";
+    commit = inirFlake.rev or inirFlake.dirtyRev or "db2233ce54e933a7fbe292f9fb2";
     installMode = "package-managed";
     updateStrategy = "package-manager";
     packageName = "inir";
     packageUpdateHint = "nixos-rebuild switch";
   }) + "\n");
 
-  inirPatched = (pkgs.callPackage "${inir}/nix/package.nix" { inherit pkgs; }).overrideAttrs (old: {
+  inirPatched = (pkgs.callPackage "${inirFlake}/nix/package.nix" { inherit pkgs; }).overrideAttrs (old: {
     patches = (old.patches or [ ]) ++ [
       ./patches/inir-icon-theme.patch
       ./patches/inir-nixos-fixes.patch
@@ -28,8 +39,8 @@ let
   });
 
   mascotPackage = config.programs.inir.mascot.package or (
-    if inir != null && builtins.pathExists "${inir}/nix/mascot-package.nix"
-    then pkgs.callPackage "${inir}/nix/mascot-package.nix" { inherit pkgs; }
+    if inirFlake != null && builtins.pathExists "${inirFlake}/nix/mascot-package.nix"
+    then pkgs.callPackage "${inirFlake}/nix/mascot-package.nix" { inherit pkgs; }
     else null
   );
 
@@ -44,10 +55,6 @@ let
   cfg = config.programs.inir;
 in
 {
-  imports = [
-    inir.nixosModules.inir
-  ];
-
   options.programs.inir = {
     colorSync = {
       enable = lib.mkOption {
