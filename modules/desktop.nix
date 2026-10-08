@@ -11,21 +11,16 @@ in
     };
 
     displayManager = lib.mkOption {
-      type = lib.types.enum [ "gdm" "greetd" ];
+      type = lib.types.enum [ "gdm" "greetd" "sddm" ];
       default = "gdm";
-      example = "greetd";
+      example = "sddm";
       description = ''
         Which display manager to use for the login screen:
 
-        - "gdm" (default): GNOME Display Manager. Full-featured, remembers users,
-          but it can HIDE Wayland sessions on some systems — VMs without 3D
-          acceleration, some NVIDIA setups, or when AccountsService remembers an
-          old X11 session. If niri does not appear in GDM's session list,
-          switch to "greetd".
-
-        - "greetd": minimal Wayland-first greeter (tuigreet). It always lists
-          every installed Wayland session (including niri), has no GNOME
-          dependency, and works in VMs without 3D acceleration.
+        - "gdm" (default): GNOME Display Manager.
+        - "greetd": minimal Wayland-first greeter (tuigreet).
+        - "sddm": Simple Desktop Display Manager. Can be used together with
+          the official ii-pixel theme from https://github.com/LATAR-web/inir-sddm-nixos.
       '';
     };
 
@@ -73,6 +68,17 @@ in
 
       # Console keyboard fallback for TTY sessions
       console.keyMap = lib.mkDefault "us";
+    })
+
+    (lib.mkIf (cfg.enable && cfg.displayManager == "sddm") {
+      services.displayManager.sddm = {
+        enable = lib.mkDefault true;
+        wayland.enable = lib.mkDefault true;
+      };
+
+      # Never run two display managers at once.
+      services.displayManager.gdm.enable = lib.mkForce false;
+      services.greetd.enable = lib.mkForce false;
     })
   ];
 }
