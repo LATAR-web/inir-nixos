@@ -12,7 +12,6 @@ with pkgs; [
   # --- Core shell / compositor glue ---
   git                      # version control and flake management
   curl                     # downloads and API requests (tesseract models, OCR, weather)
-  wget                     # file downloader fallback
   rsync                    # sync operations for shell themes, backups and presets
   glib                     # provides `gsettings` for GNOME/GTK desktop theme sync
   util-linux               # provides `flock`, used by niri-sync-colors watcher
@@ -35,7 +34,6 @@ with pkgs; [
   fish                    # some of iNiR's scripts shell out to fish specifically
   gum
   uv                       # fast Python package / project runner
-  bc
   ripgrep
   jq
 
@@ -49,6 +47,7 @@ with pkgs; [
   kdePackages.plasma-integration
   kdePackages.plasma-browser-integration
   kdePackages.kconfig
+  kdePackages.kde-cli-tools
   darkly
 
   # --- Wallpapers / color pipeline ---
@@ -107,7 +106,6 @@ with pkgs; [
   # ===========================================================================
   # OPTIONAL — features you may not use. Safe to delete any of these lines.
   # ===========================================================================
-  fuzzel                    # app launcher fallback
   wtype                     # simulated keyboard input, used by a couple of automation features
   ydotool
   geoclue2                  # location for the weather widget
@@ -125,7 +123,6 @@ with pkgs; [
   mpvScripts.mpris             # media-key/MPRIS integration for the YouTube Music widget
   yt-dlp
   deno                        # JavaScript runtime required by yt-dlp / InnerTube for YouTube Music
-  libdbusmenu-gtk3            # D-Bus menu support for system tray
   ffmpegthumbnailer           # Video thumbnail extraction
   zenity                      # GUI dialog fallback for scripts
 ]

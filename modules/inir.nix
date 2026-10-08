@@ -23,8 +23,8 @@ let
   recordScreen = pkgs.writeScriptBin "record-screen" (builtins.readFile ../scripts/record-screen);
 
   versionJsonFile = pkgs.writeText "inir-version.json" ((builtins.toJSON {
-    version = inirFlake.shortRev or inirFlake.dirtyShortRev or "2.32.0";
-    commit = inirFlake.rev or inirFlake.dirtyRev or "db2233ce54e933a7fbe292f9fb2";
+    version = inirFlake.shortRev or inirFlake.dirtyShortRev or "2.33.0";
+    commit = inirFlake.rev or inirFlake.dirtyRev or "48cdcecb";
     installMode = "package-managed";
     updateStrategy = "package-manager";
     packageName = "inir";
@@ -47,7 +47,7 @@ let
   inirPackage =
     if (config.programs.inir.mascot.enable or false) && mascotPackage != null
     then pkgs.symlinkJoin {
-      name = "inir-with-mascot-${inirPatched.version or "2.32.0"}";
+      name = "inir-with-mascot-${inirPatched.version or "2.33.0"}";
       paths = [ inirPatched mascotPackage ];
     }
     else inirPatched;

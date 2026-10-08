@@ -6,7 +6,6 @@
   python3,
   rsync,
   bash,
-  bc,
   coreutils,
   curl,
   deno,
@@ -19,7 +18,6 @@
   procps,
   ripgrep,
   systemd,
-  wget,
   xdg-user-dirs,
   xdg-utils,
   quickshell,
@@ -67,7 +65,6 @@ let
 
   runtimeDeps = [
     bash
-    bc
     coreutils
     curl
     deno
@@ -82,7 +79,6 @@ let
     ripgrep
     rsync
     systemd
-    wget
     xdg-user-dirs
     xdg-utils
     quickshell

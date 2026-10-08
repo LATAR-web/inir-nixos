@@ -63,7 +63,7 @@
 
           inirWithMascot = if mascotPackage != null
             then pkgs.symlinkJoin {
-              name = "inir-with-mascot-${inirPatched.version or "2.32.0"}";
+              name = "inir-with-mascot-${inirPatched.version or "2.33.0"}";
               paths = [ inirPatched mascotPackage ];
               meta = (inirPatched.meta or { }) // {
                 description = "iNiR desktop shell with official Kira desktop mascot art pack integrated";

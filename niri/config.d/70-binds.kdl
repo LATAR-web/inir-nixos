@@ -1,115 +1,147 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // 70 — Key bindings (iNiR + Niri)
 // ─────────────────────────────────────────────────────────────────────────────
+// Docs: https://niri-wm.github.io/niri/Configuration:-Key-Bindings
+//
+// "Mod" = Super on bare metal, Alt inside a nested Niri window.
+// Use `wev` to discover XKB key names.
+// Most actions here can also be triggered via `niri msg action <name>`.
+//
+// iNiR binds route through the `inir` launcher which talks to Quickshell
+// via IPC. Niri-native actions (focus, move, resize…) go directly to Niri.
+// ─────────────────────────────────────────────────────────────────────────────
 
 binds {
 
     // ═══════════════════════════════════════════════════════════════════════
-    // iNiR Shell Overlays & Herramientas
+    // Session & compositor
     // ═══════════════════════════════════════════════════════════════════════
 
-    // Selector de fondo de pantalla (Material You)
-    Mod+W       { spawn "inir" "wallpaperSelector" "toggle"; }
-    Ctrl+Alt+T  { spawn "inir" "wallpaperSelector" "toggle"; }
-
-    // Vista general de aplicaciones (Overview de iNiR y nativa de Niri)
-    Mod+Space repeat=false { spawn "inir" "overview" "toggle"; }
+    // Niri's built-in overview (zoomed-out workspace view).
+    Mod+Tab repeat=false { toggle-overview; }
     Super+Tab repeat=false { toggle-overview; }
 
-    // Historial del portapapeles
-    Mod+V { spawn "inir" "clipboard" "toggle"; }
+    // Quit Niri (shows confirmation dialog).
+    Mod+Shift+E { quit; }
 
-    // Ajustes de iNiR
-    Mod+Comma { spawn "inir" "settings"; }
+    // Escape hatch: re-enable keybinds if an app inhibits them (e.g. RDP client).
+    Mod+Escape allow-inhibiting=false { toggle-keyboard-shortcuts-inhibit; }
 
-    // Cheatsheet de atajos de teclado
-    Mod+Slash { spawn "inir" "cheatsheet" "toggle"; }
+    // Power off all monitors. Any input wakes them up.
+    Mod+Shift+O { power-off-monitors; }
 
-    // Alternar familias de paneles (Material ii / Waffle / iRiS)
-    Mod+Shift+W { spawn "inir" "panelFamily" "cycle"; }
+    // ═══════════════════════════════════════════════════════════════════════
+    // iNiR shell overlays & tools
+    // ═══════════════════════════════════════════════════════════════════════
 
-    // Super+G: Barra flotante de herramientas de escritorio (notas, crosshair, etc.)
+    // Crosshair overlay toggle / desktop floating tools.
     Super+G { spawn "inir" "overlay" "toggle"; }
 
-    // Bloqueo de pantalla
+    // iNiR app launcher / overview.
+    Mod+Space repeat=false { spawn "inir" "overview" "toggle"; }
+
+    // Clipboard history overlay.
+    Mod+V { spawn "inir" "clipboard" "toggle"; }
+
+    // Lock screen.
     Mod+Alt+L allow-when-locked=true { spawn "inir" "lock" "activate"; }
+    // Re-focus the lock surface (workaround when input feels dead after suspend/resume).
     Mod+Ctrl+Shift+L allow-when-locked=true { spawn "inir" "lock" "focus"; }
 
-    // Cambio de distribución de teclado
+    // Switch keyboard layout (latam <-> us).
     Mod+Alt+Space { switch-layout "next"; }
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // Captura, OCR y Grabación de Pantalla
-    // ═══════════════════════════════════════════════════════════════════════
-
-    // Menú de recorte, OCR y búsqueda visual
+    // Region selector: screenshot / OCR / Google Lens search.
     Mod+Shift+S { spawn "inir" "region" "menu"; }
     Mod+Shift+X { spawn "inir" "region" "ocr"; }
     Mod+Shift+A { spawn "inir" "region" "search"; }
+    // Unified snip menu (pick action/scope from the in-overlay toolbar).
     Ctrl+Shift+S { spawn "inir" "region" "menu"; }
 
-    // Grabación de pantalla permanente con audio
+    // Screen recording — region select with audio (iNiR native).
+    Mod+Shift+R { spawn "inir" "region" "recordWithSound"; }
+
+    // Screen recording scripts (wf-recorder wrappers).
     Mod+Alt+R   { spawn "record-screen"; }
     Mod+Alt+F   { spawn "record-screen" "--fullscreen"; }
     Mod+Alt+S   { spawn "record-screen" "--stop"; }
-    Mod+Shift+R { spawn "inir" "region" "recordWithSound"; }
 
-    // Capturas de pantalla nativas de Niri
-    Print      { screenshot; }
-    Ctrl+Print { screenshot-screen; }
-    Mod+Print  { screenshot-screen; }
-    Alt+Print  { screenshot-window; }
+    // Wallpaper picker, settings, cheatsheet, panel family switch.
+    Mod+W       { spawn "inir" "wallpaperSelector" "toggle"; }
+    Ctrl+Alt+T  { spawn "inir" "wallpaperSelector" "toggle"; }
+    Mod+Comma   { spawn "inir" "settings"; }
+    Mod+Slash   { spawn "inir" "cheatsheet" "toggle"; }
+    Mod+Shift+W { spawn "inir" "panelFamily" "cycle"; }
+
+    // Session / power dialog.
+    Mod+Shift+Q { spawn "inir" "session" "toggle"; }
+
+    // Optional EasyEffects equalizer overlay.
+    Ctrl+Alt+F  { spawn "inir" "equalizer" "toggle"; }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // Lanzadores de Aplicaciones
+    // App launchers
     // ═══════════════════════════════════════════════════════════════════════
 
-    Mod+Return { spawn "inir" "terminal"; }
     Mod+T      { spawn "inir" "terminal"; }
+    Mod+Return { spawn "inir" "terminal"; }
     Mod+E      { spawn "nautilus"; }
     Super+E    { spawn "nautilus"; }
     Mod+B      { spawn "inir" "browser"; }
     Super+W    { spawn "inir" "browser"; }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // Gestión de Ventanas y Sesión
+    // Window management
     // ═══════════════════════════════════════════════════════════════════════
 
-    // Cerrar ventana (con diálogo de guardado seguro de iNiR)
-    Mod+Q repeat=false { spawn "inir" "close-window"; }
+    // Close window (iNiR's close with confirmation dialog for unsaved work).
+    Mod+Q repeat=false allow-inhibiting=false { spawn "inir" "close-window"; }
 
-    // Menú de sesión / apagado de iNiR
-    Mod+Shift+Q { spawn "inir" "session" "toggle"; }
+    // Maximize column (fills screen width, keeps gaps/bar).
+    Mod+D { maximize-column; }
+    Mod+M { maximize-column; }
 
-    // Salir del compositor Niri
-    Mod+Shift+E { quit; }
+    // Fullscreen (app goes borderless edge-to-edge).
+    Mod+F { fullscreen-window; }
 
-    // Ventana completa y flotante
-    Mod+F       { fullscreen-window; }
-    Mod+Shift+F { toggle-window-floating; }
+    // Toggle floating / tiling.
     Mod+A       { toggle-window-floating; }
-    Mod+Shift+C { center-window; }
-    Mod+Grave   { switch-focus-between-floating-and-tiling; }
-    Mod+Shift+V { switch-focus-between-floating-and-tiling; }
+    Mod+Shift+F { toggle-window-floating; }
 
-    // Columna y tamaños
-    Mod+C       { center-column; }
-    Mod+R       { switch-preset-column-width; }
-    Mod+M       { maximize-column; }
-    Mod+D       { maximize-column; }
-    Mod+U       { reset-window-height; }
-    Mod+Minus   { set-column-width "-10%"; }
-    Mod+Equal   { set-column-width "+10%"; }
+    // Center floating window.
+    Mod+Shift+C { center-window; }
+
+    // Switch focus between tiling and floating layers.
+    Mod+Shift+V { switch-focus-between-floating-and-tiling; }
+    Mod+Grave   { switch-focus-between-floating-and-tiling; }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Column layout (Niri's scrolling-tiler model)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    // Cycle through preset column widths (1/3 -> 1/2 -> 2/3, set in layout).
+    Mod+R { switch-preset-column-width; }
+
+    // Reset window height to default.
+    Mod+Ctrl+R { reset-window-height; }
+    Mod+U      { reset-window-height; }
+
+    // Center the focused column on screen.
+    Mod+C { center-column; }
+
+    // Fine-grained width/height adjustment (+-10% of screen).
+    Mod+Minus       { set-column-width "-10%"; }
+    Mod+Equal       { set-column-width "+10%"; }
     Mod+Shift+Minus { set-window-height "-10%"; }
     Mod+Shift+Equal { set-window-height "+10%"; }
+
+    // Consume the window to the right into the focused column (stack vertically),
+    // or expel the bottom window from the column to its own column.
     Mod+BracketLeft  { consume-or-expel-window-left; }
     Mod+BracketRight { consume-or-expel-window-right; }
 
-    // Escape hatch en caso de que una app inhiba atajos
-    Mod+Escape allow-inhibiting=false { toggle-keyboard-shortcuts-inhibit; }
-
     // ═══════════════════════════════════════════════════════════════════════
-    // Navegación (Flechas + Teclas Vim H/J/K/L)
+    // Focus navigation (arrows + Vim keys)
     // ═══════════════════════════════════════════════════════════════════════
 
     Mod+Left  { focus-column-left; }
@@ -121,8 +153,13 @@ binds {
     Mod+K     { focus-window-up; }
     Mod+J     { focus-window-down; }
 
-    Mod+Home  { focus-column-first; }
-    Mod+End   { focus-column-last; }
+    // Jump to first / last column.
+    Mod+Home { focus-column-first; }
+    Mod+End  { focus-column-last; }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Move windows (arrows + Vim keys)
+    // ═══════════════════════════════════════════════════════════════════════
 
     Mod+Shift+Left  { move-column-left; }
     Mod+Shift+Right { move-column-right; }
@@ -133,20 +170,31 @@ binds {
     Mod+Shift+K     { move-window-up; }
     Mod+Shift+J     { move-window-down; }
 
+    // Move column to first / last position.
+    Mod+Ctrl+Home { move-column-to-first; }
+    Mod+Ctrl+End  { move-column-to-last; }
+
+    // ═══════════════════════════════════════════════════════════════════════
     // Multi-monitor
-    Mod+Ctrl+Left   { focus-monitor-left; }
-    Mod+Ctrl+Right  { focus-monitor-right; }
-    Mod+Ctrl+Up     { focus-monitor-up; }
-    Mod+Ctrl+Down   { focus-monitor-down; }
+    // ═══════════════════════════════════════════════════════════════════════
+
+    // Focus the monitor in the given direction.
+    Mod+Ctrl+Left  { focus-monitor-left; }
+    Mod+Ctrl+Right { focus-monitor-right; }
+    Mod+Ctrl+Up    { focus-monitor-up; }
+    Mod+Ctrl+Down  { focus-monitor-down; }
+
+    // Move the focused column to the monitor in the given direction.
     Mod+Ctrl+Shift+Left  { move-column-to-monitor-left; }
     Mod+Ctrl+Shift+Right { move-column-to-monitor-right; }
     Mod+Ctrl+Shift+Up    { move-column-to-monitor-up; }
     Mod+Ctrl+Shift+Down  { move-column-to-monitor-down; }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // Espacios de Trabajo (Workspaces 1 a 9)
+    // Workspaces
     // ═══════════════════════════════════════════════════════════════════════
 
+    // Focus workspace by index.
     Mod+1 { focus-workspace 1; }
     Mod+2 { focus-workspace 2; }
     Mod+3 { focus-workspace 3; }
@@ -156,6 +204,17 @@ binds {
     Mod+7 { focus-workspace 7; }
     Mod+8 { focus-workspace 8; }
     Mod+9 { focus-workspace 9; }
+
+    // Move focused column to workspace by index (both Mod+Ctrl and Mod+Shift).
+    Mod+Ctrl+1  { move-column-to-workspace 1; }
+    Mod+Ctrl+2  { move-column-to-workspace 2; }
+    Mod+Ctrl+3  { move-column-to-workspace 3; }
+    Mod+Ctrl+4  { move-column-to-workspace 4; }
+    Mod+Ctrl+5  { move-column-to-workspace 5; }
+    Mod+Ctrl+6  { move-column-to-workspace 6; }
+    Mod+Ctrl+7  { move-column-to-workspace 7; }
+    Mod+Ctrl+8  { move-column-to-workspace 8; }
+    Mod+Ctrl+9  { move-column-to-workspace 9; }
 
     Mod+Shift+1 { move-column-to-workspace 1; }
     Mod+Shift+2 { move-column-to-workspace 2; }
@@ -167,38 +226,59 @@ binds {
     Mod+Shift+8 { move-column-to-workspace 8; }
     Mod+Shift+9 { move-column-to-workspace 9; }
 
-    Mod+Page_Down { focus-workspace-down; }
-    Mod+Page_Up   { focus-workspace-up; }
+    // Navigate workspaces sequentially.
+    Mod+Page_Down      { focus-workspace-down; }
+    Mod+Page_Up        { focus-workspace-up; }
     Mod+Ctrl+Page_Down { move-column-to-workspace-down; }
     Mod+Ctrl+Page_Up   { move-column-to-workspace-up; }
 
+    // Mouse wheel workspace navigation (rate-limited).
     Mod+WheelScrollDown      cooldown-ms=150 { focus-workspace-down; }
     Mod+WheelScrollUp        cooldown-ms=150 { focus-workspace-up; }
     Mod+Ctrl+WheelScrollDown cooldown-ms=150 { move-column-to-workspace-down; }
     Mod+Ctrl+WheelScrollUp   cooldown-ms=150 { move-column-to-workspace-up; }
 
+    // Mouse wheel column navigation.
+    Mod+WheelScrollRight { focus-column-right; }
+    Mod+WheelScrollLeft  { focus-column-left; }
+
     // ═══════════════════════════════════════════════════════════════════════
-    // Teclas de Hardware (Volumen, Brillo, Multimedia con OSD de iNiR)
+    // Screenshots (Niri native)
     // ═══════════════════════════════════════════════════════════════════════
 
+    Print      { screenshot; }
+    Ctrl+Print { screenshot-screen; }
+    Mod+Print  { screenshot-screen; }
+    Alt+Print  { screenshot-window; }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Hardware keys -> iNiR IPC (with OSD feedback)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    // Volume (routed through iNiR for OSD + EasyEffects-aware sink resolution).
     XF86AudioRaiseVolume allow-when-locked=true { spawn "inir" "audio" "volumeUp"; }
     XF86AudioLowerVolume allow-when-locked=true { spawn "inir" "audio" "volumeDown"; }
     XF86AudioMute        allow-when-locked=true { spawn "inir" "audio" "mute"; }
     XF86AudioMicMute     allow-when-locked=true { spawn "inir" "audio" "micMute"; }
 
+    // Brightness.
     XF86MonBrightnessUp   allow-when-locked=true { spawn "inir" "brightness" "increment"; }
     XF86MonBrightnessDown allow-when-locked=true { spawn "inir" "brightness" "decrement"; }
 
+    // Media playback (MPRIS — works with Spotify, Firefox, mpv...).
     XF86AudioPlay  { spawn "inir" "mpris" "playPause"; }
     XF86AudioPause { spawn "inir" "mpris" "playPause"; }
     XF86AudioNext  { spawn "inir" "mpris" "next"; }
     XF86AudioPrev  { spawn "inir" "mpris" "previous"; }
 
-    // Atajos de teclado alternativos para control multimedia
+    // Keyboard shortcuts for media (when no media keys are available).
     Ctrl+Mod+Space { spawn "inir" "mpris" "playPause"; }
     Mod+Alt+N      { spawn "inir" "mpris" "next"; }
     Mod+Alt+P      { spawn "inir" "mpris" "previous"; }
     Mod+Shift+M    { spawn "inir" "audio" "mute"; }
+    Mod+Shift+P    { spawn "inir" "mpris" "playPause"; }
+    Mod+Shift+N    { spawn "inir" "mpris" "next"; }
+    Mod+Shift+B    { spawn "inir" "mpris" "previous"; }
 }
 
 recent-windows {
