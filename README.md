@@ -26,6 +26,7 @@
 - [📦 Installation Guide](#-installation-guide)
 - [⌨️ Keyboard Shortcuts](#️-keyboard-shortcuts)
 - [🎨 Color Synchronization](#-color-synchronization-material-you)
+- [🔐 iNiR Shell SDDM (Optional)](#-inir-shell-sddm-optional)
 - [🐾 Kira Mascot (Testing Phase)](#-kira-mascot-optional-extra--testing-phase-)
 - [🗺️ Repository Structure](#️-repository-structure)
 - [🐛 Troubleshooting](#-troubleshooting)
@@ -86,7 +87,9 @@ In your `/etc/nixos/configuration.nix`:
     audio.enable = true;
     desktop = {
       enable = true;
-      displayManager = "gdm"; # or "greetd" if in a VM without 3D acceleration
+      # display manager: "gdm" (default), "greetd" (VM without 3D), or
+      # "sddm" (optional iNiR Shell login theme — see SDDM section below)
+      displayManager = "gdm";
     };
   };
 
@@ -151,6 +154,32 @@ When picking a wallpaper with <kbd>Mod</kbd> + <kbd>W</kbd>, `niri-sync-colors` 
 - **Niri active focus ring** (`focus-ring` in `~/.config/niri/config.kdl`).
 - **Alacritty color theme** (`~/.config/alacritty/theme.toml`).
 - **GTK / GNOME accent** (`accent-color` in libadwaita).
+
+---
+
+## 🔐 iNiR Shell SDDM (Optional)
+
+> [!NOTE]
+> **Optional:** SDDM is only one of the supported display managers. You can keep using **GDM** or **greetd** and ignore this section entirely.
+
+If you prefer SDDM as the login screen, this flake enables it with:
+
+```nix
+programs.inir.desktop = {
+  enable = true;
+  displayManager = "sddm";
+};
+```
+
+The official **ii-pixel** login theme — with Material You colors, matching wallpaper and avatar sync — is an **optional extra** provided by the separate flake [`LATAR-web/inir-sddm-nixos`](https://github.com/LATAR-web/inir-sddm-nixos):
+
+```nix
+# Add the input:  inir-sddm = { url = "github:LATAR-web/inir-sddm-nixos"; };
+# Then enable it in your configuration.nix:
+services.inir-sddm.enable = true;
+```
+
+See the `inir-sddm-nixos` repo for full setup instructions.
 
 ---
 

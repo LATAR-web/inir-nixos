@@ -26,6 +26,7 @@
 - [📦 Guía de Instalación](#-guía-de-instalación)
 - [⌨️ Atajos de Teclado](#️-atajos-de-teclado)
 - [🎨 Sincronización de Color](#-sincronización-de-color-material-you)
+- [🔐 SDDM de iNiR Shell (Opcional)](#-sddm-de-inir-shell-opcional)
 - [🐾 Mascota Kira (Fase de Pruebas)](#-mascota-kira-extra-opcional--fase-de-pruebas-)
 - [🗺️ Estructura del Repositorio](#️-estructura-del-repositorio)
 - [🐛 Solución de Problemas](#-solución-de-problemas)
@@ -86,7 +87,9 @@ En tu `/etc/nixos/configuration.nix`:
     audio.enable = true;
     desktop = {
       enable = true;
-      displayManager = "gdm"; # o "greetd" si estás en una VM sin aceleración 3D
+      # Gestor de pantalla: "gdm" (por defecto), "greetd" (VM sin 3D),
+      # o "sddm" (tema de login de iNiR Shell — opcional, ver sección SDDM abajo)
+      displayManager = "gdm";
     };
   };
 
@@ -151,6 +154,32 @@ Al seleccionar un nuevo fondo con <kbd>Mod</kbd> + <kbd>W</kbd>, `niri-sync-colo
 - **Borde activo de Niri** (`focus-ring` en `~/.config/niri/config.kdl`).
 - **Paleta de Alacritty** (`~/.config/alacritty/theme.toml`).
 - **Acento GTK / GNOME** (`accent-color` de libadwaita).
+
+---
+
+## 🔐 SDDM de iNiR Shell (Opcional)
+
+> [!NOTE]
+> **Opcional:** SDDM es solo uno de los gestores de pantalla soportados. Puedes seguir usando **GDM** o **greetd** e ignorar esta sección por completo.
+
+Si prefieres usar **SDDM** como pantalla de login, este flake lo habilita con:
+
+```nix
+programs.inir.desktop = {
+  enable = true;
+  displayManager = "sddm";
+};
+```
+
+El tema de login oficial **ii-pixel** — con colores Material You, sincronización del fondo de pantalla y del avatar del usuario — es un **extra opcional** que se proporciona desde el flake independiente [`LATAR-web/inir-sddm-nixos`](https://github.com/LATAR-web/inir-sddm-nixos):
+
+```nix
+# Añade el input:  inir-sddm = { url = "github:LATAR-web/inir-sddm-nixos"; };
+# Luego actívalo en tu configuration.nix:
+services.inir-sddm.enable = true;
+```
+
+Consulta el repositorio `inir-sddm-nixos` para las instrucciones completas de instalación.
 
 ---
 
