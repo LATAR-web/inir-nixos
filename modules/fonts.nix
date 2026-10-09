@@ -6,7 +6,6 @@
     google-fonts
     twitter-color-emoji
     material-symbols
-    corefonts
   ];
 
   fonts.fontconfig.enable = true;

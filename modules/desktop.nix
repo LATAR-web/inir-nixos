@@ -57,7 +57,7 @@ in
         enable = lib.mkDefault true;
         settings = {
           default_session = {
-            command = "${pkgs.greetd.tuigreet}/bin/tuigreet --time --remember --remember-session --asterisks";
+            command = "${pkgs.greetd.tuigreet or pkgs.tuigreet}/bin/tuigreet --time --remember --remember-session --asterisks";
             user = "greeter";
           };
         };
