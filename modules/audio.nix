@@ -1,4 +1,4 @@
-{ config, pkgs, lib, ... }:
+{ config, lib, ... }:
 let
   cfg = config.programs.inir.audio;
 in
@@ -24,8 +24,5 @@ in
       pulse.enable = lib.mkDefault true;
       wireplumber.enable = lib.mkDefault true;
     };
-
-    # Provides `pactl` and `playerctl` for CLI audio and media controls
-    environment.systemPackages = with pkgs; [ pulseaudio playerctl ];
   };
 }
