@@ -330,7 +330,7 @@ in
       serviceConfig = {
         Type = "oneshot";
         RemainAfterExit = true;
-        ExecStart = niriConfigSeed;
+        ExecStart = "${niriConfigSeed}/bin/niri-config-seed";
       };
     };
   };
