@@ -70,44 +70,35 @@
             }
             else inirPatched;
 
-          niriSyncColors = pkgs.writeTextFile {
-            name = "niri-sync-colors";
-            executable = true;
-            destination = "/bin/niri-sync-colors";
-            text = builtins.readFile ./scripts/niri-sync-colors;
-            meta = {
-              description = "Dynamic Material You palette sync daemon for Niri focus rings, Alacritty, and GTK";
-              homepage = "https://github.com/LATAR-web/inir-nixos";
-              license = pkgs.lib.licenses.mit;
-              mainProgram = "niri-sync-colors";
+          # Los scripts llevan `#!/usr/bin/env bash`, que en NixOS no resuelve (el PATH de un
+# servicio systemd --user no incluye bash y el interprete termina siendo /usr/bin/env).
+# writeShellScriptBin antepone su propio shebang, pero no acepta `meta`; por eso se
+# escribe a mano con el bash del store como interprete.
+shellScript = name: description: path:
+            pkgs.writeTextFile {
+              inherit name;
+              executable = true;
+              destination = "/bin/${name}";
+              text = "#!${pkgs.bash}/bin/bash\n" + builtins.readFile path;
+              meta = {
+                inherit description;
+                homepage = "https://github.com/LATAR-web/inir-nixos";
+                license = pkgs.lib.licenses.mit;
+                mainProgram = name;
+              };
             };
-          };
 
-          recordScreen = pkgs.writeTextFile {
-            name = "record-screen";
-            executable = true;
-            destination = "/bin/record-screen";
-            text = builtins.readFile ./scripts/record-screen;
-            meta = {
-              description = "Hardware-accelerated Wayland screen recorder with audio capture via wf-recorder and pactl";
-              homepage = "https://github.com/LATAR-web/inir-nixos";
-              license = pkgs.lib.licenses.mit;
-              mainProgram = "record-screen";
-            };
-          };
+          niriSyncColors = shellScript "niri-sync-colors"
+            "Dynamic Material You palette sync daemon for Niri focus rings, Alacritty, and GTK"
+            ./scripts/niri-sync-colors;
 
-          verifySetup = pkgs.writeTextFile {
-            name = "verify-setup";
-            executable = true;
-            destination = "/bin/verify-setup";
-            text = builtins.readFile ./scripts/verify-setup.sh;
-            meta = {
-              description = "Automated diagnostic sanity-checker for iNiR, Niri, and NixOS configuration";
-              homepage = "https://github.com/LATAR-web/inir-nixos";
-              license = pkgs.lib.licenses.mit;
-              mainProgram = "verify-setup";
-            };
-          };
+          recordScreen = shellScript "record-screen"
+            "Hardware-accelerated Wayland screen recorder with audio capture via wf-recorder and pactl"
+            ./scripts/record-screen;
+
+          verifySetup = shellScript "verify-setup"
+            "Automated diagnostic sanity-checker for iNiR, Niri, and NixOS configuration"
+            ./scripts/verify-setup.sh;
 
           inirDepsEnv = pkgs.buildEnv {
             name = "inir-deps";

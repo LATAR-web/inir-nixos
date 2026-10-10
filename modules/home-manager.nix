@@ -9,8 +9,16 @@ let
     null
     inirDeps;
 
-  niriSyncColors = pkgs.writeScriptBin "niri-sync-colors" (builtins.readFile ../scripts/niri-sync-colors);
-  recordScreen = pkgs.writeScriptBin "record-screen" (builtins.readFile ../scripts/record-screen);
+  shellScript = path: name:
+    pkgs.writeTextFile {
+      inherit name;
+      executable = true;
+      destination = "/bin/${name}";
+      text = "#!${pkgs.bash}/bin/bash\n" + builtins.readFile path;
+    };
+
+  niriSyncColors = shellScript ../scripts/niri-sync-colors "niri-sync-colors";
+  recordScreen = shellScript ../scripts/record-screen "record-screen";
 in
 {
   options.programs.inir = {

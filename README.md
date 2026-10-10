@@ -158,10 +158,61 @@ And in your `/etc/nixos/configuration.nix` add `imports = [ ./modules ];`.
 
 ## 🎨 Color Synchronization (Material You)
 
-When picking a wallpaper with <kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>T</kbd>, `niri-sync-colors` extracts the Material You color palette automatically and updates:
+This is **fully automatic** — there is nothing to launch by hand after installing.
+
+On activation, `systemd.user.tmpfiles` seeds `~/.config/matugen/` with iNiR's own
+templates (`config.toml`, `templates.json`, `templates/`) from the packaged runtime.
+That directory is what `switchwall.sh` passes to the generator as
+`--render-templates "$XDG_CONFIG_HOME/matugen"`; **without it the generator skips
+template rendering entirely** and GTK, the terminals and KDE never receive the palette.
+
+A `niri-sync-colors.service` user unit watches
+`~/.local/state/quickshell/user/generated/` and re-applies the palette whenever the
+wallpaper changes. It is enabled by default and wired into `graphical-session.target`.
+
+When picking a wallpaper with <kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>T</kbd>, the Material You palette is extracted and applied to:
 - **Niri active focus ring** (`focus-ring` in `~/.config/niri/config.kdl`).
 - **Alacritty color theme** (`~/.config/alacritty/theme.toml`).
 - **GTK / GNOME accent** (`accent-color` in libadwaita).
+- **iNiR's own app templates** — GTK3/GTK4 CSS, terminals, KDE `color.txt`.
+
+<details>
+<summary>Manual re-sync (only if something looks stale)</summary>
+
+The daemon already reacts on its own; these are just the escape hatches:
+
+```bash
+systemctl --user restart niri-sync-colors   # restart the watcher
+niri-sync-colors                            # one-shot sync, no daemon
+```
+
+Check what the service is doing:
+
+```bash
+systemctl --user status niri-sync-colors
+journalctl --user -u niri-sync-colors -f
+```
+
+**If the palette never changes**, work down this list:
+
+```bash
+# 1. Is the daemon actually alive?
+systemctl --user status niri-sync-colors
+# 2. Did the templates get deployed?
+ls ~/.config/matugen/templates.json
+# 3. Does the generator see the wallpaper?
+jq -r '.background.wallpaperPath' ~/.config/inir/config.json 2>/dev/null \
+  || jq -r '.background.wallpaperPath' ~/.config/illogical-impulse/config.json
+```
+
+The third one is the most common cause: the generator reads that path, so if the file
+was moved, renamed, or lost a non-ASCII character (`Imágenes` vs `Imagenes`),
+extraction fails silently and you keep the previous colors.
+</details>
+
+> [!TIP]
+> Set `programs.inir.colorSync.enable = false` to opt out. That also stops deploying
+> the matugen templates, so iNiR will render its shell without the app templates.
 
 ---
 

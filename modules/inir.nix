@@ -19,8 +19,18 @@ let
     null
     inirDeps;
 
-  niriSyncColors = pkgs.writeScriptBin "niri-sync-colors" (builtins.readFile ../scripts/niri-sync-colors);
-  recordScreen = pkgs.writeScriptBin "record-screen" (builtins.readFile ../scripts/record-screen);
+  # Los scripts usan `#!/usr/bin/env bash`, que en NixOS no resuelve: bajo systemd --user
+# el PATH no trae bash y el interprete acaba siendo /usr/bin/env. Se fija el bash del store.
+shellScript = path: name:
+    pkgs.writeTextFile {
+      inherit name;
+      executable = true;
+      destination = "/bin/${name}";
+      text = "#!${pkgs.bash}/bin/bash\n" + builtins.readFile path;
+    };
+
+  niriSyncColors = shellScript ../scripts/niri-sync-colors "niri-sync-colors";
+  recordScreen = shellScript ../scripts/record-screen "record-screen";
 
   versionJsonFile = pkgs.writeText "inir-version.json" ((builtins.toJSON {
     version = inirFlake.shortRev or inirFlake.dirtyShortRev or "2.33.0";
@@ -184,6 +194,26 @@ in
       description = "Sync Niri colors and iNiR wallpaper with generated theme data";
       wantedBy = [ "graphical-session.target" "default.target" ];
       after = [ "inir.service" ];
+      # The watcher shells out to python3, gsettings, niri and inotifywait. Under
+      # systemd --user the inherited PATH is minimal, so without this it died with
+      # status 127 ("env: bash: No such file or directory").
+      environment = {
+        PATH = lib.makeBinPath [
+          pkgs.bash
+          pkgs.coreutils
+          pkgs.python3
+          pkgs.glib
+          pkgs.util-linux
+          pkgs.inotify-tools
+          pkgs.procps
+          pkgs.jq
+          config.programs.niri.package
+        ];
+        XDG_CONFIG_HOME = "%h/.config";
+        XDG_STATE_HOME = "%h/.local/state";
+        INIR_VENV = "%h/.local/state/quickshell/.venv";
+        ILLOGICAL_IMPULSE_VIRTUAL_ENV = "%h/.local/state/quickshell/.venv";
+      };
       serviceConfig = {
         Type = "simple";
         ExecStart = "${niriSyncColors}/bin/niri-sync-colors --watch";
@@ -209,7 +239,19 @@ in
       "L+ %h/.icons - - - - %h/.local/share/icons"
       "d %h/.config/quickshell 0755 - - -"
       "L+ %h/.config/quickshell/inir - - - - /run/current-system/sw/share/quickshell/inir"
-    ] ++ lib.optionals cfg.niri.autoDeployConfig [
+      # Los dotfiles originales de iNiR (docs/INSTALL.md: `cp -r dots/.config/* ~/.config/`).
+      # switchwall.sh lee TEMPLATE_DIR="$XDG_CONFIG_HOME/matugen"; sin este directorio el
+      # generador se salta --render-templates y GTK/terminales/KDE nunca reciben la paleta.
+      "d %h/.config/fontconfig/conf.d 0755 - - -"
+    ]
+    ++ lib.optionals cfg.colorSync.enable [
+      "C+ %h/.config/matugen/config.toml - - - - ${inirPatched}/share/quickshell/inir/dots/.config/matugen/config.toml"
+      "C+ %h/.config/matugen/templates.json - - - - ${inirPatched}/share/quickshell/inir/dots/.config/matugen/templates.json"
+      "C+ %h/.config/matugen/templates - - - - ${inirPatched}/share/quickshell/inir/dots/.config/matugen/templates"
+      # Las superficies de iNiR son translúcidas: sin esto el texto tiene franjas de subpíxel.
+      "C+ %h/.config/fontconfig/conf.d/90-inir-shell.conf - - - - ${inirPatched}/share/quickshell/inir/dots/.config/fontconfig/conf.d/90-inir-shell.conf"
+    ]
+    ++ lib.optionals cfg.niri.autoDeployConfig [
       "d %h/.config/niri 0755 - - -"
       "d %h/.config/niri/config.d 0755 - - -"
       "C+ %h/.config/niri/config.kdl - - - - ${../niri/config.kdl}"
