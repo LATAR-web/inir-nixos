@@ -41,7 +41,14 @@ shellScript = path: name:
     packageUpdateHint = "nixos-rebuild switch";
   }) + "\n");
 
-  inirPatched = pkgs.callPackage "${inirFlake}/nix/package.nix" { inherit pkgs; };
+  inirPatched = (pkgs.callPackage "${inirFlake}/nix/package.nix" { inherit pkgs; }).overrideAttrs (old: {
+    # Adapt iNiR's Arch assumptions to NixOS (idempotent regex rewrites).
+    postPatch = (old.postPatch or "") + ''
+      cp ${../nix/nixos-postpatch.py} nixos-postpatch.py
+      python3 nixos-postpatch.py
+      rm -f nixos-postpatch.py
+    '';
+  });
 
   mascotPackage = config.programs.inir.mascot.package or (
     if inirFlake != null && builtins.pathExists "${inirFlake}/nix/mascot-package.nix"

@@ -216,6 +216,39 @@ extraction fails silently and you keep the previous colors.
 
 ---
 
+## ⬆️ Staying Up To Date
+
+The `inir` input points straight at upstream [`snowarch/iNiR`](https://github.com/snowarch/iNiR),
+so a new release by snowarch is picked up by a single command:
+
+```bash
+nix flake update          # or: nix flake update inir
+sudo nixos-rebuild switch --flake /etc/nixos#default
+```
+
+There is no patched fork in the middle, so nothing has to be merged by hand first.
+
+**How the NixOS adaptation survives updates.** iNiR targets Arch, so a few things are
+rewritten at build time by [`nix/nixos-postpatch.py`](nix/nixos-postpatch.py):
+
+- icon themes also resolve under `~/.icons` and `/run/current-system/sw/share/icons`,
+- the theme scan uses `find` from `PATH` with `-xtype`, so it follows the store symlinks,
+- the launcher falls back to `/run/current-system/sw/share/quickshell/inir`,
+- `/usr/bin/…` paths are stripped tree-wide (upstream's own rewrite only covers
+  `modules/`, `services/`, `defaults/` and `scripts/`, so top-level QML like
+  `killDialog.qml` and `welcome.qml` would otherwise keep `/usr/bin/pidof`,
+  `/usr/bin/killall` and `/usr/bin/notify-send`).
+
+Those are regex rewrites, not context diffs, so upstream moving code around does not
+break the build the way a stale patch does. Every rewrite is idempotent: if upstream
+ever ships the same fix, the script notices and leaves the file untouched.
+
+If an upstream release changes those code paths substantially, the build stops with a
+clear message naming the rewrite to re-anchor — rather than silently shipping a shell
+with missing icons.
+
+---
+
 ## 🔐 iNiR Shell SDDM (Optional)
 
 > [!NOTE]

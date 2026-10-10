@@ -4,8 +4,11 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
 
+    # Upstream straight from snowarch: every release is picked up by
+    # `nix flake update`. The NixOS adaptations live in this repo (nix/nixos-postpatch.py),
+    # not in a hand-patched fork, so they are versioned and reviewable here.
     inir = {
-      url = "github:LATAR-web/inir";
+      url = "github:snowarch/iNiR";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
@@ -28,6 +31,13 @@
           inirDeps = import ./modules/inir-deps.nix { inherit pkgs; };
 
           inirPatched = (pkgs.callPackage "${inir}/nix/package.nix" { inherit pkgs; }).overrideAttrs (old: {
+            # Adapt iNiR's Arch assumptions to NixOS. Regex-based and idempotent,
+            # so an upstream release that moves code around does not break the build.
+            postPatch = (old.postPatch or "") + ''
+              cp ${./nix/nixos-postpatch.py} nixos-postpatch.py
+              python3 nixos-postpatch.py
+              rm -f nixos-postpatch.py
+            '';
             meta = (old.meta or { }) // {
               description = "Complete desktop shell for Niri built on Quickshell with Material You theming";
               homepage = "https://github.com/LATAR-web/inir-nixos";
