@@ -41,6 +41,9 @@ layout {
     }
 
     // ── Border ──────────────────────────────────────────────────────────────
+    // Desactivado a proposito: niri dibuja el borde alrededor de TODAS las ventanas
+    // y les encoge para hacerle hueco, asi que el focus ring de arriba ya marca cual
+    // esta activa sin que nada cambie de tamano.
     border {
         off
         width 4
