@@ -127,6 +127,34 @@ def patch_icon_theme(text):
     return text
 
 
+def patch_family_transition(text):
+    """Let the animated family transition run on Qt 6.11, behind an opt-in.
+
+    Qt 6.11 can segfault while tearing down layer-shell surfaces, so upstream
+    skips the animated family transition there and restarts the shell instead.
+    That is the right default, but it means the transition never plays on the
+    Qt that nixpkgs currently ships (6.11.2), so the family switch just blinks.
+
+    Gating the guard behind an env var keeps opting in a config change rather
+    than a patch, and records what was traded away.
+    """
+    text, _ = apply(
+        text,
+        "shell.qml: make the Qt 6.11 family-transition bail-out opt-in",
+        re.escape(
+            "        const qt611LayerShellRisk = Quickshell.hasQtVersion(6, 11)\n"
+            "            && !Quickshell.hasQtVersion(6, 12)\n"
+        ),
+        '        const qt611LayerShellRisk = '
+        'Quickshell.env("INIR_FAMILY_ANIMATION_ON_QT611") !== "1"\n'
+        "            && Quickshell.hasQtVersion(6, 11)\n"
+        "            && !Quickshell.hasQtVersion(6, 12)\n",
+        already=r"INIR_FAMILY_ANIMATION_ON_QT611",
+        required=False,
+    )
+    return text
+
+
 def patch_launcher(text):
     """The launcher must find its payload inside the read-only store."""
     text, _ = apply(
@@ -181,6 +209,7 @@ def patch_root_qml():
 
 PATCHES = {
     "services/IconThemeService.qml": patch_icon_theme,
+    "shell.qml": patch_family_transition,
     "scripts/inir": patch_launcher,
 }
 

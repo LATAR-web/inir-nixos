@@ -135,6 +135,22 @@ let
 in
 {
   options.programs.inir = {
+    familyTransitionAnimation = {
+      enable = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+        description = ''
+          Animar el cambio de familia de paneles en Qt 6.11, accepting el riesgo de
+          segfault. Upstream desactiva la transicion en Qt 6.11 porque el desmontaje de
+          layer-shell puedetumbar el shell, y en su lugar reinicia el proceso: la familia
+          cambia de golpe, sin animacion. Activarlo ejecuta la transicion animada y
+          asume ese riesgo. Si el shell se cae, systemd lo reinicia solo y no se pierde
+          nada; mientras Qt no llegue a 6.12 no hay forma de tener la animacion sin
+          este riesgo.
+        '';
+      };
+    };
+
     colorSync = {
       enable = lib.mkOption {
         type = lib.types.bool;
@@ -254,6 +270,10 @@ in
       environment = {
         INIR_VENV = "%h/.local/state/quickshell/.venv";
         ILLOGICAL_IMPULSE_VIRTUAL_ENV = "%h/.local/state/quickshell/.venv";
+      }
+      // lib.optionalAttrs cfg.familyTransitionAnimation.enable {
+        # Opt in to the animated family transition on Qt 6.11; see the option.
+        INIR_FAMILY_ANIMATION_ON_QT611 = "1";
       };
     };
 
