@@ -117,16 +117,12 @@ def patch_icon_theme(text):
         required=False,
     )
 
-    # Re-read the theme list on every startup, not only after the first init.
-    text, _ = apply(
-        text,
-        "IconThemeService: refresh theme list on init",
-        r"(function ensureInitialized\(\): void \{\n)",
-        r"\1        listThemesProc.running = false\n"
-        r"        listThemesProc.running = true\n\n",
-        already=r"function ensureInitialized\(\): void \{\n        listThemesProc\.running = false",
-        required=False,
-    )
+    # NOTE: an earlier revision also forced the theme list to be rescanned at the top of
+    # ensureInitialized(), before the `_initialized` guard. Upstream 2.33.0 already
+    # rescans it once per initialization, and the Process chains run
+    # listThemesProc -> gsettingsSetProc -> kdeGlobalsUpdateProc -> kwriteconfigProc.
+    # Restarting that chain before the guard made every call re-fire it, which fought
+    # the shell during a family switch. Upstream's own single refresh is left alone.
 
     return text
 
