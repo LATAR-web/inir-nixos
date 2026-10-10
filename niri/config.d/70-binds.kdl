@@ -18,8 +18,8 @@ binds {
     // ═══════════════════════════════════════════════════════════════════════
 
     // Niri's built-in overview (zoomed-out workspace view).
+    // NOTE: Mod == Super, so bind each hotkey only once (no Super+ duplicates).
     Mod+Tab repeat=false { toggle-overview; }
-    Super+Tab repeat=false { toggle-overview; }
 
     // Quit Niri (shows confirmation dialog).
     Mod+Shift+E { quit; }
@@ -67,7 +67,6 @@ binds {
     Mod+Alt+S   { spawn "record-screen" "--stop"; }
 
     // Wallpaper picker, settings, cheatsheet, panel family switch.
-    Mod+W       { spawn "inir" "wallpaperSelector" "toggle"; }
     Ctrl+Alt+T  { spawn "inir" "wallpaperSelector" "toggle"; }
     Mod+Comma   { spawn "inir" "settings"; }
     Mod+Slash   { spawn "inir" "cheatsheet" "toggle"; }
@@ -85,7 +84,6 @@ binds {
 
     Mod+T      { spawn "inir" "terminal"; }
     Mod+Return { spawn "inir" "terminal"; }
-    Mod+E      { spawn "nautilus"; }
     Super+E    { spawn "nautilus"; }
     Mod+B      { spawn "inir" "browser"; }
     Super+W    { spawn "inir" "browser"; }
