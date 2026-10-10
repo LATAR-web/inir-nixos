@@ -76,6 +76,14 @@ try:
 except Exception:
     sys.exit(0)
 
+meta = {}
+if os.path.exists(meta_file):
+    try:
+        with open(meta_file, "r", encoding="utf-8") as f:
+            meta = json.load(f)
+    except Exception:
+        meta = {}
+
 # Extract palette data (supporting flat or nested formats from matugen/materialyoucolor)
 c = data.get("colors", data) if isinstance(data.get("colors"), dict) else data
 if "dark" in data and isinstance(data["dark"], dict):
@@ -93,9 +101,28 @@ primary = get_color("primary", "#7aa2f7")
 secondary = get_color("secondary", get_color("outline", "#bb9af7"))
 surface = get_color("surface", get_color("background", "#1a1b26"))
 on_surface = get_color("on_surface", "#c0caf5")
-is_dark = data.get("dark", True)
+is_dark = data.get("dark", None)
 if isinstance(is_dark, str):
     is_dark = is_dark.lower() in ("true", "1", "yes", "dark")
+
+# colors.json is a flat Material palette and carries no mode flag at all, so
+# asking it for one always used to fall back to dark. theme-meta.json is the
+# record of what the generator actually ran, so ask that first; fall back to the
+# luminance of the background when it is missing or unreadable.
+if not isinstance(is_dark, bool):
+    mode = str(meta.get("mode", "")).strip().lower()
+    if mode in ("light", "dark"):
+        is_dark = mode == "dark"
+    else:
+        hex_bg = get_color("background", "#1a1b26").lstrip("#")
+        if len(hex_bg) == 6:
+            try:
+                r, g, b = (int(hex_bg[i:i + 2], 16) for i in (0, 2, 4))
+                is_dark = (0.2126 * r + 0.7152 * g + 0.0722 * b) < 128
+            except ValueError:
+                is_dark = True
+        else:
+            is_dark = True
 
 # 1. Update Niri focus-ring colors
 niri_updated = False
@@ -131,8 +158,6 @@ if not niri_updated:
 # 2. Sync wallpaper path into iNiR shell config
 if os.path.exists(meta_file):
     try:
-        with open(meta_file, "r", encoding="utf-8") as f:
-            meta = json.load(f)
         wp = meta.get("source_path")
         if wp and os.path.exists(wp):
             if os.path.exists(shell_conf_file):
