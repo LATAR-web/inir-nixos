@@ -49,6 +49,12 @@ let
     then pkgs.symlinkJoin {
       name = "inir-with-mascot-${inirPatched.version or "2.33.0"}";
       paths = [ inirPatched mascotPackage ];
+      meta = (inirPatched.meta or { }) // {
+        description = "iNiR desktop shell with the official Kira mascot art pack integrated";
+        homepage = "https://github.com/LATAR-web/inir-nixos";
+        license = pkgs.lib.licenses.mit;
+        mainProgram = "inir";
+      };
     }
     else inirPatched;
 
@@ -112,12 +118,14 @@ in
       ++ (lib.optional cfg.colorSync.enable niriSyncColors)
       ++ (lib.optional cfg.screenRecording.enable recordScreen);
 
-    # Variables de entorno globales para que cualquier shell o launcher localice el runtime
+    # Variables de entorno globales para que cualquier shell o launcher localice el runtime.
+    # INIR_VENV / ILLOGICAL_IMPULSE_VIRTUAL_ENV NO se declaran a nivel de sistema: apuntan
+    # al python env de iNiR que se materializa por usuario en ~/.local/state/quickshell/.venv
+    # (ver systemd.user.tmpfiles.rules y niri/config.d/40-environment.kdl). Un symlink dentro
+    # de /run/current-system/sw/share/quickshell es imposible (el store de Nix es de solo lectura).
     environment.variables = {
       INIR_SYSTEM_RUNTIME_DIR = "/run/current-system/sw/share/quickshell/inir";
       INIR_FALLBACK_SYSTEM_RUNTIME_DIR = "/run/current-system/sw/share/quickshell/inir";
-      INIR_VENV = "/run/current-system/sw/share/quickshell/.venv";
-      ILLOGICAL_IMPULSE_VIRTUAL_ENV = "/run/current-system/sw/share/quickshell/.venv";
     };
 
     # Control de hardware para brillo de monitores externos mediante ddcutil
@@ -129,7 +137,6 @@ in
       "d /usr/share 0755 root root -"
       "L+ /usr/share/icons - - - - /run/current-system/sw/share/icons"
       "L+ /usr/share/quickshell - - - - /run/current-system/sw/share/quickshell"
-      "L+ /run/current-system/sw/share/quickshell/.venv - - - - ${pythonEnv}"
     ];
 
     # Habilitar Niri y dconf
