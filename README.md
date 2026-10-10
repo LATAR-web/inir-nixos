@@ -131,26 +131,34 @@ And in your `/etc/nixos/configuration.nix` add `imports = [ ./modules ];`.
 
 ## ⌨️ Keyboard Shortcuts
 
+> [!NOTE]
+> The keyboard shortcuts are the **same as the original [iNiR](https://github.com/snowarch/iNiR) shortcuts on Arch** (and any other distro). `Mod` is **Super** on bare metal, or **Alt** when Niri runs nested inside another session.
+
 | Shortcut | Action |
 |---|---|
-| <kbd>Mod</kbd> + <kbd>Enter</kbd> | Terminal (Alacritty) |
-| <kbd>Mod</kbd> + <kbd>W</kbd> | Wallpaper picker (Material You) |
-| <kbd>Mod</kbd> + <kbd>Space</kbd> / <kbd>Super</kbd> + <kbd>Tab</kbd> | Overview mode |
+| <kbd>Mod</kbd> + <kbd>Enter</kbd> / <kbd>T</kbd> | Terminal (Alacritty) |
+| <kbd>Mod</kbd> + <kbd>Space</kbd> / <kbd>Tab</kbd> | Overview mode |
+| <kbd>Mod</kbd> + <kbd>G</kbd> | Desktop overlay (crosshair) |
 | <kbd>Mod</kbd> + <kbd>V</kbd> | Clipboard history |
 | <kbd>Mod</kbd> + <kbd>,</kbd> | iNiR Settings |
 | <kbd>Mod</kbd> + <kbd>/</kbd> | Shortcuts cheatsheet |
-| <kbd>Mod</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd> | Region screenshot |
+| <kbd>Mod</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd> | Region snip menu |
 | <kbd>Mod</kbd> + <kbd>Shift</kbd> + <kbd>X</kbd> | Region OCR (extract text) |
+| <kbd>Mod</kbd> + <kbd>Shift</kbd> + <kbd>A</kbd> | Region search (Google Lens) |
 | <kbd>Mod</kbd> + <kbd>Alt</kbd> + <kbd>R</kbd> / <kbd>S</kbd> | Record region / Stop recording |
-| <kbd>Mod</kbd> + <kbd>E</kbd> | File manager (Nautilus) |
-| <kbd>Mod</kbd> + <kbd>Q</kbd> / <kbd>Shift</kbd>+<kbd>Q</kbd> | Close window / Quit session |
-| <kbd>Mod</kbd> + <kbd>1</kbd>–<kbd>5</kbd> | Go to workspace 1–5 |
+| <kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>T</kbd> | Wallpaper picker (Material You) |
+| <kbd>Mod</kbd> + <kbd>Shift</kbd> + <kbd>W</kbd> | Cycle panel family |
+| <kbd>Super</kbd> + <kbd>E</kbd> | File manager (Nautilus) |
+| <kbd>Mod</kbd> + <kbd>B</kbd> / <kbd>Super</kbd> + <kbd>W</kbd> | Browser |
+| <kbd>Mod</kbd> + <kbd>Q</kbd> / <kbd>Shift</kbd> + <kbd>Q</kbd> | Close window / Session dialog |
+| <kbd>Mod</kbd> + <kbd>Shift</kbd> + <kbd>E</kbd> | Quit session |
+| <kbd>Mod</kbd> + <kbd>1</kbd>–<kbd>9</kbd> | Go to workspace 1–9 |
 
 ---
 
 ## 🎨 Color Synchronization (Material You)
 
-When picking a wallpaper with <kbd>Mod</kbd> + <kbd>W</kbd>, `niri-sync-colors` extracts the Material You color palette automatically and updates:
+When picking a wallpaper with <kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>T</kbd>, `niri-sync-colors` extracts the Material You color palette automatically and updates:
 - **Niri active focus ring** (`focus-ring` in `~/.config/niri/config.kdl`).
 - **Alacritty color theme** (`~/.config/alacritty/theme.toml`).
 - **GTK / GNOME accent** (`accent-color` in libadwaita).

@@ -131,26 +131,34 @@ Y en tu `/etc/nixos/configuration.nix` añade `imports = [ ./modules ];`.
 
 ## ⌨️ Atajos de Teclado
 
+> [!NOTE]
+> Los atajos de teclado son **los mismos que los atajos originales de [iNiR](https://github.com/snowarch/iNiR) en Arch** (y cualquier otra distro). `Mod` es **Super** en hardware real, o **Alt** cuando Niri se ejecuta anidado dentro de otra sesión.
+
 | Atajo | Acción |
 |---|---|
-| <kbd>Mod</kbd> + <kbd>Enter</kbd> | Terminal (Alacritty) |
-| <kbd>Mod</kbd> + <kbd>W</kbd> | Selector de fondo de pantalla (Material You) |
-| <kbd>Mod</kbd> + <kbd>Espacio</kbd> / <kbd>Super</kbd> + <kbd>Tab</kbd> | Vista general de ventanas (Overview) |
+| <kbd>Mod</kbd> + <kbd>Enter</kbd> / <kbd>T</kbd> | Terminal (Alacritty) |
+| <kbd>Mod</kbd> + <kbd>Espacio</kbd> / <kbd>Tab</kbd> | Vista general de ventanas (Overview) |
+| <kbd>Mod</kbd> + <kbd>G</kbd> | Superposición de escritorio (crosshair) |
 | <kbd>Mod</kbd> + <kbd>V</kbd> | Historial del portapapeles |
 | <kbd>Mod</kbd> + <kbd>,</kbd> | Ajustes de iNiR |
 | <kbd>Mod</kbd> + <kbd>/</kbd> | Cheatsheet de atajos |
-| <kbd>Mod</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd> | Captura de pantalla de región |
+| <kbd>Mod</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd> | Menú de recorte de región |
 | <kbd>Mod</kbd> + <kbd>Shift</kbd> + <kbd>X</kbd> | OCR de región (copia texto de imagen) |
+| <kbd>Mod</kbd> + <kbd>Shift</kbd> + <kbd>A</kbd> | Búsqueda de región (Google Lens) |
 | <kbd>Mod</kbd> + <kbd>Alt</kbd> + <kbd>R</kbd> / <kbd>S</kbd> | Grabar región / Detener grabación |
-| <kbd>Mod</kbd> + <kbd>E</kbd> | Gestor de archivos (Nautilus) |
-| <kbd>Mod</kbd> + <kbd>Q</kbd> / <kbd>Shift</kbd>+<kbd>Q</kbd> | Cerrar ventana / Salir de sesión |
-| <kbd>Mod</kbd> + <kbd>1</kbd>–<kbd>5</kbd> | Ir a espacio de trabajo 1–5 |
+| <kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>T</kbd> | Selector de fondo de pantalla (Material You) |
+| <kbd>Mod</kbd> + <kbd>Shift</kbd> + <kbd>W</kbd> | Cambiar familia de panel |
+| <kbd>Super</kbd> + <kbd>E</kbd> | Gestor de archivos (Nautilus) |
+| <kbd>Mod</kbd> + <kbd>B</kbd> / <kbd>Super</kbd> + <kbd>W</kbd> | Navegador |
+| <kbd>Mod</kbd> + <kbd>Q</kbd> / <kbd>Shift</kbd> + <kbd>Q</kbd> | Cerrar ventana / Diálogo de sesión |
+| <kbd>Mod</kbd> + <kbd>Shift</kbd> + <kbd>E</kbd> | Salir de la sesión |
+| <kbd>Mod</kbd> + <kbd>1</kbd>–<kbd>9</kbd> | Ir a espacio de trabajo 1–9 |
 
 ---
 
 ## 🎨 Sincronización de Color (Material You)
 
-Al seleccionar un nuevo fondo con <kbd>Mod</kbd> + <kbd>W</kbd>, `niri-sync-colors` extrae la paleta Material You automáticamente y actualiza en caliente:
+Al seleccionar un nuevo fondo con <kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>T</kbd>, `niri-sync-colors` extrae la paleta Material You automáticamente y actualiza en caliente:
 - **Borde activo de Niri** (`focus-ring` en `~/.config/niri/config.kdl`).
 - **Paleta de Alacritty** (`~/.config/alacritty/theme.toml`).
 - **Acento GTK / GNOME** (`accent-color` de libadwaita).
