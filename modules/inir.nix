@@ -97,6 +97,41 @@ let
     else inirPatched;
 
   cfg = config.programs.inir;
+# Siembra la config de niri/alacritty solo si no existe. Nunca sobrescribe: a partir
+  # de la primera vez el usuario es dueño del fichero, asi niri puede guardar los cambios
+  # que haga desde el menu de iRiS (raton, sensibilidad, atajos, focus-ring...).
+  niriConfigSeed = pkgs.writeShellApplication {
+    name = "niri-config-seed";
+    runtimeInputs = [ pkgs.coreutils ];
+    text = ''
+      seed() {
+        local src="$1" dst="$2"
+        mkdir -p "$(dirname "$dst")"
+        if [[ -e "$dst" ]]; then
+          # Ya existe: solo nos aseguramos de que siga siendo escribible. Los ficheros
+          # sembrados por la version previa quedaron en 444 y niri no podia guardar nada.
+          if [[ ! -w "$dst" ]]; then
+            chmod u+w "$dst"
+          fi
+        else
+          install -Dm644 "$src" "$dst"
+        fi
+      }
+
+      seed ${../niri/config.kdl} "$HOME/.config/niri/config.kdl"
+      seed ${../niri/config.d/10-input-and-cursor.kdl} "$HOME/.config/niri/config.d/10-input-and-cursor.kdl"
+      seed ${../niri/config.d/20-layout-and-overview.kdl} "$HOME/.config/niri/config.d/20-layout-and-overview.kdl"
+      seed ${../niri/config.d/30-window-rules.kdl} "$HOME/.config/niri/config.d/30-window-rules.kdl"
+      seed ${../niri/config.d/40-environment.kdl} "$HOME/.config/niri/config.d/40-environment.kdl"
+      seed ${../niri/config.d/50-startup.kdl} "$HOME/.config/niri/config.d/50-startup.kdl"
+      seed ${../niri/config.d/60-animations.kdl} "$HOME/.config/niri/config.d/60-animations.kdl"
+      seed ${../niri/config.d/70-binds.kdl} "$HOME/.config/niri/config.d/70-binds.kdl"
+      seed ${../niri/config.d/80-layer-rules.kdl} "$HOME/.config/niri/config.d/80-layer-rules.kdl"
+      seed ${../niri/config.d/90-user-extra.kdl} "$HOME/.config/niri/config.d/90-user-extra.kdl"
+      seed ${../alacritty/alacritty.toml} "$HOME/.config/alacritty/alacritty.toml"
+    '';
+  };
+
 in
 {
   options.programs.inir = {
@@ -276,18 +311,27 @@ in
     ++ lib.optionals cfg.niri.autoDeployConfig [
       "d %h/.config/niri 0755 - - -"
       "d %h/.config/niri/config.d 0755 - - -"
-      "C+ %h/.config/niri/config.kdl - - - - ${../niri/config.kdl}"
-      "C+ %h/.config/niri/config.d/10-input-and-cursor.kdl - - - - ${../niri/config.d/10-input-and-cursor.kdl}"
-      "C+ %h/.config/niri/config.d/20-layout-and-overview.kdl - - - - ${../niri/config.d/20-layout-and-overview.kdl}"
-      "C+ %h/.config/niri/config.d/30-window-rules.kdl - - - - ${../niri/config.d/30-window-rules.kdl}"
-      "C+ %h/.config/niri/config.d/40-environment.kdl - - - - ${../niri/config.d/40-environment.kdl}"
-      "C+ %h/.config/niri/config.d/50-startup.kdl - - - - ${../niri/config.d/50-startup.kdl}"
-      "C+ %h/.config/niri/config.d/60-animations.kdl - - - - ${../niri/config.d/60-animations.kdl}"
-      "C+ %h/.config/niri/config.d/70-binds.kdl - - - - ${../niri/config.d/70-binds.kdl}"
-      "C+ %h/.config/niri/config.d/80-layer-rules.kdl - - - - ${../niri/config.d/80-layer-rules.kdl}"
-      "C+ %h/.config/niri/config.d/90-user-extra.kdl - - - - ${../niri/config.d/90-user-extra.kdl}"
       "d %h/.config/alacritty 0755 - - -"
-      "C+ %h/.config/alacritty/alacritty.toml - - - - ${../alacritty/alacritty.toml}"
     ];
+
+    # La config de Niri y Alacritty NO se despliega con tmpfiles "C+": ese tipo copia
+    # conservando el modo del store (444) y sobrescribe en cada arranque. Con eso niri
+    # no podia guardar nada, el menu de ajustes de iRiS se perdia cada cambio (raton,
+    # sensibilidad, atajos...) y el siguiente login lo revertia.
+    #
+    # Ahora se siembran una sola vez con permisos 644 y nunca se vuelven a tocar: el
+    # usuario es el dueño. Para actualizar la base hay que editar el fichero destino,
+    # no este repositorio.
+    systemd.user.services.niri-config-seed = lib.mkIf cfg.niri.autoDeployConfig {
+      description = "Seed iNiR's niri/alacritty config once; the user owns it afterwards";
+      before = [ "niri.service" ];
+      wantedBy = [ "default.target" ];
+      unitConfig.DefaultDependencies = false;
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+        ExecStart = niriConfigSeed;
+      };
+    };
   };
 }
