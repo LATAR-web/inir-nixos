@@ -80,31 +80,61 @@
             }
             else inirPatched;
 
-          # Los scripts llevan `#!/usr/bin/env bash`, que en NixOS no resuelve (el PATH de un
-# servicio systemd --user no incluye bash y el interprete termina siendo /usr/bin/env).
-# writeShellScriptBin antepone su propio shebang, pero no acepta `meta`; por eso se
-# escribe a mano con el bash del store como interprete.
-shellScript = name: description: path:
-            pkgs.writeTextFile {
-              inherit name;
-              executable = true;
-              destination = "/bin/${name}";
-              text = "#!${pkgs.bash}/bin/bash\n" + builtins.readFile path;
+# Los scripts llevan `#!/usr/bin/env bash`, que en NixOS no resuelve (el PATH de un
+          # servicio systemd --user no incluye bash y el interprete termina siendo /usr/bin/env).
+          # Se fija el bash del store como interprete y se envuelve con un PATH propio: asi el
+          # script encuentra python3/gsettings/niri tanto desde systemd como lanzado a mano,
+          # sin tocar `environment.PATH` de la unidad (que entraria en conflicto con el valor
+          # global que NixOS define para los servicios de usuario).
+          shellScript = name: description: path: extraPath:
+            let
+              script = pkgs.writeTextFile {
+                inherit name;
+                executable = true;
+                destination = "/bin/${name}";
+                text = "#!${pkgs.bash}/bin/bash\n" + builtins.readFile path;
+              };
+            in
+            pkgs.runCommand name {
+              nativeBuildInputs = [ pkgs.makeWrapper ];
               meta = {
                 inherit description;
                 homepage = "https://github.com/LATAR-web/inir-nixos";
                 license = pkgs.lib.licenses.mit;
                 mainProgram = name;
               };
-            };
+            } ''
+              makeWrapper ${script}/bin/${name} $out/bin/${name} \
+                --prefix PATH : ${pkgs.lib.makeBinPath extraPath}
+            '';
 
           niriSyncColors = shellScript "niri-sync-colors"
             "Dynamic Material You palette sync daemon for Niri focus rings, Alacritty, and GTK"
-            ./scripts/niri-sync-colors;
+            ./scripts/niri-sync-colors
+            [
+              pkgs.bash
+              pkgs.coreutils
+              pkgs.python3
+              pkgs.glib
+              pkgs.util-linux
+              pkgs.inotify-tools
+              pkgs.procps
+              pkgs.jq
+              pkgs.niri
+            ];
 
           recordScreen = shellScript "record-screen"
             "Hardware-accelerated Wayland screen recorder with audio capture via wf-recorder and pactl"
-            ./scripts/record-screen;
+            ./scripts/record-screen
+            [
+              pkgs.bash
+              pkgs.coreutils
+              pkgs.wf-recorder
+              pkgs.slurp
+              pkgs.imagemagick
+              pkgs.pulseaudio
+              pkgs.procps
+            ];
 
           verifySetup = shellScript "verify-setup"
             "Automated diagnostic sanity-checker for iNiR, Niri, and NixOS configuration"

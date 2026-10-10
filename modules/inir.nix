@@ -19,18 +19,44 @@ let
     null
     inirDeps;
 
-  # Los scripts usan `#!/usr/bin/env bash`, que en NixOS no resuelve: bajo systemd --user
-# el PATH no trae bash y el interprete acaba siendo /usr/bin/env. Se fija el bash del store.
-shellScript = path: name:
-    pkgs.writeTextFile {
-      inherit name;
-      executable = true;
-      destination = "/bin/${name}";
-      text = "#!${pkgs.bash}/bin/bash\n" + builtins.readFile path;
-    };
+# Los scripts usan `#!/usr/bin/env bash`, que en NixOS no resuelve: bajo systemd --user
+    # el PATH no trae bash y el interprete acaba siendo /usr/bin/env. Se fija el bash del store
+    # y se envuelve con un PATH propio, en vez de tocar environment.PATH de la unidad (choca
+    # con el valor global de NixOS para servicios de usuario).
+    shellScript = path: name: extraPath:
+      let
+        script = pkgs.writeTextFile {
+          inherit name;
+          executable = true;
+          destination = "/bin/${name}";
+          text = "#!${pkgs.bash}/bin/bash\n" + builtins.readFile path;
+        };
+      in
+      pkgs.runCommand name { nativeBuildInputs = [ pkgs.makeWrapper ]; } ''
+        makeWrapper ${script}/bin/${name} $out/bin/${name} \
+          --prefix PATH : ${lib.makeBinPath extraPath}
+      '';
 
-  niriSyncColors = shellScript ../scripts/niri-sync-colors "niri-sync-colors";
-  recordScreen = shellScript ../scripts/record-screen "record-screen";
+  niriSyncColors = shellScript ../scripts/niri-sync-colors "niri-sync-colors" [
+    pkgs.bash
+    pkgs.coreutils
+    pkgs.python3
+    pkgs.glib
+    pkgs.util-linux
+    pkgs.inotify-tools
+    pkgs.procps
+    pkgs.jq
+    config.programs.niri.package
+  ];
+  recordScreen = shellScript ../scripts/record-screen "record-screen" [
+    pkgs.bash
+    pkgs.coreutils
+    pkgs.wf-recorder
+    pkgs.slurp
+    pkgs.imagemagick
+    pkgs.pulseaudio
+    pkgs.procps
+  ];
 
   versionJsonFile = pkgs.writeText "inir-version.json" ((builtins.toJSON {
     version = inirFlake.shortRev or inirFlake.dirtyShortRev or "2.33.0";
@@ -201,21 +227,10 @@ in
       description = "Sync Niri colors and iNiR wallpaper with generated theme data";
       wantedBy = [ "graphical-session.target" "default.target" ];
       after = [ "inir.service" ];
-      # The watcher shells out to python3, gsettings, niri and inotifywait. Under
-      # systemd --user the inherited PATH is minimal, so without this it died with
-      # status 127 ("env: bash: No such file or directory").
+      # The watcher locates python3, gsettings, niri and inotifywait through the PATH
+      # baked into its wrapper. Overriding environment.PATH here would collide with
+      # the value NixOS sets globally for user units.
       environment = {
-        PATH = lib.makeBinPath [
-          pkgs.bash
-          pkgs.coreutils
-          pkgs.python3
-          pkgs.glib
-          pkgs.util-linux
-          pkgs.inotify-tools
-          pkgs.procps
-          pkgs.jq
-          config.programs.niri.package
-        ];
         XDG_CONFIG_HOME = "%h/.config";
         XDG_STATE_HOME = "%h/.local/state";
         INIR_VENV = "%h/.local/state/quickshell/.venv";
