@@ -31,12 +31,7 @@ let
     packageUpdateHint = "nixos-rebuild switch";
   }) + "\n");
 
-  inirPatched = (pkgs.callPackage "${inirFlake}/nix/package.nix" { inherit pkgs; }).overrideAttrs (old: {
-    patches = (old.patches or [ ]) ++ [
-      ./patches/inir-icon-theme.patch
-      ./patches/inir-nixos-fixes.patch
-    ];
-  });
+  inirPatched = pkgs.callPackage "${inirFlake}/nix/package.nix" { inherit pkgs; };
 
   mascotPackage = config.programs.inir.mascot.package or (
     if inirFlake != null && builtins.pathExists "${inirFlake}/nix/mascot-package.nix"

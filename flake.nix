@@ -27,18 +27,14 @@
 
           inirDeps = import ./modules/inir-deps.nix { inherit pkgs; };
 
-          inirPatched = ((pkgs.callPackage "${inir}/nix/package.nix" { inherit pkgs; }).overrideAttrs (old: {
-            patches = (old.patches or [ ]) ++ [
-              ./modules/patches/inir-icon-theme.patch
-              ./modules/patches/inir-nixos-fixes.patch
-            ];
+          inirPatched = (pkgs.callPackage "${inir}/nix/package.nix" { inherit pkgs; }).overrideAttrs (old: {
             meta = (old.meta or { }) // {
               description = "Complete desktop shell for Niri built on Quickshell with Material You theming";
               homepage = "https://github.com/LATAR-web/inir-nixos";
               license = pkgs.lib.licenses.mit;
               mainProgram = "inir";
             };
-          }));
+          });
 
           mascotPackage = if builtins.pathExists "${inir}/nix/mascot-package.nix"
             then pkgs.callPackage "${inir}/nix/mascot-package.nix" { inherit pkgs; }
