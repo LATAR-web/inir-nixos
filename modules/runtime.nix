@@ -26,4 +26,8 @@
     pkgs.kdePackages.plasma-integration
     pkgs.darkly
   ];
+
+  environment.variables.QT_QPA_PLATFORMTHEME = "qt6ct";
+  environment.variables.QT_STYLE_OVERRIDE = "kvantum";
+  environment.variables.QT_QPA_PLATFORM = "wayland;xcb";
 }

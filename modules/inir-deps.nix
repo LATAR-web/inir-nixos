@@ -49,6 +49,10 @@ with pkgs; [
   kdePackages.plasma-browser-integration
   kdePackages.kconfig
   kdePackages.kde-cli-tools
+  kdePackages.qt6ct
+  qt6Packages.qt6ct
+  qt6Packages.qtstyleplugin-kvantum
+  qt6Packages.qt6gtk2
   darkly
 
   # --- Wallpapers / color pipeline ---
