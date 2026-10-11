@@ -1,4 +1,5 @@
-# 🚀 Cómo enviar iNiR a Nixpkgs (`search.nixos.org`)
+# Cómo enviar iNiR a Nixpkgs (`search.nixos.org`)
+
 
 Este documento explica cómo someter el paquete `inir` directamente al repositorio oficial de **NixOS/nixpkgs**, para que aparezca oficialmente en **https://search.nixos.org/packages** al igual que `noctalia-shell` o `hyprland`.
 
@@ -68,17 +69,17 @@ git push -u origin inir-init
 gh pr create \
   --repo NixOS/nixpkgs \
   --base master \
-  --title "inir: init at 2.32.0" \
+  --title "inir: init" \
   --body "### Summary
 This PR adds \`inir\`, a complete desktop shell for the Niri Wayland compositor built on Quickshell with Material You dynamic color theming.
 
 - **Package name**: inir
-- **Version**: 2.32.0
 - **Homepage**: https://github.com/LATAR-web/inir
 - **License**: GPL-3.0-only
 - **Main program**: inir
 
 Tested on x86_64-linux."
+
 ```
 
 Una vez que los mantenedores de NixOS revisen y fusionen el PR, el paquete se indexará automáticamente y aparecerá en **[search.nixos.org/packages](https://search.nixos.org/packages)**.
