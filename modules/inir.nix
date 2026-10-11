@@ -57,6 +57,15 @@ let
     pkgs.pulseaudio
     pkgs.procps
   ];
+  inirSync = shellScript ../scripts/inir-sync "inir-sync" [
+    pkgs.bash
+    pkgs.coreutils
+    pkgs.git
+    pkgs.jq
+    pkgs.systemd
+    pkgs.nix
+  ];
+
 
   versionJsonFile = pkgs.writeText "inir-version.json" ((builtins.toJSON {
     version = inirFlake.shortRev or inirFlake.dirtyShortRev or "2.33.0";
@@ -209,8 +218,10 @@ in
 
     # Paquetes disponibles globalmente en el sistema para herramientas y scripts de iNiR
     environment.systemPackages = inirDeps
+      ++ [ inirSync ]
       ++ (lib.optional cfg.colorSync.enable niriSyncColors)
       ++ (lib.optional cfg.screenRecording.enable recordScreen);
+
 
     # Variables de entorno globales para que cualquier shell o launcher localice el runtime.
     # INIR_VENV / ILLOGICAL_IMPULSE_VIRTUAL_ENV NO se declaran a nivel de sistema: apuntan
@@ -310,7 +321,9 @@ in
       "d %h/.local/state/quickshell 0755 - - -"
       "L+ %h/.local/state/quickshell/.venv - - - - ${pythonEnv}"
       "L+ %h/.local/bin/inir - - - - /run/current-system/sw/bin/inir"
+      "L+ %h/.local/bin/inir-sync - - - - ${inirSync}/bin/inir-sync"
       "L+ %h/.local/bin/niri-sync-colors - - - - ${niriSyncColors}/bin/niri-sync-colors"
+
       "L+ %h/.local/bin/record-screen - - - - ${recordScreen}/bin/record-screen"
       "L+ %h/.local/bin/pactl - - - - ${pkgs.pulseaudio}/bin/pactl"
       "d %h/.config/inir 0755 - - -"

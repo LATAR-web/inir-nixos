@@ -48,6 +48,8 @@ check_command playerctl "playerctl (media key control)"
 check_command nautilus "nautilus (file manager)"
 check_command rsync "rsync"
 check_command curl "curl"
+check_command inir-sync "inir-sync (sync & diagnostics CLI)"
+
 
 _found_term=""
 for _t in kitty foot ghostty alacritty wezterm konsole xterm; do

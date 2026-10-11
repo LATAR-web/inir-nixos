@@ -178,19 +178,43 @@ inir mascot hideSeek          # Hide and seek game
 inir mascot hide              # Temporarily hide Kira
 ```
 
-### 🛠️ System Tools
+### 🛠️ System & Synchronization Tools
 ```bash
+inir-sync                     # Check sync status with upstream iNiR & runtime state
+inir-sync --update            # Pull latest upstream iNiR commits and check flake integrity
+inir-sync --colors            # Immediate one-shot Material You palette & terminal sync
+inir-sync --seed-niri         # Deploy missing modular Niri config files (~/.config/niri/config.d)
+inir-sync --doctor            # Run verify-setup diagnostics
 record-screen                 # Hardware-accelerated Wayland screen recorder with audio
 verify-setup                  # Automated diagnostic health check
 ```
 
 ---
 
-## 🔄 Upstream Synchronization
+## 🔄 Synchronization Architecture
 
-To synchronize your installation with the latest updates from the port:
+### 1. Upstream iNiR Sync
+- **Automated Continuous Sync**: GitHub Actions runs every 2 hours (and reacts to repository dispatch events) to check if upstream [snowarch/iNiR](https://github.com/snowarch/iNiR) has new commits. If an update is detected, it validates the flake with `nix flake check --no-build` and commits the lockfile diff.
+- **Manual CLI Sync**:
+  ```bash
+  # Check synchronization status against remote upstream
+  inir-sync -s
 
+  # Pull and lock the latest upstream commits
+  inir-sync -u
+  ```
+
+### 2. Live Runtime & Terminal Color Sync
+- **Palette Pipeline**: Changing wallpapers or running `inir colorMode set dark/light` triggers Matugen to generate Material You palettes in `~/.local/state/quickshell/user/generated/colors.json`.
+- **Sync Daemon (`niri-sync-colors`)**: Runs in the background under systemd user services, listens for file changes, and instantly updates:
+  - Niri active and inactive focus-ring borders.
+  - Terminal configs for **Kitty** (`SIGUSR1`), **Foot** (`SIGUSR1`), **Ghostty** (`ii-auto`), **WezTerm** (`colors.lua`), and **Alacritty** (`theme.toml`).
+  - Active interactive shells via OSC escape sequences broadcast across `/dev/pts/*`.
+  - GNOME / GTK accent colors and dark/light preference via `gsettings`.
+
+### 3. Updating your NixOS Host System
 ```bash
+# Update the inir-nixos flake input on your system
 nix flake lock --update-input inir-nixos /etc/nixos
 sudo nixos-rebuild switch --flake /etc/nixos#<your_hostname>
 ```
@@ -200,3 +224,4 @@ sudo nixos-rebuild switch --flake /etc/nixos#<your_hostname>
 <div align="center">
   <i>Made with ❄️ for NixOS and Niri</i>
 </div>
+

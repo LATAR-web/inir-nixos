@@ -184,8 +184,13 @@ inir mascot hideSeek          # Jugar al escondite
 inir mascot hide              # Ocultar mascota temporalmente
 ```
 
-### 🛠️ Herramientas de Sistema
+### 🛠️ Herramientas de Sistema y Sincronización
 ```bash
+inir-sync                     # Comprobar estado de sincronización con iNiR upstream y runtime
+inir-sync --update            # Traer últimos commits de iNiR y verificar integridad del flake
+inir-sync --colors            # Sincronización inmediata de paleta Material You y terminales
+inir-sync --seed-niri         # Desplegar ficheros de configuración modular (~/.config/niri/config.d)
+inir-sync --doctor            # Diagnóstico del entorno y dependencias del sistema
 record-screen                 # Iniciar grabación interactiva de pantalla con audio
 verify-setup                  # Script de diagnóstico y verificación completa
 ```
@@ -202,10 +207,20 @@ El servicio `niri-sync-colors` vigila la generación de paletas Material You y a
 
 ---
 
-## 🔄 Actualización y Sincronización con el Port
+## 🔄 Arquitectura de Sincronización del Código
 
-Para traer las últimas mejoras del repositorio iNiR a tu NixOS:
+### 1. Sincronización con Upstream iNiR
+- **Automática continua:** Un flujo de trabajo en GitHub Actions se ejecuta cada 2 horas (y mediante disparadores webhook/dispatch) comprobando nuevos commits en el repositorio upstream de [snowarch/iNiR](https://github.com/snowarch/iNiR). Cuando hay cambios, verifica la evaluación (`nix flake check --no-build`) y actualiza el `flake.lock`.
+- **Manual desde CLI:**
+  ```bash
+  # Ver el estado actual respecto al repositorio remoto
+  inir-sync -s
 
+  # Actualizar flake.lock a la última versión
+  inir-sync -u
+  ```
+
+### 2. Sincronización en tu Sistema NixOS
 ```bash
 # Actualizar el input del flake en tu sistema
 nix flake lock --update-input inir-nixos /etc/nixos
@@ -213,8 +228,6 @@ nix flake lock --update-input inir-nixos /etc/nixos
 # Y reconstruir:
 sudo nixos-rebuild switch --flake /etc/nixos#<tu_hostname>
 ```
-
-El repositorio `inir-nixos` está configurado para actualizarse automáticamente mediante un flujo de trabajo de GitHub Actions cada 2 horas o ante eventos `repository_dispatch`.
 
 ---
 
@@ -224,12 +237,18 @@ El repositorio `inir-nixos` está configurado para actualizarse automáticamente
 |---|---|
 | `modules/inir.nix` | Módulo principal de NixOS con integración Niri, QuickShell y servicios |
 | `modules/inir-deps.nix` | Paquetes y dependencias del sistema y librerías Qt6/KDE |
+| `modules/runtime.nix` | Variables de entorno de runtime (Qt6, nix-ld, Intel PSR) con soporte modular |
+| `modules/fonts.nix` | Tipografías e iconografía oficial (Material Symbols, JetBrains Mono) |
+| `modules/desktop.nix` | Gestor de inicio de sesión gráfico (GDM, greetd, SDDM) |
+| `modules/audio.nix` | Pila de audio PipeWire y WirePlumber para widgets de control de volumen |
 | `modules/home-manager.nix` | Módulo unificado para usuarios de Home Manager |
 | `modules/mascot.nix` | Integración y paquete de recursos de la mascota Kira |
 | `niri/config.d/` | Configuración modular de Niri (atajos, reglas, animaciones snappy) |
+| `scripts/inir-sync` | CLI de sincronización con upstream, paleta de colores y diagnóstico |
 | `scripts/niri-sync-colors` | Demonio de sincronización de colores multi-terminal y Niri |
 | `scripts/record-screen` | Grabador de pantalla con audio integrado |
 | `scripts/verify-setup.sh` | Verificador de diagnóstico del sistema |
+
 
 ---
 

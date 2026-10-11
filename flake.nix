@@ -143,6 +143,18 @@
               pkgs.systemd
             ];
 
+          inirSync = shellScript "inir-sync"
+            "Synchronization and diagnostic CLI tool for iNiR NixOS"
+            ./scripts/inir-sync
+            [
+              pkgs.bash
+              pkgs.coreutils
+              pkgs.git
+              pkgs.jq
+              pkgs.systemd
+              pkgs.nix
+            ];
+
           inirDepsEnv = pkgs.buildEnv {
             name = "inir-deps";
             paths = inirDeps;
@@ -160,6 +172,7 @@
           niri-sync-colors = niriSyncColors;
           record-screen = recordScreen;
           verify-setup = verifySetup;
+          inir-sync = inirSync;
           inir-deps = inirDepsEnv;
         }
       );
@@ -171,24 +184,35 @@
         default = {
           type = "app";
           program = "${self.packages.${system}.inir}/bin/inir";
+          meta.description = "iNiR desktop shell";
         };
         inir = {
           type = "app";
           program = "${self.packages.${system}.inir}/bin/inir";
+          meta.description = "iNiR desktop shell";
         };
         niri-sync-colors = {
           type = "app";
           program = "${self.packages.${system}.niri-sync-colors}/bin/niri-sync-colors";
+          meta.description = "Material You color palette sync daemon for Niri and terminals";
         };
         record-screen = {
           type = "app";
           program = "${self.packages.${system}.record-screen}/bin/record-screen";
+          meta.description = "Wayland screen and audio recorder";
         };
         verify-setup = {
           type = "app";
           program = "${self.packages.${system}.verify-setup}/bin/verify-setup";
+          meta.description = "Diagnostic sanity-checker for iNiR and Niri setup";
+        };
+        inir-sync = {
+          type = "app";
+          program = "${self.packages.${system}.inir-sync}/bin/inir-sync";
+          meta.description = "iNiR NixOS synchronization and diagnostic CLI";
         };
       });
+
 
       # =======================================================================
       # Development Shell (Run via: nix develop)
@@ -244,6 +268,7 @@
         niri-sync-colors = self.packages.${final.system}.niri-sync-colors;
         record-screen = self.packages.${final.system}.record-screen;
         verify-setup = self.packages.${final.system}.verify-setup;
+        inir-sync = self.packages.${final.system}.inir-sync;
         inir-deps = self.packages.${final.system}.inir-deps;
       };
 
@@ -290,6 +315,8 @@
         verify-setup = self.packages.${system}.verify-setup;
         niri-sync-colors = self.packages.${system}.niri-sync-colors;
         record-screen = self.packages.${system}.record-screen;
+        inir-sync = self.packages.${system}.inir-sync;
       });
     };
 }
+

@@ -2,18 +2,24 @@ name: "Auto-Update Flake (Sync inir)"
 
 on:
   schedule:
-    # Sincronización continua cada 2 horas
+    # Continuous background synchronization check every 2 hours
     - cron: "0 */2 * * *"
   repository_dispatch:
     types: [inir-updated, upstream-updated, trigger-update]
-  workflow_dispatch: # Permite ejecutar la actualización manualmente desde GitHub
+  workflow_dispatch:
+    inputs:
+      force_check:
+        description: "Force check and re-verify flake outputs"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
 
 jobs:
   update-flake:
-    name: "Update inir flake input"
+    name: "Sync and verify upstream inir"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -22,15 +28,33 @@ jobs:
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@main
 
-      - name: Update inir input
-        run: nix flake update inir --extra-experimental-features 'nix-command flakes'
+      - name: Check for upstream update
+        id: update_inir
+        run: |
+          OLD_REV=$(jq -r '.nodes.inir.locked.rev // "unknown"' flake.lock)
+          echo "Current locked inir rev: ${OLD_REV}"
 
-      - name: Check flake after update
+          nix flake update inir --extra-experimental-features 'nix-command flakes'
+
+          NEW_REV=$(jq -r '.nodes.inir.locked.rev // "unknown"' flake.lock)
+          echo "New locked inir rev: ${NEW_REV}"
+
+          if [ "$OLD_REV" != "$NEW_REV" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "old_rev=${OLD_REV:0:8}" >> "$GITHUB_OUTPUT"
+            echo "new_rev=${NEW_REV:0:8}" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "iNiR is already at latest revision: ${NEW_REV}"
+          fi
+
+      - name: Validate flake evaluation
         run: nix flake check --no-build --extra-experimental-features 'nix-command flakes'
 
       - name: Commit and Push update
+        if: steps.update_inir.outputs.changed == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git commit -am "chore(flake): sync inir update" || exit 0
+          git commit -am "chore(flake): sync inir (${{ steps.update_inir.outputs.old_rev }} -> ${{ steps.update_inir.outputs.new_rev }})"
           git push

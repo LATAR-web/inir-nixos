@@ -123,8 +123,8 @@ with pkgs; [
   easyeffects
   mpv
   mpvScripts.mpris             # media-key/MPRIS integration for the YouTube Music widget
-  yt-dlp
   deno                        # JavaScript runtime required by yt-dlp / InnerTube for YouTube Music
   ffmpegthumbnailer           # Video thumbnail extraction
   zenity                      # GUI dialog fallback for scripts
 ]
+

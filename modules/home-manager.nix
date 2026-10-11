@@ -43,6 +43,14 @@ let
     pkgs.pulseaudio
     pkgs.procps
   ];
+  inirSync = shellScript ../scripts/inir-sync "inir-sync" [
+    pkgs.bash
+    pkgs.coreutils
+    pkgs.git
+    pkgs.jq
+    pkgs.systemd
+    pkgs.nix
+  ];
 in
 {
   options.programs.inir = {
@@ -65,9 +73,11 @@ in
 
   config = lib.mkIf cfg.enable {
     home.packages = [
+      inirSync
       niriSyncColors
       recordScreen
     ] ++ inirDeps;
+
 
     # Deploy modular Niri configuration
     xdg.configFile = lib.mkIf cfg.autoDeployConfig {
