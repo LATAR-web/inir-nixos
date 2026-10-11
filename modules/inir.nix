@@ -191,6 +191,11 @@ in
         default = true;
         description = "Desplegar automáticamente la configuración modular de Niri si no existe en el directorio del usuario.";
       };
+      defaultTerminal = lib.mkOption {
+        type = lib.types.str;
+        default = "alacritty";
+        description = "Emulador de terminal preferido (mantenido por compatibilidad con configuraciones existentes).";
+      };
     };
   };
 
