@@ -122,8 +122,9 @@ if [[ -f "$HOME/.config/niri/config.kdl" ]]; then
         ok "color sync autostart configured in Niri config"
     fi
 else
-    fail "~/.config/niri/config.kdl missing"
+    fail "$HOME/.config/niri/config.kdl missing"
 fi
+
 
 if pgrep -f "wl-paste.*--watch" >/dev/null 2>&1; then
     ok "clipboard watcher process is running"
@@ -185,9 +186,9 @@ fi
 # real (non-symlink) ~/.config/quickshell/inir directory shadows the packaged
 # runtime and makes `inir run` fail with "Unable to locate config-path helper".
 if [[ -d "$HOME/.config/quickshell/inir" && ! -L "$HOME/.config/quickshell/inir" ]]; then
-    fail "~/.config/quickshell/inir is a REAL directory — it shadows the packaged runtime (back it up, remove it, then run: systemd-tmpfiles --user --create)"
+    fail "$HOME/.config/quickshell/inir is a REAL directory — it shadows the packaged runtime (back it up, remove it, then run: systemd-tmpfiles --user --create)"
 elif [[ ! -e "$HOME/.config/quickshell/inir" ]]; then
-    warn "~/.config/quickshell/inir symlink missing (apply user tmpfiles: systemd-tmpfiles --user --create)"
+    warn "$HOME/.config/quickshell/inir symlink missing (apply user tmpfiles: systemd-tmpfiles --user --create)"
 elif [[ -f "$HOME/.config/quickshell/inir/scripts/lib/config-path.sh" || -f "/run/current-system/sw/share/quickshell/inir/scripts/lib/config-path.sh" ]]; then
     ok "inir config-path helper resolvable"
 else
@@ -203,10 +204,11 @@ else
 fi
 
 if [[ -w "$HOME/.local/bin" ]]; then
-    ok "~/.local/bin is writable"
+    ok "$HOME/.local/bin is writable"
 else
-    fail "~/.local/bin is NOT writable"
+    fail "$HOME/.local/bin is NOT writable"
 fi
+
 
 # niri Wayland session registered system-wide (requires programs.niri.enable)
 if [[ -f /run/current-system/sw/share/wayland-sessions/niri.desktop ]]; then

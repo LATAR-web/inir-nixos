@@ -5,10 +5,7 @@ trap 'exit 0' INT TERM
 
 GENERATED_DIR="$HOME/.local/state/quickshell/user/generated"
 COLORS_JSON="$GENERATED_DIR/colors.json"
-META_JSON="$GENERATED_DIR/theme-meta.json"
-TERMINAL_JSON="$GENERATED_DIR/terminal.json"
-PALETTE_JSON="$GENERATED_DIR/palette.json"
-SCSS_FILE="$GENERATED_DIR/material_colors.scss"
+
 
 if [[ -f "$HOME/.config/inir/config.json" ]]; then
     SHELL_CONFIG_FILE="$HOME/.config/inir/config.json"
@@ -488,7 +485,9 @@ print(f"OSC=\"{osc_seq}\"")
 ' "$GENERATED_DIR" "$SHELL_CONFIG_FILE" "$NIRI_CONFIG_FILE" "$niri_config_py" 2>/dev/null || true)"
 
     # Parse Python output
+    # shellcheck disable=SC2034
     local ACCENT="blue" DARK=1 PRIMARY="" SECONDARY="" BG="" FG="" OSC=""
+
     if [[ -n "$py_out" ]]; then
         eval "$py_out" 2>/dev/null || true
     fi
