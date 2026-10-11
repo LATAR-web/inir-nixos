@@ -29,8 +29,7 @@
     hardware.brightnessControl = true;# DDC/CI monitor brightness
     niri = {
       enable = true;
-      autoDeployConfig = true;       # Auto-deploy Niri and Alacritty configs
-      defaultTerminal = "alacritty";
+      autoDeployConfig = true;       # Auto-deploy Niri modular configs
     };
     audio.enable = true;
     desktop = {

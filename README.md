@@ -1,45 +1,35 @@
 <div align="center">
+  <h1>❄️ iNiR NixOS</h1>
+  <p><b>Unified, modular NixOS flake and modules for iNiR Desktop Shell + Niri Compositor</b></p>
+  <p><i>Material You dynamic theming, snappy animations, and complete Flake support</i></p>
 
-# ❄️ iNiR on NixOS
+  <p>
+    <a href="https://github.com/LATAR-web/inir-nixos/actions"><img src="https://github.com/LATAR-web/inir-nixos/actions/workflows/ci.yml/badge.svg" alt="CI Status"></a>
+    <a href="https://github.com/LATAR-web/inir-nixos/releases"><img src="https://img.shields.io/github/v/release/LATAR-web/inir-nixos?color=7aa2f7&label=release" alt="Latest release"></a>
+    <a href="https://nixos.org"><img src="https://img.shields.io/badge/NixOS-unstable-5277C3.svg?logo=nixos&logoColor=white" alt="NixOS"></a>
+  </p>
 
-<p>
-  <b>English</b> |
-  <b><a href="README.es.md">Español</a></b>
-</p>
-
-[![NixOS](https://img.shields.io/badge/NixOS-unstable-5277C3?style=flat-square&logo=nixos&logoColor=white)](https://nixos.org)
-[![Niri](https://img.shields.io/badge/Niri-wayland-88C0D0?style=flat-square&logo=wayland&logoColor=white)](https://github.com/YaLTeR/niri)
-[![Flakes](https://img.shields.io/badge/Flakes-enabled-7EBAE4?style=flat-square)](https://nixos.wiki/wiki/Flakes)
-[![iNiR](https://img.shields.io/badge/iNiR-shell-orange?style=flat-square)](https://github.com/snowarch/iNiR)
-[![Material You](https://img.shields.io/badge/Theming-Material_You-green?style=flat-square)](https://github.com/snowarch/iNiR)
-
-<img width="1920" height="1080" alt="iNiR on NixOS" src="https://github.com/user-attachments/assets/56163c9d-20f7-417b-a4a9-c5e9ee86c26e" />
-
-### Reproducible modules to run [iNiR](https://github.com/snowarch/iNiR) on top of the Niri Wayland compositor on NixOS with Flakes.
-
+  [Documentación en Español](README.es.md) · [Kira Mascot](modules/mascot.nix) · [SDDM Theme](https://github.com/LATAR-web/inir-sddm-nixos)
 </div>
 
 ---
 
-## 📑 Table of Contents
+## 🌟 Highlights
 
-- [📦 Installation Guide](#-installation-guide)
-- [⌨️ Keyboard Shortcuts](#️-keyboard-shortcuts)
-- [🎨 Color Synchronization](#-color-synchronization-material-you)
-- [🔐 iNiR Shell SDDM (Optional)](#-inir-shell-sddm-optional)
-- [🐾 Kira Mascot (Testing Phase)](#-kira-mascot-optional-extra--testing-phase-)
-- [🗺️ Repository Structure](#️-repository-structure)
-- [🐛 Troubleshooting](#-troubleshooting)
+- 🧩 **100% Declarative:** Clean NixOS and Home Manager modules free of forced terminal dependencies.
+- 🎨 **Dynamic Material You Colors:** Automated palette sync across GTK/GNOME, Niri focus rings, and compatible terminal emulators (Kitty, Foot, Ghostty, WezTerm, Alacritty, and active PTS shells via standard OSC escape sequences).
+- ⚡ **Snappy Animations:** Original fast and fluid physics-based animations matching upstream iNiR.
+- 🖥️ **Terminal Freedom:** Install any terminal you prefer (`kitty`, `foot`, `ghostty`, etc.); `inir terminal` will automatically launch it.
+- 🔄 **Continuous Synchronization:** Tracks `LATAR-web/inir` and synchronizes every 2 hours via GitHub Actions and on `repository_dispatch`.
+- 🛡️ **Idempotent Adaptations:** Regex-based build adaptations for NixOS without brittle context patches.
 
 ---
 
-## 📦 Installation Guide
- 
-You can easily integrate iNiR into your own NixOS configuration, either using **Nix Flakes** (recommended) or via **Local modules**.
+## 🚀 Getting Started
 
-### Option A: Using Flakes (Recommended)
+### Using Flakes (Recommended)
 
-In your own `/etc/nixos/flake.nix`:
+In `/etc/nixos/flake.nix`:
 
 ```nix
 {
@@ -65,78 +55,61 @@ In your own `/etc/nixos/flake.nix`:
 }
 ```
 
-In your `/etc/nixos/configuration.nix`:
+In `/etc/nixos/configuration.nix`:
 
 ```nix
+{ pkgs, ... }:
 {
-  imports = [
-    ./hardware-configuration.nix
-  ];
-
-  # Enable iNiR and declarative settings
   programs.inir = {
     enable = true;
-    colorSync.enable = true;
-    screenRecording.enable = true;
-    hardware.brightnessControl = true;
+    colorSync.enable = true;         # Real-time Material You palette sync
+    screenRecording.enable = true;   # Hardware-accelerated record-screen with audio
+    hardware.brightnessControl = true; # DDC/CI monitor brightness control
     niri = {
       enable = true;
-      autoDeployConfig = true; # Automatically seeds ~/.config/niri and ~/.config/alacritty
-      defaultTerminal = "alacritty";
+      autoDeployConfig = true;       # Auto-deploy ~/.config/niri/config.d
     };
     audio.enable = true;
     desktop = {
       enable = true;
-      # display manager: "gdm" (default), "greetd" (VM without 3D), or
-      # "sddm" (optional iNiR Shell login theme — see SDDM section below)
-      displayManager = "gdm";
+      displayManager = "gdm";        # "gdm", "greetd", or "sddm"
     };
   };
 
+  # Choose and install your preferred terminal emulator:
+  environment.systemPackages = with pkgs; [
+    kitty # or ghostty, foot, wezterm, etc.
+  ];
+
   nixpkgs.config.allowUnfree = true;
-  users.users.<your_user>.extraGroups = [ "wheel" "networkmanager" "video" "i2c" ];
+  users.users.<your_username>.extraGroups = [ "wheel" "networkmanager" "video" "i2c" ];
 }
 ```
 
-### Option B: Copying modules to `/etc/nixos` (Manual without remote Flake)
-
-```bash
-sudo cp -a modules/ /etc/nixos/modules/
-
-# If /etc/nixos is tracked with git:
-sudo git -C /etc/nixos add -A modules/
-```
-
-And in your `/etc/nixos/configuration.nix` add `imports = [ ./modules ];`.
-
 ---
 
-### Final Step: Rebuild and deploy dotfiles
+### Deployment
 
-1. **Rebuild the system**:
+1. **Rebuild your system**:
    ```bash
    sudo nixos-rebuild switch --flake /etc/nixos#<your_hostname>
    ```
 
-2. **Initialize user symlinks and dotfiles**:
+2. **Initialize user state and symlinks**:
    ```bash
    systemd-tmpfiles --user --create
    ```
-   *(This automatically creates the Python virtual environment at `~/.local/state/quickshell/.venv`, binaries in `~/.local/bin/`, Niri modular configs at `~/.config/niri/config.d/`, and Alacritty)*.
 
-3. **Start your session**:
-   Select the **Niri** session from your display manager. Run `bash scripts/verify-setup.sh` to verify all components are green (✅).
+3. **Log in**:
+   Select the **Niri** session on your display manager. Run `verify-setup` to verify all components are green (✅).
 
 ---
 
 ## ⌨️ Keyboard Shortcuts
 
-> [!NOTE]
-> The keyboard shortcuts are the **same as the original [iNiR](https://github.com/snowarch/iNiR) shortcuts on Arch** (and any other distro). `Mod` is **Super** on bare metal, or **Alt** when Niri runs nested inside another session.
-
 | Shortcut | Action |
 |---|---|
-| <kbd>Mod</kbd> + <kbd>Enter</kbd> / <kbd>T</kbd> | Terminal (Alacritty) |
+| <kbd>Mod</kbd> + <kbd>Enter</kbd> / <kbd>T</kbd> | Terminal (`inir terminal` launches your installed terminal) |
 | <kbd>Mod</kbd> + <kbd>Space</kbd> / <kbd>Tab</kbd> | Overview mode |
 | <kbd>Mod</kbd> + <kbd>G</kbd> | Desktop overlay (crosshair) |
 | <kbd>Mod</kbd> + <kbd>V</kbd> | Clipboard history |
@@ -146,8 +119,9 @@ And in your `/etc/nixos/configuration.nix` add `imports = [ ./modules ];`.
 | <kbd>Mod</kbd> + <kbd>Shift</kbd> + <kbd>X</kbd> | Region OCR (extract text) |
 | <kbd>Mod</kbd> + <kbd>Shift</kbd> + <kbd>A</kbd> | Region search (Google Lens) |
 | <kbd>Mod</kbd> + <kbd>Alt</kbd> + <kbd>R</kbd> / <kbd>S</kbd> | Record region / Stop recording |
+| <kbd>Mod</kbd> + <kbd>Alt</kbd> + <kbd>L</kbd> | Toggle light / dark mode (`inir colorMode set toggle`) |
 | <kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>T</kbd> | Wallpaper picker (Material You) |
-| <kbd>Mod</kbd> + <kbd>Shift</kbd> + <kbd>W</kbd> | Cycle panel family |
+| <kbd>Mod</kbd> + <kbd>Shift</kbd> + <kbd>W</kbd> | Cycle panel family (animated) |
 | <kbd>Super</kbd> + <kbd>E</kbd> | File manager (Nautilus) |
 | <kbd>Mod</kbd> + <kbd>B</kbd> / <kbd>Super</kbd> + <kbd>W</kbd> | Browser |
 | <kbd>Mod</kbd> + <kbd>Q</kbd> / <kbd>Shift</kbd> + <kbd>Q</kbd> | Close window / Session dialog |
@@ -156,132 +130,70 @@ And in your `/etc/nixos/configuration.nix` add `imports = [ ./modules ];`.
 
 ---
 
-## 🎨 Color Synchronization (Material You)
+## 💻 iNiR CLI Commands
 
-This is **fully automatic** — there is nothing to launch by hand after installing.
+### 🎨 Color & Themes
+```bash
+# Set or toggle color schemes on the fly
+inir colorMode set dark       # Dark mode
+inir colorMode set light      # Light mode
+inir colorMode set toggle     # Toggle between dark and light
 
-On activation, `systemd.user.tmpfiles` seeds `~/.config/matugen/` with iNiR's own
-templates (`config.toml`, `templates.json`, `templates/`) from the packaged runtime.
-That directory is what `switchwall.sh` passes to the generator as
-`--render-templates "$XDG_CONFIG_HOME/matugen"`; **without it the generator skips
-template rendering entirely** and GTK, the terminals and KDE never receive the palette.
+# Get current scheme information in JSON
+inir colorMode get
 
-A `niri-sync-colors.service` user unit watches
-`~/.local/state/quickshell/user/generated/` and re-applies the palette whenever the
-wallpaper changes. It is enabled by default and wired into `graphical-session.target`.
+# Screen color picker
+inir colorpicker
 
-When picking a wallpaper with <kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>T</kbd>, the Material You palette is extracted and applied to:
-- **Niri active focus ring** (`focus-ring` in `~/.config/niri/config.kdl`).
-- **Alacritty color theme** (`~/.config/alacritty/theme.toml`).
-- **GTK / GNOME accent** (`accent-color` in libadwaita).
-- **iNiR's own app templates** — GTK3/GTK4 CSS, terminals, KDE `color.txt`.
+# Inspect available theming targets
+inir theme list-targets
 
-<details>
-<summary>Manual re-sync (only if something looks stale)</summary>
+# Manually trigger theming for an external target
+inir theme apply <target>
 
-The daemon already reacts on its own; these are just the escape hatches:
+# Run or watch color sync daemon
+niri-sync-colors              # One-shot sync
+niri-sync-colors --watch      # Persistent watcher
+```
+
+### ⚡ Runtime & Diagnostics
+```bash
+inir run                      # Start the shell
+inir restart                  # Safely restart the shell
+inir status                   # Inspect status of components
+inir doctor                   # Diagnostic dependency and health check
+inir doctor --perf            # Media and graphics benchmark snapshot
+inir logs                     # Live runtime logs (-n 50, --full, --issues)
+inir settings                 # Toggle settings dialog
+inir terminal                 # Open your configured or installed terminal
+inir browser                  # Open default browser
+```
+
+### 🐾 Kira Companion Mascot
+```bash
+inir mascot poke              # Interactive companion reaction
+inir mascot romp              # Chaos / playtime mode
+inir mascot chase             # Start chase game
+inir mascot hideSeek          # Hide and seek game
+inir mascot hide              # Temporarily hide Kira
+```
+
+### 🛠️ System Tools
+```bash
+record-screen                 # Hardware-accelerated Wayland screen recorder with audio
+verify-setup                  # Automated diagnostic health check
+```
+
+---
+
+## 🔄 Upstream Synchronization
+
+To synchronize your installation with the latest updates from the port:
 
 ```bash
-systemctl --user restart niri-sync-colors   # restart the watcher
-niri-sync-colors                            # one-shot sync, no daemon
+nix flake lock --update-input inir-nixos /etc/nixos
+sudo nixos-rebuild switch --flake /etc/nixos#<your_hostname>
 ```
-
-Check what the service is doing:
-
-```bash
-systemctl --user status niri-sync-colors
-journalctl --user -u niri-sync-colors -f
-```
-
-**If the palette never changes**, work down this list:
-
-```bash
-# 1. Is the daemon actually alive?
-systemctl --user status niri-sync-colors
-# 2. Did the templates get deployed?
-ls ~/.config/matugen/templates.json
-# 3. Does the generator see the wallpaper?
-jq -r '.background.wallpaperPath' ~/.config/inir/config.json 2>/dev/null \
-  || jq -r '.background.wallpaperPath' ~/.config/illogical-impulse/config.json
-```
-
-The third one is the most common cause: the generator reads that path, so if the file
-was moved, renamed, or lost a non-ASCII character (`Imágenes` vs `Imagenes`),
-extraction fails silently and you keep the previous colors.
-</details>
-
-> [!TIP]
-> Set `programs.inir.colorSync.enable = false` to opt out. That also stops deploying
-> the matugen templates, so iNiR will render its shell without the app templates.
-
----
-
-## 🔐 iNiR Shell SDDM (Optional)
-
-> [!NOTE]
-> **Optional:** SDDM is only one of the supported display managers. You can keep using **GDM** or **greetd** and ignore this section entirely.
-
-If you prefer SDDM as the login screen, this flake enables it with:
-
-```nix
-programs.inir.desktop = {
-  enable = true;
-  displayManager = "sddm";
-};
-```
-
-The official **ii-pixel** login theme — with Material You colors, matching wallpaper and avatar sync — is an **optional extra** provided by the separate flake [`LATAR-web/inir-sddm-nixos`](https://github.com/LATAR-web/inir-sddm-nixos):
-
-```nix
-# Add the input:  inir-sddm = { url = "github:LATAR-web/inir-sddm-nixos"; };
-# Then enable it in your configuration.nix:
-services.inir-sddm.enable = true;
-```
-
-See the `inir-sddm-nixos` repo for full setup instructions.
-
----
-
-## 🐾 Kira Mascot (Optional Extra · Testing Phase 🧪)
-
-> [!NOTE]
-> **Testing / experimental phase:** The Kira mascot integration on NixOS is currently in an active **testing phase**. Visual widgets, companion behavior, and mini-games are being evaluated.
-
-iNiR includes **Kira**, an animated desktop mascot companion that peeks from screen edges, reacts to system events (music, volume, battery, updates), and offers mini-games and wallpaper widgets.
-
-To enable her in your `/etc/nixos/configuration.nix`:
-```nix
-programs.inir.mascot.enable = true;
-```
-
-After rebuilding (`sudo nixos-rebuild switch`), you can customize and interact with her:
-- **Graphical Settings:** <kbd>Mod</kbd> + <kbd>,</kbd> → **Mascota** (poses, size, visit frequency, and widgets).
-- **IPC Commands:** `inir mascot poke`, `inir mascot romp` (chaos mode), `inir mascot chase` (catch game), `inir mascot hideSeek` (hide and seek), or `inir mascot hide`.
-
----
-
-## 🗺️ Repository Structure
-
-| File / Folder | Purpose |
-|---|---|
-| `modules/` | NixOS modules: iNiR package, dependencies, fonts, audio, and patches |
-| `modules/mascot.nix` | Optional extra module: Kira mascot art pack and desktop companion integration |
-| `niri/config.kdl` | Niri compositor shortcuts, layout, and window rules |
-| `alacritty/alacritty.toml` | Terminal configuration with dynamic palette support |
-| `scripts/niri-sync-colors` | Background daemon/script for Material You color sync |
-| `scripts/record-screen` | Screen recorder script with audio capture |
-| `scripts/verify-setup.sh` | Sanity check and diagnostic verification script |
-
----
-
-## 🐛 Troubleshooting
-
-| Issue | Cause & Fix |
-|---|---|
-| `Unable to locate config-path helper` when running `inir run` | **1)** User symlinks not initialized: run `systemd-tmpfiles --user --create`.<br>**2)** A real directory shadows the runtime: run `rm -rf ~/.config/quickshell/inir && systemd-tmpfiles --user --create`. |
-| Niri doesn't show up in display manager (GDM) | GDM can hide Wayland sessions in VMs or NVIDIA setups. Switch to `programs.inir.desktop.displayManager = "greetd";` or clear `sudo rm -f /var/lib/AccountsService/users/*`. |
-| `allowUnfree` evaluation error | Add `nixpkgs.config.allowUnfree = true;` to your `configuration.nix`. |
-| Brightness control (DDC/CI) does not work | Ensure your user is in `video` and `i2c` groups, and `hardware.i2c.enable = true;`. |
 
 ---
 

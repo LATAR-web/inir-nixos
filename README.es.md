@@ -1,45 +1,35 @@
 <div align="center">
+  <h1>❄️ iNiR NixOS</h1>
+  <p><b>Integración unificada y modular de iNiR + Niri Compositor para NixOS</b></p>
+  <p><i>Shell de escritorio con Material You, animaciones fluidas y soporte completo para Nix Flakes</i></p>
 
-# ❄️ iNiR on NixOS
+  <p>
+    <a href="https://github.com/LATAR-web/inir-nixos/actions"><img src="https://github.com/LATAR-web/inir-nixos/actions/workflows/ci.yml/badge.svg" alt="CI Status"></a>
+    <a href="https://github.com/LATAR-web/inir-nixos/releases"><img src="https://img.shields.io/github/v/release/LATAR-web/inir-nixos?color=7aa2f7&label=versión" alt="Última versión"></a>
+    <a href="https://nixos.org"><img src="https://img.shields.io/badge/NixOS-unstable-5277C3.svg?logo=nixos&logoColor=white" alt="NixOS"></a>
+  </p>
 
-<p>
-  <b><a href="README.md">English</a></b> |
-  <b>Español</b>
-</p>
-
-[![NixOS](https://img.shields.io/badge/NixOS-unstable-5277C3?style=flat-square&logo=nixos&logoColor=white)](https://nixos.org)
-[![Niri](https://img.shields.io/badge/Niri-wayland-88C0D0?style=flat-square&logo=wayland&logoColor=white)](https://github.com/YaLTeR/niri)
-[![Flakes](https://img.shields.io/badge/Flakes-enabled-7EBAE4?style=flat-square)](https://nixos.wiki/wiki/Flakes)
-[![iNiR](https://img.shields.io/badge/iNiR-shell-orange?style=flat-square)](https://github.com/snowarch/iNiR)
-[![Material You](https://img.shields.io/badge/Theming-Material_You-green?style=flat-square)](https://github.com/snowarch/iNiR)
-
-<img width="1920" height="1080" alt="iNiR on NixOS" src="https://github.com/user-attachments/assets/56163c9d-20f7-417b-a4a9-c5e9ee86c26e" />
-
-### Módulos reproducibles para ejecutar [iNiR](https://github.com/snowarch/iNiR) sobre el compositor Wayland Niri en NixOS con Flakes.
-
+  [English Documentation](README.md) · [Mascota Kira](modules/mascot.nix) · [SDDM Theme](https://github.com/LATAR-web/inir-sddm-nixos)
 </div>
 
 ---
 
-## 📑 Tabla de Contenidos
+## 🌟 Características
 
-- [📦 Guía de Instalación](#-guía-de-instalación)
-- [⌨️ Atajos de Teclado](#️-atajos-de-teclado)
-- [🎨 Sincronización de Color](#-sincronización-de-color-material-you)
-- [🔐 SDDM de iNiR Shell (Opcional)](#-sddm-de-inir-shell-opcional)
-- [🐾 Mascota Kira (Fase de Pruebas)](#-mascota-kira-extra-opcional--fase-de-pruebas-)
-- [🗺️ Estructura del Repositorio](#️-estructura-del-repositorio)
-- [🐛 Solución de Problemas](#-solución-de-problemas)
+- 🧩 **100% Declarativo:** Módulos de NixOS y Home Manager limpios y libres de dependencias forzadas de terminales.
+- 🎨 **Paleta Material You Dinámica:** Sincronización automática de acentos GTK/GNOME, bordes de enfoque de Niri (`focus-ring`) y temas de terminales compatibles (Kitty, Foot, Ghostty, WezTerm, Alacritty y terminales activas vía secuencias de escape OSC).
+- ⚡ **Animaciones Snappy:** Configuración de animaciones físicas ágiles, rápidas y fluidas idénticas al iNiR original.
+- 🖥️ **Libertad de Terminal:** Sin dependencias fijas. Instala la terminal que prefieras (`kitty`, `foot`, `ghostty`, etc.) y el lanzador `inir terminal` la abrirá automáticamente.
+- 🔄 **Sincronización Rápida con Upstream:** Integrado directamente con `LATAR-web/inir` mediante Flakes y sincronizado automáticamente cada 2 horas vía GitHub Actions o con `nix flake update inir`.
+- 🛡️ **Parches Idempotentes:** Adaptación automática del runtime de Arch a NixOS mediante expresiones regulares sin parches frágiles.
 
 ---
 
-## 📦 Guía de Instalación
-
-Puedes integrar iNiR fácilmente en tu propia configuración manual de NixOS, ya sea utilizando **Nix Flakes** (recomendado) o mediante **Módulos locales**.
+## 🚀 Instalación y Uso
 
 ### Opción A: Usando Flakes (Recomendado)
 
-En tu propio `/etc/nixos/flake.nix`:
+En tu `/etc/nixos/flake.nix`:
 
 ```nix
 {
@@ -68,46 +58,34 @@ En tu propio `/etc/nixos/flake.nix`:
 En tu `/etc/nixos/configuration.nix`:
 
 ```nix
+{ pkgs, ... }:
 {
-  imports = [
-    ./hardware-configuration.nix
-  ];
-
-  # Habilitar iNiR y todas sus dependencias declarativas
+  # Habilitar iNiR y sus servicios integrados
   programs.inir = {
     enable = true;
-    colorSync.enable = true;
-    screenRecording.enable = true;
-    hardware.brightnessControl = true;
+    colorSync.enable = true;         # Sincronización de color Material You en vivo
+    screenRecording.enable = true;   # Grabador de pantalla record-screen con audio
+    hardware.brightnessControl = true; # Control de brillo DDC/CI para monitores externos
     niri = {
       enable = true;
-      autoDeployConfig = true; # Despliega automáticamente ~/.config/niri y ~/.config/alacritty
-      defaultTerminal = "alacritty";
+      autoDeployConfig = true;       # Despliega automáticamente ~/.config/niri/config.d
     };
     audio.enable = true;
     desktop = {
       enable = true;
-      # Gestor de pantalla: "gdm" (por defecto), "greetd" (VM sin 3D),
-      # o "sddm" (tema de login de iNiR Shell — opcional, ver sección SDDM abajo)
-      displayManager = "gdm";
+      displayManager = "gdm";        # "gdm", "greetd" o "sddm"
     };
   };
+
+  # Elige e instala tu emulador de terminal preferido:
+  environment.systemPackages = with pkgs; [
+    kitty  # o ghostty, foot, wezterm, etc.
+  ];
 
   nixpkgs.config.allowUnfree = true;
   users.users.<tu_usuario>.extraGroups = [ "wheel" "networkmanager" "video" "i2c" ];
 }
 ```
-
-### Opción B: Copiando los módulos a `/etc/nixos` (Manual sin Flake remoto)
-
-```bash
-sudo cp -a modules/ /etc/nixos/modules/
-
-# Si /etc/nixos está gestionado con git:
-sudo git -C /etc/nixos add -A modules/
-```
-
-Y en tu `/etc/nixos/configuration.nix` añade `imports = [ ./modules ];`.
 
 ---
 
@@ -118,94 +96,125 @@ Y en tu `/etc/nixos/configuration.nix` añade `imports = [ ./modules ];`.
    sudo nixos-rebuild switch --flake /etc/nixos#<tu_hostname>
    ```
 
-2. **Inicializa los enlaces de usuario y dotfiles**:
+2. **Inicializa los enlaces de usuario**:
    ```bash
    systemd-tmpfiles --user --create
    ```
-   *(Esto crea automáticamente el entorno virtual de Python en `~/.local/state/quickshell/.venv`, los binarios en `~/.local/bin/`, la configuración modular de Niri en `~/.config/niri/config.d/` y Alacritty)*.
 
 3. **Inicia sesión**:
-   Selecciona la sesión **Niri** en tu pantalla de login. Ejecuta `bash scripts/verify-setup.sh` para comprobar que todos los servicios estén en verde (✅).
+   Selecciona la sesión **Niri** en tu pantalla de login. Ejecuta `verify-setup` para comprobar que todos los servicios estén en verde (✅).
 
 ---
 
 ## ⌨️ Atajos de Teclado
 
 > [!NOTE]
-> Los atajos de teclado son **los mismos que los atajos originales de [iNiR](https://github.com/snowarch/iNiR) en Arch** (y cualquier otra distro). `Mod` es **Super** en hardware real, o **Alt** cuando Niri se ejecuta anidado dentro de otra sesión.
+> `Mod` corresponde a la tecla **Super** en hardware real, o **Alt** si ejecutas Niri dentro de otra sesión.
 
 | Atajo | Acción |
 |---|---|
-| <kbd>Mod</kbd> + <kbd>Enter</kbd> / <kbd>T</kbd> | Terminal (Alacritty) |
+| <kbd>Mod</kbd> + <kbd>Enter</kbd> / <kbd>T</kbd> | Terminal (`inir terminal` detecta la que tengas instalada) |
 | <kbd>Mod</kbd> + <kbd>Espacio</kbd> / <kbd>Tab</kbd> | Vista general de ventanas (Overview) |
 | <kbd>Mod</kbd> + <kbd>G</kbd> | Superposición de escritorio (crosshair) |
 | <kbd>Mod</kbd> + <kbd>V</kbd> | Historial del portapapeles |
-| <kbd>Mod</kbd> + <kbd>,</kbd> | Ajustes de iNiR |
+| <kbd>Mod</kbd> + <kbd>,</kbd> | Ajustes gráficos de iNiR |
 | <kbd>Mod</kbd> + <kbd>/</kbd> | Cheatsheet de atajos |
 | <kbd>Mod</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd> | Menú de recorte de región |
-| <kbd>Mod</kbd> + <kbd>Shift</kbd> + <kbd>X</kbd> | OCR de región (copia texto de imagen) |
-| <kbd>Mod</kbd> + <kbd>Shift</kbd> + <kbd>A</kbd> | Búsqueda de región (Google Lens) |
+| <kbd>Mod</kbd> + <kbd>Shift</kbd> + <kbd>X</kbd> | OCR de región (copiar texto de imagen) |
+| <kbd>Mod</kbd> + <kbd>Shift</kbd> + <kbd>A</kbd> | Búsqueda visual de región (Google Lens) |
 | <kbd>Mod</kbd> + <kbd>Alt</kbd> + <kbd>R</kbd> / <kbd>S</kbd> | Grabar región / Detener grabación |
+| <kbd>Mod</kbd> + <kbd>Alt</kbd> + <kbd>L</kbd> | Alternar modo claro / oscuro (`inir colorMode set toggle`) |
 | <kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>T</kbd> | Selector de fondo de pantalla (Material You) |
-| <kbd>Mod</kbd> + <kbd>Shift</kbd> + <kbd>W</kbd> | Cambiar familia de panel |
+| <kbd>Mod</kbd> + <kbd>Shift</kbd> + <kbd>W</kbd> | Cambiar familia de panel (animado) |
 | <kbd>Super</kbd> + <kbd>E</kbd> | Gestor de archivos (Nautilus) |
-| <kbd>Mod</kbd> + <kbd>B</kbd> / <kbd>Super</kbd> + <kbd>W</kbd> | Navegador |
+| <kbd>Mod</kbd> + <kbd>B</kbd> / <kbd>Super</kbd> + <kbd>W</kbd> | Navegador web |
 | <kbd>Mod</kbd> + <kbd>Q</kbd> / <kbd>Shift</kbd> + <kbd>Q</kbd> | Cerrar ventana / Diálogo de sesión |
 | <kbd>Mod</kbd> + <kbd>Shift</kbd> + <kbd>E</kbd> | Salir de la sesión |
-| <kbd>Mod</kbd> + <kbd>1</kbd>–<kbd>9</kbd> | Ir a espacio de trabajo 1–9 |
+| <kbd>Mod</kbd> + <kbd>1</kbd>–<kbd>9</kbd> | Ir al espacio de trabajo 1–9 |
 
 ---
 
-## 🎨 Sincronización de Color (Material You)
+## 💻 Comandos de Consola (CLI) de iNiR
 
-Al seleccionar un nuevo fondo con <kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>T</kbd>, `niri-sync-colors` extrae la paleta Material You automáticamente y actualiza en caliente:
-- **Borde activo de Niri** (`focus-ring` en `~/.config/niri/config.kdl`).
-- **Paleta de Alacritty** (`~/.config/alacritty/theme.toml`).
-- **Acento GTK / GNOME** (`accent-color` de libadwaita).
+iNiR incluye potentes comandos para interactuar con el entorno y sus servicios:
+
+### 🎨 Color y Temas
+```bash
+# Cambiar tema claro/oscuro de forma instantánea
+inir colorMode set dark       # Modo oscuro
+inir colorMode set light      # Modo claro
+inir colorMode set toggle     # Alternar entre claro y oscuro
+
+# Consultar el estado y esquema de colores activo en JSON
+inir colorMode get
+
+# Selector de color interactivo en pantalla
+inir colorpicker
+
+# Ver objetivos de tematización externa disponibles
+inir theme list-targets
+
+# Aplicar temas a aplicaciones externas manualmente
+inir theme apply <target>
+
+# Forzar sincronización de paleta con Niri y terminales
+niri-sync-colors              # Ejecución única
+niri-sync-colors --watch      # Demonio con recarga en vivo
+```
+
+### ⚡ Control del Shell y Diagnóstico
+```bash
+inir run                      # Iniciar el shell
+inir restart                  # Reiniciar el shell de forma limpia
+inir status                   # Ver estado de los servicios y componentes
+inir doctor                   # Verificación completa de dependencias y salud
+inir doctor --perf            # Análisis de rendimiento gráfico y multimedia
+inir logs                     # Ver logs en vivo (-n 50, --full, --issues)
+inir settings                 # Abrir ventana de configuración
+inir terminal                 # Abrir terminal predeterminada
+inir browser                  # Abrir navegador predeterminado
+```
+
+### 🐾 Mascota Kira
+```bash
+inir mascot poke              # Tocar a Kira (reacción interactiva)
+inir mascot romp              # Activar modo travieso / caos
+inir mascot chase             # Iniciar minijuego de persecución
+inir mascot hideSeek          # Jugar al escondite
+inir mascot hide              # Ocultar mascota temporalmente
+```
+
+### 🛠️ Herramientas de Sistema
+```bash
+record-screen                 # Iniciar grabación interactiva de pantalla con audio
+verify-setup                  # Script de diagnóstico y verificación completa
+```
 
 ---
 
-## 🔐 SDDM de iNiR Shell (Opcional)
+## 🎨 Sincronización de Color y Terminales
 
-> [!NOTE]
-> **Opcional:** SDDM es solo uno de los gestores de pantalla soportados. Puedes seguir usando **GDM** o **greetd** e ignorar esta sección por completo.
-
-Si prefieres usar **SDDM** como pantalla de login, este flake lo habilita con:
-
-```nix
-programs.inir.desktop = {
-  enable = true;
-  displayManager = "sddm";
-};
-```
-
-El tema de login oficial **ii-pixel** — con colores Material You, sincronización del fondo de pantalla y del avatar del usuario — es un **extra opcional** que se proporciona desde el flake independiente [`LATAR-web/inir-sddm-nixos`](https://github.com/LATAR-web/inir-sddm-nixos):
-
-```nix
-# Añade el input:  inir-sddm = { url = "github:LATAR-web/inir-sddm-nixos"; };
-# Luego actívalo en tu configuration.nix:
-services.inir-sddm.enable = true;
-```
-
-Consulta el repositorio `inir-sddm-nixos` para las instrucciones completas de instalación.
+El servicio `niri-sync-colors` vigila la generación de paletas Material You y actualiza automáticamente:
+1. **Borde de Niri:** `focus-ring.active-color` y `inactive-color` en Niri se actualizan al instante sin reiniciar ventanas.
+2. **Terminales Compatibles:** Genera e inyecta la paleta en **Kitty**, **Foot**, **Ghostty**, **WezTerm** y **Alacritty** si están instalados.
+3. **Terminales Activas:** Emite secuencias de escape OSC estándar a `/dev/pts/*` para que las ventanas de terminal ya abiertas cambien de color en tiempo real.
+4. **GTK / GNOME:** Aplica el `accent-color` más cercano y el `color-scheme` preferido en Libadwaita / GTK.
 
 ---
 
-## 🐾 Mascota Kira (Extra Opcional · Fase de Pruebas 🧪)
+## 🔄 Actualización y Sincronización con el Port
 
-> [!NOTE]
-> **Fase experimental / pruebas:** La integración de la mascota Kira en NixOS se encuentra actualmente en **fase de pruebas**. Su comportamiento, poses y minijuegos están en evaluación activa.
+Para traer las últimas mejoras del repositorio iNiR a tu NixOS:
 
-iNiR incluye a **Kira**, una mascota animada para tu escritorio que asoma por los bordes de la pantalla, reacciona a eventos (música, volumen, batería, actualizaciones) y ofrece minijuegos y widgets de fondo.
+```bash
+# Actualizar el input del flake en tu sistema
+nix flake lock --update-input inir-nixos /etc/nixos
 
-Para activarla en tu `/etc/nixos/configuration.nix`:
-```nix
-programs.inir.mascot.enable = true;
+# Y reconstruir:
+sudo nixos-rebuild switch --flake /etc/nixos#<tu_hostname>
 ```
 
-Tras reconstruir (`sudo nixos-rebuild switch`), puedes configurarla e interactuar con ella:
-- **Ajustes gráficos:** <kbd>Mod</kbd> + <kbd>,</kbd> → **Mascota** (poses, tamaño, frecuencia de visita y widgets).
-- **Comandos IPC:** `inir mascot poke`, `inir mascot romp` (modo caos), `inir mascot chase` (juego de atrapar), `inir mascot hideSeek` (escondite) o `inir mascot hide`.
+El repositorio `inir-nixos` está configurado para actualizarse automáticamente mediante un flujo de trabajo de GitHub Actions cada 2 horas o ante eventos `repository_dispatch`.
 
 ---
 
@@ -213,24 +222,14 @@ Tras reconstruir (`sudo nixos-rebuild switch`), puedes configurarla e interactua
 
 | Archivo / Carpeta | Propósito |
 |---|---|
-| `modules/` | Módulos NixOS: paquete iNiR, dependencias, fuentes, audio y parches |
-| `modules/mascot.nix` | Módulo extra: integración y paquete de arte de la mascota Kira |
-| `niri/config.kdl` | Configuración de atajos, ventanas y focus-ring de Niri |
-| `alacritty/alacritty.toml` | Configuración de terminal con soporte de temas dinámicos |
-| `scripts/niri-sync-colors` | Demonio/script de sincronización de colores Material You |
-| `scripts/record-screen` | Grabador de pantalla con audio |
-| `scripts/verify-setup.sh` | Script de diagnóstico y verificación del entorno |
-
----
-
-## 🐛 Solución de Problemas
-
-| Problema | Causa y Solución |
-|---|---|
-| `Unable to locate config-path helper` al correr `inir run` | **1)** No se inicializaron los enlaces de usuario: ejecuta `systemd-tmpfiles --user --create`.<br>**2)** Un directorio real tapa el runtime: ejecuta `rm -rf ~/.config/quickshell/inir && systemd-tmpfiles --user --create`. |
-| Niri no aparece en la pantalla de login (GDM) | GDM a veces oculta sesiones Wayland en VMs o NVIDIA. Cambia a `programs.inir.desktop.displayManager = "greetd";` en tu configuración o limpia `sudo rm -f /var/lib/AccountsService/users/*`. |
-| `allowUnfree` error al reconstruir | Añade `nixpkgs.config.allowUnfree = true;` en tu `configuration.nix`. |
-| Control de brillo no responde | Asegúrate de tener los grupos `video` e `i2c` en tu usuario y `hardware.i2c.enable = true;`. |
+| `modules/inir.nix` | Módulo principal de NixOS con integración Niri, QuickShell y servicios |
+| `modules/inir-deps.nix` | Paquetes y dependencias del sistema y librerías Qt6/KDE |
+| `modules/home-manager.nix` | Módulo unificado para usuarios de Home Manager |
+| `modules/mascot.nix` | Integración y paquete de recursos de la mascota Kira |
+| `niri/config.d/` | Configuración modular de Niri (atajos, reglas, animaciones snappy) |
+| `scripts/niri-sync-colors` | Demonio de sincronización de colores multi-terminal y Niri |
+| `scripts/record-screen` | Grabador de pantalla con audio integrado |
+| `scripts/verify-setup.sh` | Verificador de diagnóstico del sistema |
 
 ---
 

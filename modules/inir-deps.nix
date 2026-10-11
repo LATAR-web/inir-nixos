@@ -50,9 +50,7 @@ with pkgs; [
   kdePackages.kconfig
   kdePackages.kde-cli-tools
   kdePackages.qt6ct
-  qt6Packages.qt6ct
   qt6Packages.qtstyleplugin-kvantum
-  qt6Packages.qt6gtk2
   darkly
 
   # --- Wallpapers / color pipeline ---
@@ -105,7 +103,6 @@ with pkgs; [
   nerd-fonts.jetbrains-mono
   material-symbols          # the icon font used throughout iNiR's UI — do not remove
   papirus-icon-theme        # desktop icon theme
-  alacritty                 # terminal used by niri/config.kdl's Mod+Return bind — required for the shared config to work out of the box
   nautilus                  # default file manager bound to Mod+E in niri/config.kdl
 
   # ===========================================================================

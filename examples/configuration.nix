@@ -30,7 +30,7 @@
   programs.inir = {
     enable = true;
 
-    # Sincronización automática de colores Material You (Niri focus-ring, Alacritty, GTK)
+    # Sincronización automática de colores Material You (Niri focus-ring, terminales, GTK)
     colorSync.enable = true;
 
     # Herramienta de grabación de pantalla de alto rendimiento con audio
@@ -42,8 +42,7 @@
     # Compositor Wayland Niri con configuración modular lista para usar
     niri = {
       enable = true;
-      autoDeployConfig = true; # Despliega automáticamente ~/.config/niri y ~/.config/alacritty
-      defaultTerminal = "alacritty";
+      autoDeployConfig = true; # Despliega automáticamente ~/.config/niri/config.d
     };
 
     # Audio PipeWire + WirePlumber con integración pactl/playerctl

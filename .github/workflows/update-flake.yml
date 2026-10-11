@@ -1,9 +1,11 @@
-name: "Auto-Update Flake (Daily Sync)"
+name: "Auto-Update Flake (Sync inir)"
 
 on:
   schedule:
-    # Se ejecuta 4 veces al día (cada 6 horas, 30 min tras la sincronización upstream)
-    - cron: "30 */6 * * *"
+    # Sincronización continua cada 2 horas
+    - cron: "0 */2 * * *"
+  repository_dispatch:
+    types: [inir-updated, upstream-updated, trigger-update]
   workflow_dispatch: # Permite ejecutar la actualización manualmente desde GitHub
 
 permissions:
@@ -24,11 +26,11 @@ jobs:
         run: nix flake update inir --extra-experimental-features 'nix-command flakes'
 
       - name: Check flake after update
-        run: nix flake check --extra-experimental-features 'nix-command flakes'
+        run: nix flake check --no-build --extra-experimental-features 'nix-command flakes'
 
       - name: Commit and Push update
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git commit -am "chore(flake): update inir from upstream" || exit 0
+          git commit -am "chore(flake): sync inir update" || exit 0
           git push

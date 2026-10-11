@@ -59,7 +59,7 @@ in
     autoDeployConfig = lib.mkOption {
       type = lib.types.bool;
       default = true;
-      description = "Automatically deploy Niri modular configuration (~/.config/niri/config.d) and Alacritty theme.";
+      description = "Automatically deploy Niri modular configuration (~/.config/niri/config.d).";
     };
   };
 
@@ -69,7 +69,7 @@ in
       recordScreen
     ] ++ inirDeps;
 
-    # Deploy modular Niri and Alacritty configuration
+    # Deploy modular Niri configuration
     xdg.configFile = lib.mkIf cfg.autoDeployConfig {
       "niri/config.kdl".source = ../niri/config.kdl;
       "niri/config.d/10-input-and-cursor.kdl".source = ../niri/config.d/10-input-and-cursor.kdl;
@@ -81,7 +81,6 @@ in
       "niri/config.d/70-binds.kdl".source = ../niri/config.d/70-binds.kdl;
       "niri/config.d/80-layer-rules.kdl".source = ../niri/config.d/80-layer-rules.kdl;
       "niri/config.d/90-user-extra.kdl".source = ../niri/config.d/90-user-extra.kdl;
-      "alacritty/alacritty.toml".source = ../alacritty/alacritty.toml;
     };
 
     # Systemd user service for color synchronization

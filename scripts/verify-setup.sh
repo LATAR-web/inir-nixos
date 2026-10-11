@@ -45,10 +45,22 @@ check_command cliphist "cliphist"
 check_command wf-recorder "wf-recorder"
 check_command pactl "pactl (PulseAudio CLI)"
 check_command playerctl "playerctl (media key control)"
-check_command alacritty "alacritty (terminal emulator)"
 check_command nautilus "nautilus (file manager)"
 check_command rsync "rsync"
 check_command curl "curl"
+
+_found_term=""
+for _t in kitty foot ghostty alacritty wezterm konsole xterm; do
+    if command -v "$_t" >/dev/null 2>&1; then
+        _found_term="$_t"
+        break
+    fi
+done
+if [[ -n "$_found_term" ]]; then
+    ok "Terminal emulator detected ($_found_term)"
+else
+    warn "No terminal emulator found in PATH (install kitty, foot, ghostty, etc.)"
+fi
 
 if command -v pactl >/dev/null 2>&1; then
     _def_sink="$(pactl get-default-sink 2>/dev/null || true)"
@@ -109,12 +121,6 @@ if [[ -f "$HOME/.config/niri/config.kdl" ]]; then
     fi
 else
     fail "~/.config/niri/config.kdl missing"
-fi
-
-if [[ -f "$HOME/.config/alacritty/alacritty.toml" ]]; then
-    ok "alacritty.toml exists"
-else
-    info "~/.config/alacritty/alacritty.toml not found (using default)"
 fi
 
 if pgrep -f "wl-paste.*--watch" >/dev/null 2>&1; then

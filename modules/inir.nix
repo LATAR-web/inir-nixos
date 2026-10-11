@@ -128,7 +128,6 @@ let
       seed ${../niri/config.d/70-binds.kdl} "$HOME/.config/niri/config.d/70-binds.kdl"
       seed ${../niri/config.d/80-layer-rules.kdl} "$HOME/.config/niri/config.d/80-layer-rules.kdl"
       seed ${../niri/config.d/90-user-extra.kdl} "$HOME/.config/niri/config.d/90-user-extra.kdl"
-      seed ${../alacritty/alacritty.toml} "$HOME/.config/alacritty/alacritty.toml"
     '';
   };
 
@@ -161,7 +160,7 @@ in
       enable = lib.mkOption {
         type = lib.types.bool;
         default = true;
-        description = "Habilitar el servicio de sincronización automática de colores Material You con Niri, Alacritty y GTK.";
+        description = "Habilitar el servicio de sincronización automática de colores Material You con Niri, terminales compatibles y GTK.";
       };
     };
 
@@ -190,12 +189,7 @@ in
       autoDeployConfig = lib.mkOption {
         type = lib.types.bool;
         default = true;
-        description = "Desplegar automáticamente la configuración modular de Niri y Alacritty si no existen en el directorio del usuario.";
-      };
-      defaultTerminal = lib.mkOption {
-        type = lib.types.enum [ "alacritty" "kitty" "foot" ];
-        default = "alacritty";
-        description = "Terminal predeterminado a utilizar por el lanzador de Niri y iNiR.";
+        description = "Desplegar automáticamente la configuración modular de Niri si no existe en el directorio del usuario.";
       };
     };
   };
@@ -337,10 +331,9 @@ in
     ++ lib.optionals cfg.niri.autoDeployConfig [
       "d %h/.config/niri 0755 - - -"
       "d %h/.config/niri/config.d 0755 - - -"
-      "d %h/.config/alacritty 0755 - - -"
     ];
 
-    # La config de Niri y Alacritty NO se despliega con tmpfiles "C+": ese tipo copia
+    # La config de Niri NO se despliega con tmpfiles "C+": ese tipo copia
     # conservando el modo del store (444) y sobrescribe en cada arranque. Con eso niri
     # no podia guardar nada, el menu de ajustes de iRiS se perdia cada cambio (raton,
     # sensibilidad, atajos...) y el siguiente login lo revertia.
@@ -349,7 +342,7 @@ in
     # usuario es el dueño. Para actualizar la base hay que editar el fichero destino,
     # no este repositorio.
     systemd.user.services.niri-config-seed = lib.mkIf cfg.niri.autoDeployConfig {
-      description = "Seed iNiR's niri/alacritty config once; the user owns it afterwards";
+      description = "Seed iNiR's niri config once; the user owns it afterwards";
       before = [ "niri.service" ];
       wantedBy = [ "default.target" ];
       unitConfig.DefaultDependencies = false;

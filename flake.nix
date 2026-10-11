@@ -4,9 +4,7 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
 
-    # Upstream straight from snowarch: every release is picked up by
-    # `nix flake update`. The NixOS adaptations live in this repo (nix/nixos-postpatch.py),
-    # not in a hand-patched fork, so they are versioned and reviewable here.
+    # Upstream iNiR repository. Updated via `nix flake update inir`
     inir = {
       url = "github:snowarch/iNiR";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -109,7 +107,7 @@
             '';
 
           niriSyncColors = shellScript "niri-sync-colors"
-            "Dynamic Material You palette sync daemon for Niri focus rings, Alacritty, and GTK"
+            "Dynamic Material You palette sync daemon for Niri focus rings, terminals, and GTK"
             ./scripts/niri-sync-colors
             [
               pkgs.bash
@@ -138,7 +136,12 @@
 
           verifySetup = shellScript "verify-setup"
             "Automated diagnostic sanity-checker for iNiR, Niri, and NixOS configuration"
-            ./scripts/verify-setup.sh;
+            ./scripts/verify-setup.sh
+            [
+              pkgs.bash
+              pkgs.coreutils
+              pkgs.systemd
+            ];
 
           inirDepsEnv = pkgs.buildEnv {
             name = "inir-deps";
