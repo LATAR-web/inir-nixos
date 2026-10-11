@@ -12,6 +12,7 @@ with pkgs; [
   # --- Core shell / compositor glue ---
   git                      # version control and flake management
   curl                     # downloads and API requests (tesseract models, OCR, weather)
+  go                       # builds inir-washi (scripts/colors/washi): sin toolchain la paleta de iRiS queda atorada en el fallback
   rsync                    # sync operations for shell themes, backups and presets
   glib                     # provides `gsettings` for GNOME/GTK desktop theme sync
   util-linux               # provides `flock`, used by niri-sync-colors watcher
