@@ -186,12 +186,14 @@ for k, v in base_palette.items():
     if k not in ansi:
         ansi[k] = v
 
-# 1. Update Niri focus-ring colors
+# 1. Update Niri focus-ring and border colors
 niri_updated = False
 if niri_config_py and os.path.isfile(niri_config_py) and os.access(niri_config_py, os.R_OK):
     ret1 = os.system(f"{sys.executable} \"{niri_config_py}\" set layout focus-ring.active-color \"{primary}\" >/dev/null 2>&1")
     ret2 = os.system(f"{sys.executable} \"{niri_config_py}\" set layout focus-ring.inactive-color \"{secondary}\" >/dev/null 2>&1")
-    if ret1 == 0 and ret2 == 0:
+    ret3 = os.system(f"{sys.executable} \"{niri_config_py}\" set layout border.active-color \"{primary}\" >/dev/null 2>&1")
+    ret4 = os.system(f"{sys.executable} \"{niri_config_py}\" set layout border.inactive-color \"{secondary}\" >/dev/null 2>&1")
+    if ret1 == 0 and ret2 == 0 and ret3 == 0 and ret4 == 0:
         niri_updated = True
 
 if not niri_updated:
@@ -514,7 +516,7 @@ print(f"OSC=\"{osc_seq}\"")
 
     # Trigger live reload of Niri configuration for instant visual feedback
     if command -v niri >/dev/null 2>&1; then
-        niri msg action reload-config 2>/dev/null || true
+        niri msg action load-config-file 2>/dev/null || true
     fi
 
     # Synchronize GNOME / GTK accent color and color scheme if session bus is active
