@@ -322,11 +322,183 @@ def patch_root_qml():
     return changed
 
 
+def patch_iris_morph_surface(text):
+    """Make iris morph surface animations fluid: reduce warmup delay, improve settle dynamics and fade."""
+    text, _ = apply(
+        text,
+        "modules/iris/components/IrisMorphSurface.qml: adaptive content fade on settle",
+        re.escape("    property real contentFadeStart: IrisStyle.contentRise\n    property real contentFadeSpan: IrisStyle.contentSpan"),
+        "    property real contentFadeStart: root.settles ? 0.0 : IrisStyle.contentRise\n    property real contentFadeSpan: root.settles ? 0.6 : IrisStyle.contentSpan",
+        already=r"contentFadeStart: root\.settles",
+        required=False,
+    )
+
+    text, _ = apply(
+        text,
+        "modules/iris/components/IrisMorphSurface.qml: settleShare 0.92 and settleCut 0.04",
+        re.escape("    readonly property real settleShare: 0.95\n    readonly property real settleCut: 0.4"),
+        "    readonly property real settleShare: 0.92\n    readonly property real settleCut: 0.04",
+        already=r"settleShare: 0\.92",
+        required=False,
+    )
+
+    text, _ = apply(
+        text,
+        "modules/iris/components/IrisMorphSurface.qml: reduce warmup interval from 90ms to 16ms",
+        re.escape("    Timer { interval: 90; running: root.armed && !root.launched; onTriggered: root.launched = true }"),
+        "    Timer { interval: 16; running: root.armed && !root.launched; onTriggered: root.launched = true }",
+        already=r"interval: 16",
+        required=False,
+    )
+
+    text, _ = apply(
+        text,
+        "modules/iris/components/IrisMorphSurface.qml: warmup arm launch on next tick",
+        re.escape("            root.launchFrames = 0\n        }\n        root.armed = true"),
+        "            root.launchFrames = 0\n            Qt.callLater(() => { if (root.armed && !root.launched) root.launched = true })\n        }\n        root.armed = true",
+        already=r"root\.launched = true \}\)\n        \}\n        root\.armed = true",
+        required=False,
+    )
+
+    text, _ = apply(
+        text,
+        "modules/iris/components/IrisMorphSurface.qml: drops exclude settles",
+        re.escape("    readonly property bool drops: IrisStyle.revealDrops && !root.contentTravels\n"),
+        "    readonly property bool drops: IrisStyle.revealDrops && !root.contentTravels && !root.settles\n",
+        already=r"drops: IrisStyle\.revealDrops && !root\.contentTravels && !root\.settles",
+        required=False,
+    )
+    return text
+
+
+def patch_iris_palette(text):
+    """Ensure IrisPalette opens smoothly and without clipboard mode lag or height jumps."""
+    text, _ = apply(
+        text,
+        "modules/iris/palette/IrisPalette.qml: immediate prefix detection for clipboard and action modes",
+        re.escape("    readonly property bool browsing: root.settled.length === 0"),
+        "    readonly property bool browsing: (LauncherSearch.query.length === 0)",
+        already=r"readonly property bool browsing: \(LauncherSearch\.query\.length === 0\)",
+        required=False,
+    )
+
+    text, _ = apply(
+        text,
+        "modules/iris/palette/IrisPalette.qml: immediate clipboardMode on query prefix",
+        re.escape("    readonly property bool clipboardMode: root.settled.startsWith(root.clipboardPrefix)"),
+        "    readonly property bool clipboardMode: (root.settled.length > 0 ? root.settled : LauncherSearch.query).startsWith(root.clipboardPrefix)",
+        already=r"readonly property bool clipboardMode: \(root\.settled\.length > 0",
+        required=False,
+    )
+
+    text, _ = apply(
+        text,
+        "modules/iris/palette/IrisPalette.qml: immediate actionMode on query prefix",
+        re.escape("    readonly property bool actionMode: root.settled.startsWith(root.actionPrefix)"),
+        "    readonly property bool actionMode: (root.settled.length > 0 ? root.settled : LauncherSearch.query).startsWith(root.actionPrefix)",
+        already=r"readonly property bool actionMode: \(root\.settled\.length > 0",
+        required=False,
+    )
+
+    text, _ = apply(
+        text,
+        "modules/iris/palette/IrisPalette.qml: smoother shadow opacity and settles respects fromIsland",
+        re.escape("                opacity: IrisStyle.shadowAt(surface.progress)\n            }\n            IrisMorphSurface {\n                id: surface\n                compositorBlurred: true\n                open: root.here && GlobalStates.searchOpen\n                settles: true"),
+        "                opacity: Math.pow(Math.max(0, Math.min(1, surface.progress)), 1.8)\n            }\n            IrisMorphSurface {\n                id: surface\n                compositorBlurred: true\n                open: root.here && GlobalStates.searchOpen\n                settles: !root.fromIsland",
+        already=r"settles: !root\.fromIsland",
+        required=False,
+    )
+
+    text, _ = apply(
+        text,
+        "modules/iris/palette/IrisPalette.qml: animate height whenever open",
+        re.escape("                Behavior on height {\n                    enabled: surface.settled\n                    NumberAnimation"),
+        "                Behavior on height {\n                    enabled: surface.open\n                    NumberAnimation",
+        already=r"enabled: surface\.open\n                    NumberAnimation",
+        required=False,
+    )
+    return text
+
+
+def patch_launcher_search(text):
+    """Instantly settle mode prefixes in LauncherSearch without waiting for 80ms debounce."""
+    original_on_query = (
+        '    onQueryChanged: {\n'
+        '        // Immediate update for empty query (instant clear)\n'
+        '        if (query === "") {\n'
+        '            _debouncedQuery = ""\n'
+        '            debounceTimer.stop()\n'
+        '        } else {\n'
+        '            debounceTimer.restart()\n'
+        '        }\n'
+        '    }'
+    )
+    replacement_on_query = (
+        '    onQueryChanged: {\n'
+        '        // Immediate update for empty query or single prefix char (instant mode switch)\n'
+        '        const prefixes = [\n'
+        '            Config.options?.search?.prefix?.action ?? "/",\n'
+        '            Config.options?.search?.prefix?.app ?? ">",\n'
+        '            Config.options?.search?.prefix?.clipboard ?? ";",\n'
+        '            Config.options?.search?.prefix?.emojis ?? ":",\n'
+        '            Config.options?.search?.prefix?.math ?? "=",\n'
+        '            Config.options?.search?.prefix?.shellCommand ?? "$",\n'
+        '            Config.options?.search?.prefix?.webSearch ?? "?",\n'
+        '        ]\n'
+        '        if (query === "" || (query.length === 1 && prefixes.includes(query))) {\n'
+        '            _debouncedQuery = query\n'
+        '            debounceTimer.stop()\n'
+        '        } else {\n'
+        '            debounceTimer.restart()\n'
+        '        }\n'
+        '    }'
+    )
+    text, _ = apply(
+        text,
+        "services/deferred/LauncherSearch.qml: instant prefix debounce handling",
+        re.escape(original_on_query),
+        replacement_on_query,
+        already=r"// Immediate update for empty query or single prefix char",
+        required=False,
+    )
+
+    original_ensure_prefix = (
+        '        if (prefixes.some(p => root.query.startsWith(p))) {\n'
+        '            root.query = prefix + root.query.slice(1)\n'
+        '        } else {\n'
+        '            root.query = prefix + root.query\n'
+        '        }\n'
+        '    }'
+    )
+    replacement_ensure_prefix = (
+        '        if (prefixes.some(p => root.query.startsWith(p))) {\n'
+        '            root.query = prefix + root.query.slice(1)\n'
+        '        } else {\n'
+        '            root.query = prefix + root.query\n'
+        '        }\n'
+        '        root._debouncedQuery = root.query\n'
+        '        debounceTimer.stop()\n'
+        '    }'
+    )
+    text, _ = apply(
+        text,
+        "services/deferred/LauncherSearch.qml: ensurePrefix settles debounced query immediately",
+        re.escape(original_ensure_prefix),
+        replacement_ensure_prefix,
+        already=r"root\._debouncedQuery = root\.query\n        debounceTimer\.stop\(\)\n    \}",
+        required=False,
+    )
+    return text
+
+
 PATCHES = {
     "services/IconThemeService.qml": patch_icon_theme,
     "shell.qml": patch_family_transition,
     "scripts/inir": patch_launcher,
     "scripts/videos/record.sh": patch_record_script,
+    "modules/iris/components/IrisMorphSurface.qml": patch_iris_morph_surface,
+    "modules/iris/palette/IrisPalette.qml": patch_iris_palette,
+    "services/deferred/LauncherSearch.qml": patch_launcher_search,
 }
 
 
