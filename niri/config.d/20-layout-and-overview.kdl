@@ -35,6 +35,7 @@ layout {
     // ── Focus ring ──────────────────────────────────────────────────────────
     // Dynamic focus ring colors are managed live by niri-sync-colors from Material You
     focus-ring {
+        off
         width 1
         active-color "#7aa2f7"
         inactive-color "#565f89"
