@@ -138,14 +138,20 @@ in
     familyTransitionAnimation = {
       enable = lib.mkOption {
         type = lib.types.bool;
-        default = false;
+        # Animada por defecto: el ciclo Super+Shift+W debe verse, no parpadear.
+        # El riesgo aceptado es un segfault ocasional de Qt 6.11 al desmontar
+        # layer-shell; inir.service tiene Restart=on-failure, así que cuesta un
+        # reinicio del shell y ningún dato. Ponlo en false para volver al
+        # cambio de familia con reinicio (sin animación).
+        default = true;
         description = ''
-          Animar el cambio de familia de paneles en Qt 6.11, accepting el riesgo de
-          segfault. Upstream desactiva la transicion en Qt 6.11 porque el desmontaje de
-          layer-shell puedetumbar el shell, y en su lugar reinicia el proceso: la familia
-          cambia de golpe, sin animacion. Activarlo ejecuta la transicion animada y
-          asume ese riesgo. Si el shell se cae, systemd lo reinicia solo y no se pierde
-          nada; mientras Qt no llegue a 6.12 no hay forma de tener la animacion sin
+          Animar el cambio de familia de paneles en Qt 6.11, aceptando el riesgo de
+          segfault. Upstream desactiva la transición en Qt 6.11 porque el desmontaje de
+          layer-shell puede tumbar el shell, y en su lugar reinicia el proceso: la familia
+          cambia de golpe, sin animación. Activado por defecto aquí para que el atajo del
+          ciclo de familias se vea animado; con false vuelve el comportamiento upstream
+          (reinicio, sin animación). Si el shell se cae, systemd lo reinicia solo y no se
+          pierde nada; mientras Qt no llegue a 6.12 no hay forma de tener la animación sin
           este riesgo.
         '';
       };
