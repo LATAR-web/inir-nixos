@@ -54,7 +54,7 @@ Nixpkgs exige un formato de commit específico: `<nombre-paquete>: init at <vers
 
 ```bash
 git add pkgs/by-name/in/inir/package.nix
-git commit -m "inir: init at 2.32.0"
+git commit -m "inir: init at 2.33.0"
 ```
 
 ---

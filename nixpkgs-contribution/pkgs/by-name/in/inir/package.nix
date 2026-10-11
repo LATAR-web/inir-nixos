@@ -117,7 +117,7 @@ let
 in
 stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "inir";
-  version = "2.32.0";
+  version = "2.33.0";
 
   strictDeps = true;
   __structuredAttrs = true;
@@ -125,8 +125,8 @@ stdenvNoCC.mkDerivation (finalAttrs: {
   src = fetchFromGitHub {
     owner = "LATAR-web";
     repo = "inir";
-    rev = "dc8195889770b8303d6d6dfc0bc5172075137f6c";
-    hash = "sha256-H6CEIk26ccCN3/QpC4/YvTg3+kllKlF/Qo+C9y9NQZs=";
+    rev = "ca4a426df848e9c19d2b33a7c3358c3c93b6cbdd";
+    hash = "sha256-P8m/LrO3QFn/yzXOJrSo0npGKa0wnNxd3FaWLZvW4lk=";
   };
 
   nativeBuildInputs = [
