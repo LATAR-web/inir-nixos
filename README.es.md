@@ -16,12 +16,12 @@
 
 ## Características
 
-- **100% Declarativo:** Módulos de NixOS y Home Manager limpios y libres de dependencias forzadas de terminales.
-- **Paleta Material You Dinámica:** Sincronización automática de acentos GTK/GNOME, bordes de enfoque de Niri (`focus-ring`) y temas de terminales compatibles (Kitty, Foot, Ghostty, WezTerm, Alacritty y terminales activas vía secuencias de escape OSC).
+- **100% Declarativo:** Configuración completamente declarativa y limpia mediante módulos de NixOS y Home Manager.
+- **Paleta Material You Dinámica:** Sistema de color dinámico Material You integrado nativamente con el shell de escritorio.
 - **Animaciones Snappy:** Configuración de animaciones físicas ágiles, rápidas y fluidas idénticas al iNiR original.
-- **Libertad de Terminal:** Sin dependencias fijas. Instala la terminal que prefieras (`kitty`, `foot`, `ghostty`, etc.) y el lanzador `inir terminal` la abrirá automáticamente.
-- **Sincronización Rápida con Upstream:** Integrado directamente con `LATAR-web/inir` mediante Flakes y sincronizado automáticamente cada 2 horas vía GitHub Actions o con `nix flake update inir`.
+- **Sincronización Rápida con Upstream:** Integrado directamente con el repositorio de iNiR mediante Flakes y sincronizado automáticamente cada 2 horas vía GitHub Actions.
 - **Parches Idempotentes:** Adaptación automática del runtime de Arch a NixOS mediante expresiones regulares sin parches frágiles.
+
 
 ---
 

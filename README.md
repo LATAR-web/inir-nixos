@@ -16,12 +16,12 @@
 
 ## Highlights
 
-- **100% Declarative:** Clean NixOS and Home Manager modules free of forced terminal dependencies.
-- **Dynamic Material You Colors:** Automated palette sync across GTK/GNOME, Niri focus rings, and compatible terminal emulators (Kitty, Foot, Ghostty, WezTerm, Alacritty, and active PTS shells via standard OSC escape sequences).
+- **100% Declarative:** Clean, fully declarative configuration via NixOS and Home Manager modules.
+- **Dynamic Material You Theming:** Native Material You color system integrated with the desktop shell.
 - **Snappy Animations:** Original fast and fluid physics-based animations matching upstream iNiR.
-- **Terminal Freedom:** Install any terminal you prefer (`kitty`, `foot`, `ghostty`, etc.); `inir terminal` will automatically launch it.
-- **Continuous Synchronization:** Tracks `LATAR-web/inir` and synchronizes every 2 hours via GitHub Actions and on `repository_dispatch`.
+- **Continuous Synchronization:** Tracks upstream iNiR and synchronizes every 2 hours via GitHub Actions and on `repository_dispatch`.
 - **Idempotent Adaptations:** Regex-based build adaptations for NixOS without brittle context patches.
+
 
 ---
 
