@@ -1,5 +1,5 @@
 <div align="center">
-  <h1>❄️ iNiR NixOS</h1>
+  <h1>iNiR NixOS</h1>
   <p><b>Integración unificada y modular de iNiR + Niri Compositor para NixOS</b></p>
   <p><i>Shell de escritorio con Material You, animaciones fluidas y soporte completo para Nix Flakes</i></p>
 
@@ -14,18 +14,18 @@
 
 ---
 
-## 🌟 Características
+## Características
 
-- 🧩 **100% Declarativo:** Módulos de NixOS y Home Manager limpios y libres de dependencias forzadas de terminales.
-- 🎨 **Paleta Material You Dinámica:** Sincronización automática de acentos GTK/GNOME, bordes de enfoque de Niri (`focus-ring`) y temas de terminales compatibles (Kitty, Foot, Ghostty, WezTerm, Alacritty y terminales activas vía secuencias de escape OSC).
-- ⚡ **Animaciones Snappy:** Configuración de animaciones físicas ágiles, rápidas y fluidas idénticas al iNiR original.
-- 🖥️ **Libertad de Terminal:** Sin dependencias fijas. Instala la terminal que prefieras (`kitty`, `foot`, `ghostty`, etc.) y el lanzador `inir terminal` la abrirá automáticamente.
-- 🔄 **Sincronización Rápida con Upstream:** Integrado directamente con `LATAR-web/inir` mediante Flakes y sincronizado automáticamente cada 2 horas vía GitHub Actions o con `nix flake update inir`.
-- 🛡️ **Parches Idempotentes:** Adaptación automática del runtime de Arch a NixOS mediante expresiones regulares sin parches frágiles.
+- **100% Declarativo:** Módulos de NixOS y Home Manager limpios y libres de dependencias forzadas de terminales.
+- **Paleta Material You Dinámica:** Sincronización automática de acentos GTK/GNOME, bordes de enfoque de Niri (`focus-ring`) y temas de terminales compatibles (Kitty, Foot, Ghostty, WezTerm, Alacritty y terminales activas vía secuencias de escape OSC).
+- **Animaciones Snappy:** Configuración de animaciones físicas ágiles, rápidas y fluidas idénticas al iNiR original.
+- **Libertad de Terminal:** Sin dependencias fijas. Instala la terminal que prefieras (`kitty`, `foot`, `ghostty`, etc.) y el lanzador `inir terminal` la abrirá automáticamente.
+- **Sincronización Rápida con Upstream:** Integrado directamente con `LATAR-web/inir` mediante Flakes y sincronizado automáticamente cada 2 horas vía GitHub Actions o con `nix flake update inir`.
+- **Parches Idempotentes:** Adaptación automática del runtime de Arch a NixOS mediante expresiones regulares sin parches frágiles.
 
 ---
 
-## 🚀 Instalación y Uso
+## Instalación y Uso
 
 ### Opción A: Usando Flakes (Recomendado)
 
@@ -102,11 +102,11 @@ En tu `/etc/nixos/configuration.nix`:
    ```
 
 3. **Inicia sesión**:
-   Selecciona la sesión **Niri** en tu pantalla de login. Ejecuta `verify-setup` para comprobar que todos los servicios estén en verde (✅).
+   Selecciona la sesión **Niri** en tu pantalla de login. Ejecuta `verify-setup` para comprobar que todos los servicios estén en verde.
 
 ---
 
-## ⌨️ Atajos de Teclado
+## Atajos de Teclado
 
 > [!NOTE]
 > `Mod` corresponde a la tecla **Super** en hardware real, o **Alt** si ejecutas Niri dentro de otra sesión.
@@ -134,11 +134,11 @@ En tu `/etc/nixos/configuration.nix`:
 
 ---
 
-## 💻 Comandos de Consola (CLI) de iNiR
+## Comandos de Consola (CLI) de iNiR
 
 iNiR incluye potentes comandos para interactuar con el entorno y sus servicios:
 
-### 🎨 Color y Temas
+### Color y Temas
 ```bash
 # Cambiar tema claro/oscuro de forma instantánea
 inir colorMode set dark       # Modo oscuro
@@ -162,7 +162,7 @@ niri-sync-colors              # Ejecución única
 niri-sync-colors --watch      # Demonio con recarga en vivo
 ```
 
-### ⚡ Control del Shell y Diagnóstico
+### Control del Shell y Diagnóstico
 ```bash
 inir run                      # Iniciar el shell
 inir restart                  # Reiniciar el shell de forma limpia
@@ -175,7 +175,7 @@ inir terminal                 # Abrir terminal predeterminada
 inir browser                  # Abrir navegador predeterminado
 ```
 
-### 🐾 Mascota Kira
+### Mascota Kira
 ```bash
 inir mascot poke              # Tocar a Kira (reacción interactiva)
 inir mascot romp              # Activar modo travieso / caos
@@ -184,7 +184,7 @@ inir mascot hideSeek          # Jugar al escondite
 inir mascot hide              # Ocultar mascota temporalmente
 ```
 
-### 🛠️ Herramientas de Sistema y Sincronización
+### Herramientas de Sistema y Sincronización
 ```bash
 inir-sync                     # Comprobar estado de sincronización con iNiR upstream y runtime
 inir-sync --update            # Traer últimos commits de iNiR y verificar integridad del flake
@@ -197,7 +197,7 @@ verify-setup                  # Script de diagnóstico y verificación completa
 
 ---
 
-## 🎨 Sincronización de Color y Terminales
+## Sincronización de Color y Terminales
 
 El servicio `niri-sync-colors` vigila la generación de paletas Material You y actualiza automáticamente:
 1. **Borde de Niri:** `focus-ring.active-color` y `inactive-color` en Niri se actualizan al instante sin reiniciar ventanas.
@@ -207,7 +207,7 @@ El servicio `niri-sync-colors` vigila la generación de paletas Material You y a
 
 ---
 
-## 🔄 Arquitectura de Sincronización del Código
+## Arquitectura de Sincronización del Código
 
 ### 1. Sincronización con Upstream iNiR
 - **Automática continua:** Un flujo de trabajo en GitHub Actions se ejecuta cada 2 horas (y mediante disparadores webhook/dispatch) comprobando nuevos commits en el repositorio upstream de [snowarch/iNiR](https://github.com/snowarch/iNiR). Cuando hay cambios, verifica la evaluación (`nix flake check --no-build`) y actualiza el `flake.lock`.
@@ -231,7 +231,7 @@ sudo nixos-rebuild switch --flake /etc/nixos#<tu_hostname>
 
 ---
 
-## 🗺️ Estructura del Repositorio
+## Estructura del Repositorio
 
 | Archivo / Carpeta | Propósito |
 |---|---|
@@ -253,5 +253,5 @@ sudo nixos-rebuild switch --flake /etc/nixos#<tu_hostname>
 ---
 
 <div align="center">
-  <i>Hecho con ❄️ para NixOS y Niri</i>
+  <i>Hecho para NixOS y Niri</i>
 </div>

@@ -1,5 +1,5 @@
 <div align="center">
-  <h1>❄️ iNiR NixOS</h1>
+  <h1>iNiR NixOS</h1>
   <p><b>Unified, modular NixOS flake and modules for iNiR Desktop Shell + Niri Compositor</b></p>
   <p><i>Material You dynamic theming, snappy animations, and complete Flake support</i></p>
 
@@ -14,18 +14,18 @@
 
 ---
 
-## 🌟 Highlights
+## Highlights
 
-- 🧩 **100% Declarative:** Clean NixOS and Home Manager modules free of forced terminal dependencies.
-- 🎨 **Dynamic Material You Colors:** Automated palette sync across GTK/GNOME, Niri focus rings, and compatible terminal emulators (Kitty, Foot, Ghostty, WezTerm, Alacritty, and active PTS shells via standard OSC escape sequences).
-- ⚡ **Snappy Animations:** Original fast and fluid physics-based animations matching upstream iNiR.
-- 🖥️ **Terminal Freedom:** Install any terminal you prefer (`kitty`, `foot`, `ghostty`, etc.); `inir terminal` will automatically launch it.
-- 🔄 **Continuous Synchronization:** Tracks `LATAR-web/inir` and synchronizes every 2 hours via GitHub Actions and on `repository_dispatch`.
-- 🛡️ **Idempotent Adaptations:** Regex-based build adaptations for NixOS without brittle context patches.
+- **100% Declarative:** Clean NixOS and Home Manager modules free of forced terminal dependencies.
+- **Dynamic Material You Colors:** Automated palette sync across GTK/GNOME, Niri focus rings, and compatible terminal emulators (Kitty, Foot, Ghostty, WezTerm, Alacritty, and active PTS shells via standard OSC escape sequences).
+- **Snappy Animations:** Original fast and fluid physics-based animations matching upstream iNiR.
+- **Terminal Freedom:** Install any terminal you prefer (`kitty`, `foot`, `ghostty`, etc.); `inir terminal` will automatically launch it.
+- **Continuous Synchronization:** Tracks `LATAR-web/inir` and synchronizes every 2 hours via GitHub Actions and on `repository_dispatch`.
+- **Idempotent Adaptations:** Regex-based build adaptations for NixOS without brittle context patches.
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Using Flakes (Recommended)
 
@@ -101,11 +101,11 @@ In `/etc/nixos/configuration.nix`:
    ```
 
 3. **Log in**:
-   Select the **Niri** session on your display manager. Run `verify-setup` to verify all components are green (✅).
+   Select the **Niri** session on your display manager. Run `verify-setup` to verify all components are green.
 
 ---
 
-## ⌨️ Keyboard Shortcuts
+## Keyboard Shortcuts
 
 | Shortcut | Action |
 |---|---|
@@ -130,9 +130,9 @@ In `/etc/nixos/configuration.nix`:
 
 ---
 
-## 💻 iNiR CLI Commands
+## iNiR CLI Commands
 
-### 🎨 Color & Themes
+### Color & Themes
 ```bash
 # Set or toggle color schemes on the fly
 inir colorMode set dark       # Dark mode
@@ -156,7 +156,7 @@ niri-sync-colors              # One-shot sync
 niri-sync-colors --watch      # Persistent watcher
 ```
 
-### ⚡ Runtime & Diagnostics
+### Runtime & Diagnostics
 ```bash
 inir run                      # Start the shell
 inir restart                  # Safely restart the shell
@@ -169,7 +169,7 @@ inir terminal                 # Open your configured or installed terminal
 inir browser                  # Open default browser
 ```
 
-### 🐾 Kira Companion Mascot
+### Kira Companion Mascot
 ```bash
 inir mascot poke              # Interactive companion reaction
 inir mascot romp              # Chaos / playtime mode
@@ -178,7 +178,7 @@ inir mascot hideSeek          # Hide and seek game
 inir mascot hide              # Temporarily hide Kira
 ```
 
-### 🛠️ System & Synchronization Tools
+### System & Synchronization Tools
 ```bash
 inir-sync                     # Check sync status with upstream iNiR & runtime state
 inir-sync --update            # Pull latest upstream iNiR commits and check flake integrity
@@ -191,7 +191,7 @@ verify-setup                  # Automated diagnostic health check
 
 ---
 
-## 🔄 Synchronization Architecture
+## Synchronization Architecture
 
 ### 1. Upstream iNiR Sync
 - **Automated Continuous Sync**: GitHub Actions runs every 2 hours (and reacts to repository dispatch events) to check if upstream [snowarch/iNiR](https://github.com/snowarch/iNiR) has new commits. If an update is detected, it validates the flake with `nix flake check --no-build` and commits the lockfile diff.
@@ -222,6 +222,6 @@ sudo nixos-rebuild switch --flake /etc/nixos#<your_hostname>
 ---
 
 <div align="center">
-  <i>Made with ❄️ for NixOS and Niri</i>
+  <i>Made for NixOS and Niri</i>
 </div>
 
