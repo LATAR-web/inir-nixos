@@ -172,26 +172,6 @@ def patch_launcher(text):
     return text
 
 
-def patch_widget_surface_borders(text):
-    """Fix border rendering in WidgetSurface - reduce inir border intensity and strengthen visibility checks."""
-    # Reduce inir border opacity multiplier from 3 to 1
-    text = text.replace('root.surfaceBorderOpacity * 3', 'root.surfaceBorderOpacity')
-    # Strengthen overlay border visibility
-    text = text.replace('surfaceBorderWidth > 0 && root.surfaceBorderOpacity > 0',
-                        'surfaceBorderWidth > 0.01 && root.surfaceBorderOpacity > 0.001')
-    text = text.replace('root.surfaceBorderWidth > 0 && root.surfaceBorderOpacity > 0',
-                        'root.surfaceBorderWidth > 0.01 && root.surfaceBorderOpacity > 0.001')
-    # Remove behavior on border.width if present
-    text = re.sub(r'\n    Behavior on border\.width \{[^}]+\}', '', text, flags=re.DOTALL)
-    return text
-
-
-def patch_zzz_plate(text):
-    """Remove border width animation in ZzzPlate."""
-    text = re.sub(r'\n    Behavior on strokeWidth \{[^}]+\}', '', text, flags=re.DOTALL)
-    return text
-
-
 def patch_root_qml():
     """Strip /usr/bin/ from QML and JS anywhere in the tree.
 
@@ -231,8 +211,6 @@ PATCHES = {
     "services/IconThemeService.qml": patch_icon_theme,
     "shell.qml": patch_family_transition,
     "scripts/inir": patch_launcher,
-    "modules/background/widgets/WidgetSurface.qml": patch_widget_surface_borders,
-    "modules/common/widgets/ZzzPlate.qml": patch_zzz_plate,
 }
 
 
