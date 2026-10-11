@@ -172,7 +172,122 @@ def patch_launcher(text):
     return text
 
 
+def patch_record_script(text):
+    """Probe hardware video encoders before selecting them, avoiding failed VAAPI startup.
+
+    Upstream detects VAAPI support merely by checking if a render device exists
+    and ffmpeg lists h264_vaapi. In VMs and systems without functional VAAPI
+    drivers, wf-recorder fails immediately upon launch with 'Failed to initialise
+    VAAPI connection', forcing an error notification ('Preferred encoder failed,
+    retrying with safe mode') before falling back to libx264.
+
+    By probing actual encoder functionality via a lightweight 0.05s test command,
+    we cleanly select libx264 as preferred on non-VAAPI hardware and never trigger
+    the fallback failure notification.
+    """
+    original_detect = """detect_hw_video_codec() {
+    # Nvidia: skip VAAPI (unreliable even if ffmpeg lists it), go straight to NVENC
+    if is_nvidia_gpu; then
+        if has_ffmpeg_encoder h264_nvenc; then
+            printf '%s\\n' 'h264_nvenc'
+            return
+        fi
+        if has_ffmpeg_encoder hevc_nvenc; then
+            printf '%s\\n' 'hevc_nvenc'
+            return
+        fi
+    fi
+    # AMD/Intel: try VAAPI (needs render device)
+    if [[ -n "$HARDWARE_DEVICE" && -c "$HARDWARE_DEVICE" ]]; then
+        if has_ffmpeg_encoder h264_vaapi; then
+            printf '%s\\n' 'h264_vaapi'
+            return
+        fi
+        if has_ffmpeg_encoder hevc_vaapi; then
+            printf '%s\\n' 'hevc_vaapi'
+            return
+        fi
+    fi
+    # Fallback: try NVENC anyway (hybrid GPU setups)
+    if has_ffmpeg_encoder h264_nvenc; then
+        printf '%s\\n' 'h264_nvenc'
+        return
+    fi
+    printf '%s\\n' 'libx264'
+}"""
+
+    replacement_detect = """can_test_encoder() {
+    local codec="$1"
+    local dev="${2:-}"
+    if [[ "$codec" == *"_vaapi" ]]; then
+        [[ -n "$dev" && -c "$dev" ]] || return 1
+        ffmpeg -loglevel error -f lavfi -i color=c=black:s=64x64:d=0.04 -vaapi_device "$dev" -vf 'format=nv12,hwupload' -c:v "$codec" -f null - >/dev/null 2>&1
+    elif [[ "$codec" == *"_nvenc" ]]; then
+        ffmpeg -loglevel error -f lavfi -i color=c=black:s=64x64:d=0.04 -c:v "$codec" -f null - >/dev/null 2>&1
+    else
+        has_ffmpeg_encoder "$codec"
+    fi
+}
+
+detect_hw_video_codec() {
+    # Nvidia: skip VAAPI (unreliable even if ffmpeg lists it), go straight to NVENC
+    if is_nvidia_gpu; then
+        if can_test_encoder h264_nvenc; then
+            printf '%s\\n' 'h264_nvenc'
+            return
+        fi
+        if can_test_encoder hevc_nvenc; then
+            printf '%s\\n' 'hevc_nvenc'
+            return
+        fi
+    fi
+    # AMD/Intel: try VAAPI (needs verified working render device)
+    if [[ -n "$HARDWARE_DEVICE" && -c "$HARDWARE_DEVICE" ]]; then
+        if can_test_encoder h264_vaapi "$HARDWARE_DEVICE"; then
+            printf '%s\\n' 'h264_vaapi'
+            return
+        fi
+        if can_test_encoder hevc_vaapi "$HARDWARE_DEVICE"; then
+            printf '%s\\n' 'hevc_vaapi'
+            return
+        fi
+    fi
+    # Fallback: try NVENC anyway (hybrid GPU setups)
+    if can_test_encoder h264_nvenc; then
+        printf '%s\\n' 'h264_nvenc'
+        return
+    fi
+    printf '%s\\n' 'libx264'
+}"""
+
+    text, _ = apply(
+        text,
+        "scripts/videos/record.sh: probe hardware encoder before selecting",
+        re.escape(original_detect),
+        replacement_detect,
+        already=r"can_test_encoder\(\)",
+        required=False,
+    )
+
+    vaapi_guard = """if is_vaapi_codec "$VIDEO_CODEC"; then
+    if ! can_test_encoder "$VIDEO_CODEC" "$HARDWARE_DEVICE"; then
+        VIDEO_CODEC="libx264"
+    fi"""
+
+    text, _ = apply(
+        text,
+        "scripts/videos/record.sh: validate configured VAAPI codec before launch",
+        re.escape('if is_vaapi_codec "$VIDEO_CODEC"; then'),
+        vaapi_guard,
+        already=r'if ! can_test_encoder "\$VIDEO_CODEC"',
+        required=False,
+    )
+
+    return text
+
+
 def patch_root_qml():
+
     """Strip /usr/bin/ from QML and JS anywhere in the tree.
 
     package.nix already rewrites these paths, but only under
@@ -211,7 +326,9 @@ PATCHES = {
     "services/IconThemeService.qml": patch_icon_theme,
     "shell.qml": patch_family_transition,
     "scripts/inir": patch_launcher,
+    "scripts/videos/record.sh": patch_record_script,
 }
+
 
 
 def main():
