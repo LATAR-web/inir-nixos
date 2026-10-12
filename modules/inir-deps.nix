@@ -117,7 +117,6 @@ with pkgs; [
   translate-shell            # translate widget
   socat                      # used by a couple of IPC helper scripts
   mission-center              # system monitor GUI, launched from the dashboard
-  dunst                     # provides `dunstify` for interactive action notifications in SongRec
   ani-cli                     # anime streaming CLI used by inir-ani
   lsp-plugins                 # audio effect plugins, only relevant if you use easyeffects/cava
   cava
