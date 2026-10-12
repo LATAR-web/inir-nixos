@@ -599,11 +599,27 @@ def patch_wallpapers(text):
 
 def patch_iris_wallpaper_picker(text):
     """Exclude currently selected wallpaper from random candidate pool in picker."""
+    pattern = (
+        r'([ \t]*)onClicked:\s*\{\s*'
+        r'const pick = root\.visibleFiles\[Math\.floor\(Math\.random\(\) \* root\.visibleFiles\.length\)\]\s*'
+        r'if \(pick\) root\.apply\(pick\.path, false\)\s*'
+        r'\}'
+    )
+    replacement = (
+        r'\1onClicked: {\n'
+        r'\1    const current = FileUtils.trimFileProtocol(String(root.currentPath ?? ""))\n'
+        r'\1    let candidates = (root.visibleFiles ?? []).filter(entry => entry && entry.path !== current)\n'
+        r'\1    if (candidates.length === 0) candidates = root.visibleFiles ?? []\n'
+        r'\1    if (candidates.length === 0) return\n'
+        r'\1    const pick = candidates[Math.floor(Math.random() * candidates.length)]\n'
+        r'\1    if (pick) root.apply(pick.path, false)\n'
+        r'\1}'
+    )
     text, _ = apply(
         text,
         "modules/iris/wallpaper/IrisWallpaperPicker.qml: random wallpaper exclude current",
-        re.escape('                     onClicked: {\n                        const pick = root.visibleFiles[Math.floor(Math.random() * root.visibleFiles.length)]\n                        if (pick) root.apply(pick.path, false)\n                    }'),
-        '                     onClicked: {\n                        const current = FileUtils.trimFileProtocol(String(root.currentPath ?? ""))\n                        let candidates = (root.visibleFiles ?? []).filter(entry => entry && entry.path !== current)\n                        if (candidates.length === 0) candidates = root.visibleFiles ?? []\n                        if (candidates.length === 0) return\n                        const pick = candidates[Math.floor(Math.random() * candidates.length)]\n                        if (pick) root.apply(pick.path, false)\n                    }',
+        pattern,
+        replacement,
         already=r'let candidates = \(root\.visibleFiles',
         required=False,
     )
@@ -656,12 +672,13 @@ def patch_recognize_music(text):
 
 def patch_ytmusic(text):
     """Ensure YtMusic.qml uses /bin/sh instead of /bin/bash on NixOS."""
+    yt_pattern = r'(id:\s*_checkAvailability\b[^\n]*\n(?:\s*//[^\n]*\n)*\s*command:\s*\[)"/bin/bash"'
     text, _ = apply(
         text,
         "services/YtMusic.qml: use /bin/sh for _checkAvailability",
-        re.escape('command: ["/bin/bash", "-c", "missing=\'\'; "$1" --help'),
-        'command: ["/bin/sh", "-c", "missing=\'\'; "$1" --help',
-        already=r'command: \["/bin/sh", "-c", "missing=\'\'; "\$1" --help',
+        yt_pattern,
+        r'\1"/bin/sh"',
+        already=r'id:\s*_checkAvailability\b[^\n]*\n(?:\s*//[^\n]*\n)*\s*command:\s*\["/bin/sh"',
         required=False,
     )
     text, _ = apply(
@@ -699,9 +716,162 @@ def patch_conflict_killer(text):
     return text
 
 
+def patch_family_transition_overlay(text):
+    """Resume reloaded family transition straight into exit without replaying entry chain."""
+    target_ft = (
+        "    // no timer starts, fadeOut never runs, enterComplete never fires, and a\n"
+        "    // fullscreen WlrKeyboardFocus.Exclusive window stays up forever. That is the\n"
+        "    // freeze that forces a TTY. Arm on construction too.\n"
+        "    Component.onCompleted: if (GlobalStates.familyTransitionActive) root._beginTransition()"
+    )
+    replacement_ft = (
+        "    // no timer starts, fadeOut never runs, enterComplete never fires, and a\n"
+        "    // fullscreen WlrKeyboardFocus.Exclusive window stays up forever. That is the\n"
+        "    // freeze that forces a TTY. Arm on construction too.\n"
+        "    Component.onCompleted: {\n"
+        "        if (!GlobalStates.familyTransitionActive) return\n"
+        "        if (GlobalStates.familyTransitionTarget.length > 0)\n"
+        "            root._resumeIntoExit()\n"
+        "        else\n"
+        "            root._beginTransition()\n"
+        "    }\n\n"
+        "    // Once the panels are already swapped and the hold has passed, replaying\n"
+        "    // the entry chain only delays the exit and leaves the exclusive-keyboard\n"
+        "    // window up for another worst-case interval. Resume straight into the exit.\n"
+        "    function _resumeIntoExit(): void {\n"
+        "        if (root._phase) return\n"
+        "        root._targetFamily = GlobalStates.familyTransitionTarget || \"ii\"\n"
+        "        root._isWaffle = root._targetFamily === \"waffle\"\n"
+        "        root._isIris = root._targetFamily === \"iris\"\n"
+        "        enterTimer.stop(); holdTimer.stop(); contentExitTimer.stop()\n"
+        "        fadeIn.stop(); bgScaleIn.stop(); blurIn.stop()\n"
+        "        root._phase = true\n"
+        "        root._active = true\n"
+        "        fadeOut.restart()\n"
+        "        bgScaleOut.restart()\n"
+        "        watchdog.restart()\n"
+        "    }"
+    )
+    text, _ = apply(
+        text,
+        "FamilyTransitionOverlay.qml: resume reloaded transition into exit",
+        re.escape(target_ft),
+        replacement_ft,
+        already=r"function _resumeIntoExit\(\): void",
+        required=False,
+    )
+    return text
+
+
+def patch_washi(text):
+    """Probe well-known paths and Nix profiles/store for go binary in washi.sh."""
+    target_washi = (
+        "if stale; then\n"
+        '  go_bin="$(command -v go || true)"\n'
+        '  if [[ -z "$go_bin" ]]; then\n'
+        '    [[ -x "$bin" ]] || { echo "washi: Go is not installed; iRiS keeps its default palette" >&2; exit 3; }'
+    )
+    replacement_washi = (
+        "if stale; then\n"
+        '  go_bin="$(command -v go || true)"\n'
+        '  if [[ -z "$go_bin" ]]; then\n'
+        '    for candidate in \\\n'
+        '      "$HOME/go/bin/go" \\\n'
+        '      "$HOME/.local/bin/go" \\\n'
+        '      /usr/local/go/bin/go \\\n'
+        '      /usr/lib/go/bin/go \\\n'
+        '      /usr/bin/go \\\n'
+        '      /opt/homebrew/bin/go \\\n'
+        '      "$HOME/.nix-profile/bin/go" \\\n'
+        '      "/run/current-system/sw/bin/go"; do\n'
+        '      if [[ -x "$candidate" ]]; then\n'
+        '        go_bin="$candidate"\n'
+        '        break\n'
+        '      fi\n'
+        '    done\n'
+        '    if [[ -z "$go_bin" ]]; then\n'
+        '      for profile in "$HOME"/.local/state/nix/profiles/profile/bin/go \\\n'
+        '        /nix/var/nix/profiles/default/bin/go \\\n'
+        '        /nix/var/nix/profiles/per-user/*/profile/bin/go; do\n'
+        '        if [[ -x "$profile" ]]; then\n'
+        '          go_bin="$profile"\n'
+        '          break\n'
+        '        fi\n'
+        '      done\n'
+        '    fi\n'
+        '    if [[ -z "$go_bin" ]] && [[ -d "/nix/store" ]]; then\n'
+        '      while IFS= read -r store_go; do\n'
+        '        if [[ -x "$store_go" ]]; then\n'
+        '          go_bin="$store_go"\n'
+        '          break\n'
+        '        fi\n'
+        '      done < <(find /nix/store -maxdepth 4 -path \'*-go-*/bin/go\' -type f 2>/dev/null | sort -r)\n'
+        '    fi\n'
+        '  fi\n'
+        '  if [[ -z "$go_bin" ]]; then\n'
+        '    [[ -x "$bin" ]] || { echo "washi: Go is not installed; iRiS keeps its default palette" >&2; exit 3; }'
+    )
+    text, _ = apply(
+        text,
+        "scripts/colors/washi.sh: find Go off-PATH in well-known locations and Nix store",
+        re.escape(target_washi),
+        replacement_washi,
+        already=r"/run/current-system/sw/bin/go",
+        required=False,
+    )
+    return text
+
+
+def patch_widget_surface(text):
+    """Eliminate border.width animation and keep border opacity clean on widgets."""
+    target_border_anim = (
+        "    Behavior on border.width {\n"
+        "        enabled: (root._iris ? IrisStyle.motionEnabled : Appearance.animationsEnabled)\n"
+        "        NumberAnimation { duration: root._iris ? IrisStyle.revealDuration : Appearance.animation.elementMoveFast.duration; easing.type: root._iris ? Easing.BezierSpline : Appearance.animation.elementMoveFast.type; easing.bezierCurve: root._iris ? IrisStyle.morphCurve : Appearance.animation.elementMoveFast.bezierCurve }\n"
+        "    }"
+    )
+    text, _ = apply(
+        text,
+        "modules/background/widgets/WidgetSurface.qml: remove border.width animation",
+        re.escape(target_border_anim),
+        "",
+        already=r"// no border.width animation",
+        required=False,
+    )
+    text, _ = apply(
+        text,
+        "modules/background/widgets/WidgetSurface.qml: unmultiplied border opacity",
+        re.escape("ColorUtils.applyAlpha(Appearance.inir.colBorder, root.surfaceBorderOpacity * 3)"),
+        "ColorUtils.applyAlpha(Appearance.inir.colBorder, root.surfaceBorderOpacity)",
+        already=r"ColorUtils\.applyAlpha\(Appearance\.inir\.colBorder,\s*root\.surfaceBorderOpacity\)",
+        required=False,
+    )
+    return text
+
+
+def patch_zzz_plate(text):
+    """Eliminate strokeWidth animation in ZzzPlate."""
+    target_stroke_anim = (
+        "    Behavior on strokeWidth {\n"
+        "        enabled: Appearance.animationsEnabled\n"
+        "        NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }\n"
+        "    }"
+    )
+    text, _ = apply(
+        text,
+        "modules/common/widgets/ZzzPlate.qml: remove strokeWidth animation",
+        re.escape(target_stroke_anim),
+        "",
+        already=r"// no strokeWidth animation",
+        required=False,
+    )
+    return text
+
+
 PATCHES = {
     "services/IconThemeService.qml": patch_icon_theme,
     "shell.qml": patch_family_transition,
+    "FamilyTransitionOverlay.qml": patch_family_transition_overlay,
     "scripts/inir": patch_launcher,
     "scripts/videos/record.sh": patch_record_script,
     "modules/iris/components/IrisMorphSurface.qml": patch_iris_morph_surface,
@@ -709,6 +879,7 @@ PATCHES = {
     "services/deferred/LauncherSearch.qml": patch_launcher_search,
     "scripts/colors/generate_colors_material.py": patch_generate_colors_material,
     "scripts/colors/switchwall.sh": patch_switchwall,
+    "scripts/colors/washi.sh": patch_washi,
     "services/ThemeService.qml": patch_theme_service,
     "services/Wallpapers.qml": patch_wallpapers,
     "modules/iris/wallpaper/IrisWallpaperPicker.qml": patch_iris_wallpaper_picker,
@@ -716,6 +887,8 @@ PATCHES = {
     "scripts/musicRecognition/recognize-music.sh": patch_recognize_music,
     "services/YtMusic.qml": patch_ytmusic,
     "services/ConflictKiller.qml": patch_conflict_killer,
+    "modules/background/widgets/WidgetSurface.qml": patch_widget_surface,
+    "modules/common/widgets/ZzzPlate.qml": patch_zzz_plate,
 }
 
 
