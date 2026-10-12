@@ -434,10 +434,52 @@ white = "{ansi["term15"]}"
         target_toml = os.path.join(alacritty_dir, "theme.toml")
         if not os.path.exists(target_toml) or os.access(target_toml, os.W_OK):
             write_atomic(target_toml, alacritty_toml)
+# 4. Synchronize GTK 3 & 4 Theme Colors (for LocalSend, Flutter, and GTK apps)
+for gtk_ver in ("gtk-3.0", "gtk-4.0"):
+    gtk_css_path = os.path.join(home, ".config", gtk_ver, "gtk.css")
+    if os.path.exists(gtk_css_path):
+        try:
+            with open(gtk_css_path, "r", encoding="utf-8") as gf:
+                content = gf.read()
+            for var_name, var_val in [
+                ("theme_selected_bg_color", primary),
+                ("theme_selected_fg_color", "#ffffff" if is_dark else "#000000"),
+                ("theme_bg_color", bg),
+                ("theme_fg_color", fg),
+                ("theme_base_color", bg),
+                ("theme_text_color", fg),
+                ("theme_view_bg_color", bg),
+                ("theme_view_fg_color", fg),
+                ("accent_color", primary),
+                ("accent_bg_color", primary),
+            ]:
+                pattern = rf"@define-color\s+{var_name}\s+[^;]+;"
+                replacement = f"@define-color {var_name} {var_val};"
+                if re.search(pattern, content):
+                    content = re.sub(pattern, replacement, content)
+                else:
+                    content = f"@define-color {var_name} {var_val};\n" + content
+            write_atomic(gtk_css_path, content)
+        except Exception:
+            pass
+
+# 5. Synchronize KDE / Qt kdeglobals Decimal RGB Colors
+kdeglobals_path = os.path.join(home, ".config", "kdeglobals")
+if os.path.exists(kdeglobals_path):
+    try:
+        def to_rgb_dec(hex_c):
+            h = hex_c.lstrip("#")
+            if len(h) == 3: h = "".join(x*2 for x in h)
+            return f"{int(h[0:2], 16)},{int(h[2:4], 16)},{int(h[4:6], 16)}"
+        with open(kdeglobals_path, "r", encoding="utf-8") as kf:
+            ktext = kf.read()
+        ktext_new = re.sub(r"=#[0-9a-fA-F]{6}", lambda m: f"={to_rgb_dec(m.group(0)[1:])}", ktext)
+        if ktext_new != ktext:
+            write_atomic(kdeglobals_path, ktext_new)
     except Exception:
         pass
 
-# 4. Compute GNOME accent color from primary hue
+# 6. Compute GNOME accent color from primary hue
 ACCENTS = {
     "blue": (53, 132, 228),
     "teal": (38, 162, 105),

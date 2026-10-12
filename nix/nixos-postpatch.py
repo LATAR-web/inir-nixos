@@ -610,6 +610,28 @@ def patch_iris_wallpaper_picker(text):
     return text
 
 
+def patch_apply_gtk_theme(text):
+    """Ensure apply-gtk-theme writes decimal RGB to kdeglobals and adds standard GTK theme aliases."""
+    text, _ = apply(
+        text,
+        "scripts/colors/apply-gtk-theme.sh: add GTK color aliases in GTK3_CSS",
+        re.escape('@define-color accent_bg_color ${PRIMARY};\n\n@define-color window_bg_color ${BG};'),
+        '@define-color accent_bg_color ${PRIMARY};\n\n/* Standard GTK theme color aliases (used by GTK3 apps, Flutter, LocalSend, etc.) */\n@define-color theme_selected_bg_color ${PRIMARY};\n@define-color theme_selected_fg_color ${ON_PRIMARY};\n@define-color theme_bg_color ${BG};\n@define-color theme_fg_color ${FG};\n@define-color theme_base_color ${BG};\n@define-color theme_text_color ${FG};\n@define-color theme_view_bg_color ${BG};\n@define-color theme_view_fg_color ${FG};\n@define-color theme_unfocused_selected_bg_color ${PRIMARY};\n@define-color theme_unfocused_selected_fg_color ${ON_PRIMARY};\n@define-color theme_unfocused_bg_color ${BG};\n@define-color theme_unfocused_fg_color ${FG};\n@define-color theme_unfocused_base_color ${BG};\n@define-color theme_unfocused_text_color ${FG};\n\n@define-color window_bg_color ${BG};',
+        already=r"@define-color theme_selected_bg_color",
+        required=False,
+    )
+
+    text, _ = apply(
+        text,
+        "scripts/colors/apply-gtk-theme.sh: add GTK color aliases in GTK4_CSS",
+        re.escape('/* CSS custom properties for libadwaita color overrides */\n:root {\n    /* Accent */\n    --accent-bg-color: ${PRIMARY};\n    --accent-fg-color: ${ON_PRIMARY};\n    --accent-color: ${PRIMARY};'),
+        '@define-color accent_color ${PRIMARY};\n@define-color accent_fg_color ${ON_PRIMARY};\n@define-color accent_bg_color ${PRIMARY};\n@define-color theme_selected_bg_color ${PRIMARY};\n@define-color theme_selected_fg_color ${ON_PRIMARY};\n@define-color theme_bg_color ${BG};\n@define-color theme_fg_color ${FG};\n@define-color theme_base_color ${BG};\n@define-color theme_text_color ${FG};\n@define-color theme_view_bg_color ${BG};\n@define-color theme_view_fg_color ${FG};\n\n/* CSS custom properties for libadwaita color overrides */\n:root {\n    /* Accent */\n    --accent-bg-color: ${PRIMARY};\n    --accent-fg-color: ${ON_PRIMARY};\n    --accent-color: ${PRIMARY};\n    --theme-selected-bg-color: ${PRIMARY};\n    --theme-selected-fg-color: ${ON_PRIMARY};\n    --theme-bg-color: ${BG};\n    --theme-fg-color: ${FG};\n    --theme-base-color: ${BG};\n    --theme-text-color: ${FG};',
+        already=r"--theme-selected-bg-color:",
+        required=False,
+    )
+    return text
+
+
 PATCHES = {
     "services/IconThemeService.qml": patch_icon_theme,
     "shell.qml": patch_family_transition,
@@ -623,6 +645,7 @@ PATCHES = {
     "services/ThemeService.qml": patch_theme_service,
     "services/Wallpapers.qml": patch_wallpapers,
     "modules/iris/wallpaper/IrisWallpaperPicker.qml": patch_iris_wallpaper_picker,
+    "scripts/colors/apply-gtk-theme.sh": patch_apply_gtk_theme,
 }
 
 
