@@ -645,6 +645,27 @@ def patch_recognize_music(text):
     return text
 
 
+def patch_ytmusic(text):
+    """Ensure YtMusic.qml uses /bin/sh instead of /bin/bash on NixOS."""
+    text, _ = apply(
+        text,
+        "services/YtMusic.qml: use /bin/sh for _checkAvailability",
+        re.escape('command: ["/bin/bash", "-c", "missing=\'\'; "$1" --help'),
+        'command: ["/bin/sh", "-c", "missing=\'\'; "$1" --help',
+        already=r'command: \["/bin/sh", "-c", "missing=\'\'; "\$1" --help',
+        required=False,
+    )
+    text, _ = apply(
+        text,
+        "services/YtMusic.qml: use /bin/sh for _detectBrowsersProc",
+        re.escape('    Process {\n        id: _detectBrowsersProc\n        command: ["/bin/bash", "-c", `'),
+        '    Process {\n        id: _detectBrowsersProc\n        command: ["/bin/sh", "-c", `',
+        already=r'id: _detectBrowsersProc\n        command: \["/bin/sh", "-c", `',
+        required=False,
+    )
+    return text
+
+
 PATCHES = {
     "services/IconThemeService.qml": patch_icon_theme,
     "shell.qml": patch_family_transition,
@@ -660,6 +681,7 @@ PATCHES = {
     "modules/iris/wallpaper/IrisWallpaperPicker.qml": patch_iris_wallpaper_picker,
     "scripts/colors/apply-gtk-theme.sh": patch_apply_gtk_theme,
     "scripts/musicRecognition/recognize-music.sh": patch_recognize_music,
+    "services/YtMusic.qml": patch_ytmusic,
 }
 
 

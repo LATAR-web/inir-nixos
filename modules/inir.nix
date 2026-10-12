@@ -334,6 +334,8 @@ in
       "L+ %h/.icons - - - - %h/.local/share/icons"
       "d %h/.config/quickshell 0755 - - -"
       "L+ %h/.config/quickshell/inir - - - - /run/current-system/sw/share/quickshell/inir"
+      "d %h/.config/mpv/scripts 0755 - - -"
+      "L+ %h/.config/mpv/scripts/mpris.so - - - - ${pkgs.mpvScripts.mpris}/share/mpv/scripts/mpris.so"
       # Los dotfiles originales de iNiR (docs/INSTALL.md: `cp -r dots/.config/* ~/.config/`).
       # switchwall.sh lee TEMPLATE_DIR="$XDG_CONFIG_HOME/matugen"; sin este directorio el
       # generador se salta --render-templates y GTK/terminales/KDE nunca reciben la paleta.
