@@ -78,7 +78,7 @@ with pkgs; [
     kde-material-you-colors # KDE/Qt color palette synchronization
   ]))
 
-  # --- Screenshots / OCR / screen recording ---
+  # --- Screenshots / OCR / screen recording / audio ---
   grim
   slurp
   swappy
@@ -86,7 +86,8 @@ with pkgs; [
   tesseract
   wf-recorder
   ffmpeg
-  pulseaudio               # provides `pactl`; needed for wf-recorder's audio mixing — NOT running the pulseaudio daemon, just the CLI
+  pulseaudio               # provides `pactl` and `parec`; needed for audio mixing & music recognition
+  songrec                  # audio recognition (Shazam client) used by musicRecognition/recognize-music.sh
 
   # --- System controls the shell's widgets call ---
   brightnessctl
@@ -116,7 +117,7 @@ with pkgs; [
   translate-shell            # translate widget
   socat                      # used by a couple of IPC helper scripts
   mission-center              # system monitor GUI, launched from the dashboard
-  songrec                     # audio recognition (Shazam-like) used by recognize-music.sh
+  dunst                     # provides `dunstify` for interactive action notifications in SongRec
   ani-cli                     # anime streaming CLI used by inir-ani
   lsp-plugins                 # audio effect plugins, only relevant if you use easyeffects/cava
   cava

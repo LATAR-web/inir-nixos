@@ -632,6 +632,19 @@ def patch_apply_gtk_theme(text):
     return text
 
 
+def patch_recognize_music(text):
+    """Ensure recognize-music.sh preserves PATH and NixOS store/system binaries."""
+    text, _ = apply(
+        text,
+        "scripts/musicRecognition/recognize-music.sh: preserve PATH and nix store",
+        re.escape('PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"'),
+        'PATH="${PATH:+$PATH:}/run/current-system/sw/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"',
+        already=r'/run/current-system/sw/bin',
+        required=False,
+    )
+    return text
+
+
 PATCHES = {
     "services/IconThemeService.qml": patch_icon_theme,
     "shell.qml": patch_family_transition,
@@ -646,6 +659,7 @@ PATCHES = {
     "services/Wallpapers.qml": patch_wallpapers,
     "modules/iris/wallpaper/IrisWallpaperPicker.qml": patch_iris_wallpaper_picker,
     "scripts/colors/apply-gtk-theme.sh": patch_apply_gtk_theme,
+    "scripts/musicRecognition/recognize-music.sh": patch_recognize_music,
 }
 
 
