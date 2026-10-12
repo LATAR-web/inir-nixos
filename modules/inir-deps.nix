@@ -104,6 +104,7 @@ with pkgs; [
   nerd-fonts.jetbrains-mono
   material-symbols          # the icon font used throughout iNiR's UI — do not remove
   papirus-icon-theme        # desktop icon theme
+  adw-gtk3                  # provides adw-gtk3-dark to ensure GTK3/4 apps render in dark mode
   nautilus                  # default file manager bound to Mod+E in niri/config.kdl
 
   # ===========================================================================

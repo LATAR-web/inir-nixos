@@ -231,6 +231,7 @@ in
     environment.variables = {
       INIR_SYSTEM_RUNTIME_DIR = "/run/current-system/sw/share/quickshell/inir";
       INIR_FALLBACK_SYSTEM_RUNTIME_DIR = "/run/current-system/sw/share/quickshell/inir";
+      GTK_THEME = "adw-gtk3-dark";
     };
 
     # Control de hardware para brillo de monitores externos mediante ddcutil
@@ -244,9 +245,19 @@ in
       "L+ /usr/share/quickshell - - - - /run/current-system/sw/share/quickshell"
     ];
 
-    # Habilitar Niri y dconf
+    # Habilitar Niri y dconf con preferencia forzada de modo oscuro para aplicaciones y portales
     programs.niri.enable = lib.mkDefault cfg.niri.enable;
     programs.dconf.enable = lib.mkDefault true;
+    programs.dconf.profiles.user.databases = [
+      {
+        settings = {
+          "org/gnome/desktop/interface" = {
+            color-scheme = "prefer-dark";
+            gtk-theme = "adw-gtk3-dark";
+          };
+        };
+      }
+    ];
 
     # Elevación de privilegios gráfica (Polkit) para aplicaciones en Wayland
     security.polkit.enable = lib.mkDefault true;

@@ -629,6 +629,15 @@ def patch_apply_gtk_theme(text):
         already=r"--theme-selected-bg-color:",
         required=False,
     )
+
+    text, _ = apply(
+        text,
+        "scripts/colors/apply-gtk-theme.sh: fallback to adw-gtk3-dark when dark mode preferred",
+        re.escape('    prefer_dark=0\n    [[ "$current_scheme" == "prefer-dark" ]] && prefer_dark=1'),
+        '    prefer_dark=0\n    [[ "$current_scheme" == "prefer-dark" ]] && prefer_dark=1\n    if [[ "$prefer_dark" -eq 1 && ( -z "$current_theme" || "$current_theme" == "adw-gtk3" || "$current_theme" == "Adwaita" ) ]]; then\n        current_theme="adw-gtk3-dark"\n    fi',
+        already=r'current_theme="adw-gtk3-dark"',
+        required=False,
+    )
     return text
 
 
@@ -663,6 +672,27 @@ def patch_ytmusic(text):
         already=r'id: _detectBrowsersProc\n        command: \["/bin/sh", "-c", `',
         required=False,
     )
+def patch_conflict_killer(text):
+    """Auto-kill conflicting notification daemons on NixOS without opening killDialog."""
+    target = (
+        '        if (conflictingNotifications) {\n'
+        '            if (!(Config.options?.conflictKiller?.autoKillNotificationDaemons ?? false)) openDialog = true;\n'
+        '            else Quickshell.execDetached(["/usr/bin/killall", "mako", "dunst"])\n'
+        '        }'
+    )
+    replacement = (
+        '        if (conflictingNotifications) {\n'
+        '            Quickshell.execDetached(["/usr/bin/killall", "mako", "dunst"])\n'
+        '        }'
+    )
+    text, _ = apply(
+        text,
+        "services/ConflictKiller.qml: auto-kill conflicting notification daemons without popup",
+        re.escape(target),
+        replacement,
+        already=r'Quickshell\.execDetached\(\["/usr/bin/killall", "mako", "dunst"\]\)\n        }',
+        required=False,
+    )
     return text
 
 
@@ -682,6 +712,7 @@ PATCHES = {
     "scripts/colors/apply-gtk-theme.sh": patch_apply_gtk_theme,
     "scripts/musicRecognition/recognize-music.sh": patch_recognize_music,
     "services/YtMusic.qml": patch_ytmusic,
+    "services/ConflictKiller.qml": patch_conflict_killer,
 }
 
 

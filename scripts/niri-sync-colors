@@ -436,7 +436,8 @@ white = "{ansi["term15"]}"
             write_atomic(target_toml, alacritty_toml)
 # 4. Synchronize GTK 3 & 4 Theme Colors (for LocalSend, Flutter, and GTK apps)
 for gtk_ver in ("gtk-3.0", "gtk-4.0"):
-    gtk_css_path = os.path.join(home, ".config", gtk_ver, "gtk.css")
+    gtk_dir = os.path.join(home, ".config", gtk_ver)
+    gtk_css_path = os.path.join(gtk_dir, "gtk.css")
     if os.path.exists(gtk_css_path):
         try:
             with open(gtk_css_path, "r", encoding="utf-8") as gf:
@@ -460,6 +461,26 @@ for gtk_ver in ("gtk-3.0", "gtk-4.0"):
                 else:
                     content = f"@define-color {var_name} {var_val};\n" + content
             write_atomic(gtk_css_path, content)
+        except Exception:
+            pass
+
+    # Ensure settings.ini enforces dark theme variant
+    settings_ini_path = os.path.join(gtk_dir, "settings.ini")
+    if os.path.exists(settings_ini_path):
+        try:
+            with open(settings_ini_path, "r", encoding="utf-8") as sf:
+                scontent = sf.read()
+            target_theme = "adw-gtk3-dark" if is_dark else "adw-gtk3"
+            if "gtk-theme-name" in scontent:
+                scontent = re.sub(r"gtk-theme-name\s*=.*", f"gtk-theme-name={target_theme}", scontent)
+            else:
+                scontent += f"\ngtk-theme-name={target_theme}\n"
+            if gtk_ver == "gtk-3.0":
+                if "gtk-application-prefer-dark-theme" in scontent:
+                    scontent = re.sub(r"gtk-application-prefer-dark-theme\s*=.*", f"gtk-application-prefer-dark-theme={1 if is_dark else 0}", scontent)
+                else:
+                    scontent += f"\ngtk-application-prefer-dark-theme={1 if is_dark else 0}\n"
+            write_atomic(settings_ini_path, scontent)
         except Exception:
             pass
 
@@ -568,8 +589,10 @@ print(f"OSC=\"{osc_seq}\"")
         fi
         if [[ "$DARK" -eq 1 ]]; then
             gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark' 2>/dev/null || true
+            gsettings set org.gnome.desktop.interface gtk-theme 'adw-gtk3-dark' 2>/dev/null || true
         else
             gsettings set org.gnome.desktop.interface color-scheme 'prefer-light' 2>/dev/null || true
+            gsettings set org.gnome.desktop.interface gtk-theme 'adw-gtk3' 2>/dev/null || true
         fi
     fi
 }
