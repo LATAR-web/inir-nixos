@@ -491,6 +491,125 @@ def patch_launcher_search(text):
     return text
 
 
+def patch_generate_colors_material(text):
+    """Preserve raw seeds before surface/contrast shifting to eliminate iris-seeds cycle."""
+    text, _ = apply(
+        text,
+        "scripts/colors/generate_colors_material.py: capture iris_raw_seeds",
+        re.escape('seed_background = material_colors.get("background", "")\nif args.surface_seed'),
+        'seed_background = material_colors.get("background", "")\niris_raw_seeds = {k: material_colors.get(k, "") for k in ("primary", "secondary", "tertiary")}\niris_raw_seeds["background"] = seed_background\nif args.surface_seed',
+        already=r"iris_raw_seeds = \{k: material_colors\.get\(k",
+        required=False,
+    )
+
+    text, _ = apply(
+        text,
+        "scripts/colors/generate_colors_material.py: use iris_raw_seeds in washi_roles",
+        re.escape('        seeds = {k: material_colors.get(k, "") for k in ("primary", "secondary", "tertiary")}\n        seeds["background"] = seed_background'),
+        '        seeds = iris_raw_seeds',
+        already=r"seeds = iris_raw_seeds",
+        required=False,
+    )
+    return text
+
+
+def patch_switchwall(text):
+    """Serialize switchwall executions and use unique PID temp files to prevent race conditions."""
+    text, _ = apply(
+        text,
+        "scripts/colors/switchwall.sh: serialize execution with flock",
+        re.escape("main() {\n    imgpath="),
+        'main() {\n    # Serialize switchwall execution — prevent concurrent switchwall runs from colliding\n    mkdir -p "$STATE_DIR/user/generated"\n    local _sw_lock="$STATE_DIR/user/generated/switchwall.lock"\n    exec 201>"$_sw_lock"\n    flock -w 10 201 || { echo "[switchwall.sh] lock timeout waiting for running switchwall" >&2; return 0; }\n\n    imgpath=',
+        already=r"_sw_lock=\"\$STATE_DIR/user/generated/switchwall\.lock\"",
+        required=False,
+    )
+
+    text, _ = apply(
+        text,
+        "scripts/colors/switchwall.sh: PID suffixed temp files",
+        re.escape('    _scss_tmp="$STATE_DIR/user/generated/material_colors.scss.tmp"\n    _json_tmp="$STATE_DIR/user/generated/colors.json.tmp"\n    _json_out="$STATE_DIR/user/generated/colors.json"\n    _palette_tmp="$STATE_DIR/user/generated/palette.json.tmp"\n    _palette_out="$STATE_DIR/user/generated/palette.json"\n    _app_palette_tmp="$STATE_DIR/user/generated/app-palette.json.tmp"\n    _app_palette_out="$STATE_DIR/user/generated/app-palette.json"\n    _terminal_tmp="$STATE_DIR/user/generated/terminal.json.tmp"\n    _terminal_out="$STATE_DIR/user/generated/terminal.json"\n    _meta_tmp="$STATE_DIR/user/generated/theme-meta.json.tmp"'),
+        '    _scss_tmp="$STATE_DIR/user/generated/material_colors.scss.tmp.$$"\n    _json_tmp="$STATE_DIR/user/generated/colors.json.tmp.$$"\n    _json_out="$STATE_DIR/user/generated/colors.json"\n    _palette_tmp="$STATE_DIR/user/generated/palette.json.tmp.$$"\n    _palette_out="$STATE_DIR/user/generated/palette.json"\n    _app_palette_tmp="$STATE_DIR/user/generated/app-palette.json.tmp.$$"\n    _app_palette_out="$STATE_DIR/user/generated/app-palette.json"\n    _terminal_tmp="$STATE_DIR/user/generated/terminal.json.tmp.$$"\n    _terminal_out="$STATE_DIR/user/generated/terminal.json"\n    _meta_tmp="$STATE_DIR/user/generated/theme-meta.json.tmp.$$"',
+        already=r"_scss_tmp=\"\$STATE_DIR/user/generated/material_colors\.scss\.tmp\.\$\$\"",
+        required=False,
+    )
+
+    text, _ = apply(
+        text,
+        "scripts/colors/switchwall.sh: force terminal PID suffixed temp file",
+        re.escape('        _terminal_force_tmp="$STATE_DIR/user/generated/terminal.json.force.tmp"'),
+        '        _terminal_force_tmp="$STATE_DIR/user/generated/terminal.json.force.tmp.$$"',
+        already=r"_terminal_force_tmp=\"\$STATE_DIR/user/generated/terminal\.json\.force\.tmp\.\$\$\"",
+        required=False,
+    )
+    return text
+
+
+def patch_theme_service(text):
+    """Defer regenerateAutoTheme if wallpaper apply is in progress."""
+    text, _ = apply(
+        text,
+        "services/ThemeService.qml: defer regeneration when apply in progress",
+        re.escape('    function regenerateAutoTheme(): void {\n        root._log("[ThemeService] regenerateAutoTheme called");\n        const now = Date.now()'),
+        '    function regenerateAutoTheme(): void {\n        root._log("[ThemeService] regenerateAutoTheme called");\n        if (Wallpapers._applyInProgress) {\n            root._log("[ThemeService] regenerateAutoTheme deferred — Wallpapers apply in progress");\n            root._regenPending = true\n            regenCooldownTimer.interval = Math.max(80, root._regenCooldownMs)\n            regenCooldownTimer.restart()\n            return\n        }\n        const now = Date.now()',
+        already=r"if \(Wallpapers\._applyInProgress\)",
+        required=False,
+    )
+    return text
+
+
+def patch_wallpapers(text):
+    """Prevent wallpaper transition conflicts and preview glitches."""
+    text, _ = apply(
+        text,
+        "services/Wallpapers.qml: cooldown timestamp update in _runWallpaperScript",
+        re.escape('        root._applyInProgress = true\n        _applySuppressTimer.restart()\n        applyProc.activeRequestKey = root._applyRequestKey'),
+        '        root._applyInProgress = true\n        _applySuppressTimer.restart()\n        ThemeService._lastRegenTimestamp = Date.now()\n        applyProc.activeRequestKey = root._applyRequestKey',
+        already=r"ThemeService\._lastRegenTimestamp = Date\.now\(\)",
+        required=False,
+    )
+
+    text, _ = apply(
+        text,
+        "services/Wallpapers.qml: unconditional clear preview in apply awwwBackend",
+        re.escape('            Config.setNestedValue("background.thumbnailPath", "")\n            if (adoptedPreview)\n                root._clearInternalPreview()\n            root._queueWallpaperScript'),
+        '            Config.setNestedValue("background.thumbnailPath", "")\n            root._clearInternalPreview()\n            root._queueWallpaperScript',
+        already=r'Config\.setNestedValue\("background\.thumbnailPath", ""\)\n            root\._clearInternalPreview\(\)\n            root\._queueWallpaperScript',
+        required=False,
+    )
+
+    text, _ = apply(
+        text,
+        "services/Wallpapers.qml: unconditional clear preview in apply fallback",
+        re.escape('        Config.setNestedValue("background.thumbnailPath", "")\n        if (adoptedPreview)\n            root._clearInternalPreview()\n        root._queueWallpaperScript'),
+        '        Config.setNestedValue("background.thumbnailPath", "")\n        root._clearInternalPreview()\n        root._queueWallpaperScript',
+        already=r'Config\.setNestedValue\("background\.thumbnailPath", ""\)\n        root\._clearInternalPreview\(\)\n        root\._queueWallpaperScript',
+        required=False,
+    )
+
+    text, _ = apply(
+        text,
+        "services/Wallpapers.qml: random fallback to any file",
+        re.escape('        const currentPath = Config.options?.background?.wallpaperPath ?? ""\n        const files = []\n        for (let i = 0; i < folderModel.count; ++i) {\n            if (folderModel.get(i, "fileIsDir")) continue\n            const path = folderModel.get(i, "filePath")\n            if (path && path !== currentPath) files.push(path)\n        }\n        if (files.length === 0) return'),
+        '        const currentPath = Config.options?.background?.wallpaperPath ?? ""\n        let files = []\n        for (let i = 0; i < folderModel.count; ++i) {\n            if (folderModel.get(i, "fileIsDir")) continue\n            const path = folderModel.get(i, "filePath")\n            if (path && path !== currentPath) files.push(path)\n        }\n        if (files.length === 0) {\n            for (let i = 0; i < folderModel.count; ++i) {\n                if (folderModel.get(i, "fileIsDir")) continue\n                const path = folderModel.get(i, "filePath")\n                if (path) files.push(path)\n            }\n        }\n        if (files.length === 0) return',
+        already=r'let files = \[\]',
+        required=False,
+    )
+    return text
+
+
+def patch_iris_wallpaper_picker(text):
+    """Exclude currently selected wallpaper from random candidate pool in picker."""
+    text, _ = apply(
+        text,
+        "modules/iris/wallpaper/IrisWallpaperPicker.qml: random wallpaper exclude current",
+        re.escape('                     onClicked: {\n                        const pick = root.visibleFiles[Math.floor(Math.random() * root.visibleFiles.length)]\n                        if (pick) root.apply(pick.path, false)\n                    }'),
+        '                     onClicked: {\n                        const current = FileUtils.trimFileProtocol(String(root.currentPath ?? ""))\n                        let candidates = (root.visibleFiles ?? []).filter(entry => entry && entry.path !== current)\n                        if (candidates.length === 0) candidates = root.visibleFiles ?? []\n                        if (candidates.length === 0) return\n                        const pick = candidates[Math.floor(Math.random() * candidates.length)]\n                        if (pick) root.apply(pick.path, false)\n                    }',
+        already=r'let candidates = \(root\.visibleFiles',
+        required=False,
+    )
+    return text
+
+
 PATCHES = {
     "services/IconThemeService.qml": patch_icon_theme,
     "shell.qml": patch_family_transition,
@@ -499,6 +618,11 @@ PATCHES = {
     "modules/iris/components/IrisMorphSurface.qml": patch_iris_morph_surface,
     "modules/iris/palette/IrisPalette.qml": patch_iris_palette,
     "services/deferred/LauncherSearch.qml": patch_launcher_search,
+    "scripts/colors/generate_colors_material.py": patch_generate_colors_material,
+    "scripts/colors/switchwall.sh": patch_switchwall,
+    "services/ThemeService.qml": patch_theme_service,
+    "services/Wallpapers.qml": patch_wallpapers,
+    "modules/iris/wallpaper/IrisWallpaperPicker.qml": patch_iris_wallpaper_picker,
 }
 
 
