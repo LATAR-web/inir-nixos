@@ -672,6 +672,9 @@ def patch_ytmusic(text):
         already=r'id: _detectBrowsersProc\n        command: \["/bin/sh", "-c", `',
         required=False,
     )
+    return text
+
+
 def patch_conflict_killer(text):
     """Auto-kill conflicting notification daemons on NixOS without opening killDialog."""
     target = (
