@@ -434,6 +434,9 @@ white = "{ansi["term15"]}"
         target_toml = os.path.join(alacritty_dir, "theme.toml")
         if not os.path.exists(target_toml) or os.access(target_toml, os.W_OK):
             write_atomic(target_toml, alacritty_toml)
+    except Exception:
+        pass
+
 # 4. Synchronize GTK 3 & 4 Theme Colors (for LocalSend, Flutter, and GTK apps)
 for gtk_ver in ("gtk-3.0", "gtk-4.0"):
     gtk_dir = os.path.join(home, ".config", gtk_ver)
