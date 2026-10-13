@@ -671,7 +671,7 @@ def patch_recognize_music(text):
 
 
 def patch_ytmusic(text):
-    """Ensure YtMusic.qml uses /bin/sh instead of /bin/bash on NixOS."""
+    """Ensure YtMusic.qml uses /bin/sh instead of /bin/bash on NixOS and robust search checks."""
     yt_pattern = r'(id:\s*_checkAvailability\b[^\n]*\n(?:\s*//[^\n]*\n)*\s*command:\s*\[)"/bin/bash"'
     text, _ = apply(
         text,
@@ -687,6 +687,59 @@ def patch_ytmusic(text):
         re.escape('    Process {\n        id: _detectBrowsersProc\n        command: ["/bin/bash", "-c", `'),
         '    Process {\n        id: _detectBrowsersProc\n        command: ["/bin/sh", "-c", `',
         already=r'id: _detectBrowsersProc\n        command: \["/bin/sh", "-c", `',
+        required=False,
+    )
+    text, _ = apply(
+        text,
+        "services/YtMusic.qml: resilient search availability check",
+        re.escape("    function search(query, filter): void {\n        if (!query.trim() || !root.available) return"),
+        "    function search(query, filter): void {\n        if (!query.trim()) return\n        if (!root.available && !InnerTube.available) {\n            if (!_checkAvailability.running) _checkAvailability.running = true\n            return\n        }",
+        already=r'!root\.available && !InnerTube\.available',
+        required=False,
+    )
+    text, _ = apply(
+        text,
+        "services/YtMusic.qml: sync onSearchingChanged in Connections",
+        re.escape("        function onSearchResultsChanged() {\n            if (!root._searchViaInnerTube) return\n            root.searchResults = InnerTube.searchResults\n            root.searching = false\n            root._searchViaInnerTube = false\n        }\n        function onRadioTracksChanged() { root._onRadioTracks() }"),
+        "        function onSearchResultsChanged() {\n            if (!root._searchViaInnerTube) return\n            root.searchResults = InnerTube.searchResults\n            root.searching = false\n            root._searchViaInnerTube = false\n        }\n        function onSearchingChanged() {\n            if (root._searchViaInnerTube && !InnerTube.searching) {\n                root.searchResults = InnerTube.searchResults\n                root.searching = false\n                root._searchViaInnerTube = false\n            }\n        }\n        function onRadioTracksChanged() { root._onRadioTracks() }",
+        already=r'function onSearchingChanged\(\) \{',
+        required=False,
+    )
+    return text
+
+
+def patch_innertube(text):
+    """Ensure InnerTube search recovers and handles errors cleanly."""
+    text, _ = apply(
+        text,
+        "services/deferred/InnerTube.qml: reset searching on error in StreamCollector",
+        re.escape("            if (obj.error) { root.error = obj.error; return; }"),
+        "            if (obj.error) {\n                root.error = obj.error;\n                root.searching = false;\n                buffer = [];\n                return;\n            }",
+        already=r'root\.searching = false;\s*buffer = \[\];\s*return;',
+        required=False,
+    )
+    text, _ = apply(
+        text,
+        "services/deferred/InnerTube.qml: clone buffer on finished",
+        re.escape('            if (obj._done) { finished(buffer, lyricsId); buffer = []; lyricsId = ""; return; }'),
+        '            if (obj._done) {\n                finished(buffer.slice ? buffer.slice() : buffer, lyricsId);\n                buffer = [];\n                lyricsId = "";\n                return;\n            }',
+        already=r'finished\(buffer\.slice',
+        required=False,
+    )
+    text, _ = apply(
+        text,
+        "services/deferred/InnerTube.qml: clear searchResults and retry availability",
+        re.escape('    function search(query, filter): void {\n        if (!query || !root.available) return;\n        root.error = "";\n        root.searching = true;\n        _searchProc.exec([root._runner, "search", query, filter || "songs"]);\n    }'),
+        '    function search(query, filter): void {\n        if (!query) return;\n        if (!root.available) {\n            root.retryAvailability();\n            return;\n        }\n        root.error = "";\n        root.searching = true;\n        root.searchResults = [];\n        _searchProc.exec([root._runner, "search", query, filter || "songs"]);\n    }',
+        already=r'root\.retryAvailability\(\);',
+        required=False,
+    )
+    text, _ = apply(
+        text,
+        "services/deferred/InnerTube.qml: handle _searchProc onExited",
+        re.escape('    Process {\n        id: _searchProc\n        stdout: StreamCollector { onFinished: (items) => { root.searchResults = items; root.searching = false; } }\n    }'),
+        '    Process {\n        id: _searchProc\n        stdout: StreamCollector {\n            onFinished: (items) => {\n                root.searchResults = items;\n                root.searching = false;\n            }\n        }\n        onExited: (code) => {\n            if (code !== 0) {\n                root.searching = false;\n                if (root.searchResults.length === 0 && !root.error) {\n                    root.error = Translation.tr("Search failed. Check your connection.");\n                }\n            }\n        }\n    }',
+        already=r'onExited:\s*\(code\)\s*=>\s*\{\s*if\s*\(code !== 0\)',
         required=False,
     )
     return text
@@ -886,6 +939,7 @@ PATCHES = {
     "scripts/colors/apply-gtk-theme.sh": patch_apply_gtk_theme,
     "scripts/musicRecognition/recognize-music.sh": patch_recognize_music,
     "services/YtMusic.qml": patch_ytmusic,
+    "services/deferred/InnerTube.qml": patch_innertube,
     "services/ConflictKiller.qml": patch_conflict_killer,
     "modules/background/widgets/WidgetSurface.qml": patch_widget_surface,
     "modules/common/widgets/ZzzPlate.qml": patch_zzz_plate,
