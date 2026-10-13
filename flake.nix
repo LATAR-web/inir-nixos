@@ -4,9 +4,9 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
 
-    # Upstream iNiR repository. Updated via `nix flake update inir`
+    # iNiR repository with turnkey NixOS port & fixes (PR #301)
     inir = {
-      url = "github:snowarch/iNiR";
+      url = "github:LATAR-web/iNiR/feat/nixos-port";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };

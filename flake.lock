@@ -7,15 +7,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1791487322,
-        "narHash": "sha256-+0rQz1y6wAIv1T4xAG3udY6bZSpTZ2nhdS9nzTCijkw=",
-        "owner": "snowarch",
+        "lastModified": 1791868225,
+        "narHash": "sha256-f51S7mH0BSeOaE1KIvCEbGEcYJLn2OBA24aTjKGtRxo=",
+        "owner": "LATAR-web",
         "repo": "iNiR",
-        "rev": "48cdcecb0f6089cfbb7019054602eab28e154b3b",
+        "rev": "1225d08044af37be6cff868c4355af633c351821",
         "type": "github"
       },
       "original": {
-        "owner": "snowarch",
+        "owner": "LATAR-web",
+        "ref": "feat/nixos-port",
         "repo": "iNiR",
         "type": "github"
       }
