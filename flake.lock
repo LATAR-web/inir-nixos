@@ -7,11 +7,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1791869250,
-        "narHash": "sha256-aL6iE0xwbN5CwCIqgMTQv7H6bhQMgpySD9vpqgoHWYc=",
+        "lastModified": 1791870310,
+        "narHash": "sha256-AhRYrGPcu+WuZ40c2WZNTH8GZLR7LFGWTScTYXm9SKs=",
         "owner": "LATAR-web",
         "repo": "iNiR",
-        "rev": "adf253ccd94d6f437cfbff983546e06f644c3d42",
+        "rev": "d9b76483e7c4ed4db4a39b1089471bc8a27830c4",
         "type": "github"
       },
       "original": {

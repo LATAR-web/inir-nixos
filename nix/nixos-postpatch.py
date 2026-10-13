@@ -701,8 +701,8 @@ def patch_ytmusic(text):
         text,
         "services/YtMusic.qml: sync onSearchingChanged in Connections",
         re.escape("        function onSearchResultsChanged() {\n            if (!root._searchViaInnerTube) return\n            root.searchResults = InnerTube.searchResults\n            root.searching = false\n            root._searchViaInnerTube = false\n        }\n        function onRadioTracksChanged() { root._onRadioTracks() }"),
-        "        function onSearchResultsChanged() {\n            if (!root._searchViaInnerTube) return\n            root.searchResults = InnerTube.searchResults\n            root.searching = false\n            root._searchViaInnerTube = false\n        }\n        function onSearchingChanged() {\n            if (root._searchViaInnerTube && !InnerTube.searching) {\n                root.searchResults = InnerTube.searchResults\n                root.searching = false\n                root._searchViaInnerTube = false\n            }\n        }\n        function onRadioTracksChanged() { root._onRadioTracks() }",
-        already=r'function onSearchingChanged\(\) \{',
+        "        function onSearchResultsChanged() {\n            if (!root._searchViaInnerTube) return\n            root.searchResults = InnerTube.searchResults\n            if (!InnerTube.searching) {\n                root.searching = false\n                root._searchViaInnerTube = false\n            }\n        }\n        function onSearchingChanged() {\n            if (root._searchViaInnerTube) {\n                root.searching = InnerTube.searching\n                if (!InnerTube.searching) {\n                    root.searchResults = InnerTube.searchResults\n                    root._searchViaInnerTube = false\n                }\n            }\n        }\n        function onRadioTracksChanged() { root._onRadioTracks() }",
+        already=r'root\.searching = InnerTube\.searching',
         required=False,
     )
     return text
@@ -710,6 +710,14 @@ def patch_ytmusic(text):
 
 def patch_innertube(text):
     """Ensure InnerTube search recovers and handles errors cleanly."""
+    text, _ = apply(
+        text,
+        "services/deferred/InnerTube.qml: import qs.services",
+        re.escape("import qs.modules.common\n"),
+        "import qs.modules.common\nimport qs.services\n",
+        already=r'import qs\.services',
+        required=False,
+    )
     text, _ = apply(
         text,
         "services/deferred/InnerTube.qml: reset searching on error in StreamCollector",
@@ -730,7 +738,7 @@ def patch_innertube(text):
         text,
         "services/deferred/InnerTube.qml: clear searchResults and retry availability",
         re.escape('    function search(query, filter): void {\n        if (!query || !root.available) return;\n        root.error = "";\n        root.searching = true;\n        _searchProc.exec([root._runner, "search", query, filter || "songs"]);\n    }'),
-        '    function search(query, filter): void {\n        if (!query) return;\n        if (!root.available) {\n            root.retryAvailability();\n            return;\n        }\n        root.error = "";\n        root.searching = true;\n        root.searchResults = [];\n        _searchProc.exec([root._runner, "search", query, filter || "songs"]);\n    }',
+        '    function search(query, filter): void {\n        if (!query) return;\n        if (!root.available) {\n            root.retryAvailability();\n            return;\n        }\n        root.error = "";\n        root.searching = true;\n        _searchProc.exec([root._runner, "search", query, filter || "songs"]);\n    }',
         already=r'root\.retryAvailability\(\);',
         required=False,
     )
@@ -738,8 +746,8 @@ def patch_innertube(text):
         text,
         "services/deferred/InnerTube.qml: handle _searchProc onExited",
         re.escape('    Process {\n        id: _searchProc\n        stdout: StreamCollector { onFinished: (items) => { root.searchResults = items; root.searching = false; } }\n    }'),
-        '    Process {\n        id: _searchProc\n        stdout: StreamCollector {\n            onFinished: (items) => {\n                root.searchResults = items;\n                root.searching = false;\n            }\n        }\n        onExited: (code) => {\n            if (code !== 0) {\n                root.searching = false;\n                if (root.searchResults.length === 0 && !root.error) {\n                    root.error = Translation.tr("Search failed. Check your connection.");\n                }\n            }\n        }\n    }',
-        already=r'onExited:\s*\(code\)\s*=>\s*\{\s*if\s*\(code !== 0\)',
+        '    Process {\n        id: _searchProc\n        stdout: StreamCollector {\n            onFinished: (items) => {\n                root.searchResults = items;\n                root.searching = false;\n            }\n        }\n        onExited: (code) => {\n            if (code !== 0 && root.searching) {\n                root.searching = false;\n                if (root.searchResults.length === 0 && !root.error) {\n                    root.error = Translation.tr("Search failed. Check your connection.");\n                }\n            }\n        }\n    }',
+        already=r'onExited:\s*\(code\)\s*=>\s*\{\s*if\s*\(code !== 0 && root\.searching\)',
         required=False,
     )
     return text
